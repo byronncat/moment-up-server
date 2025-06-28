@@ -1,1 +1,1 @@
-export * from './request-logger.middleware';
+export { RequestLoggerMiddleware } from './request-logger.middleware';

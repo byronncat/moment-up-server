@@ -1,18 +1,17 @@
 import { NestFactory } from '@nestjs/core';
-import { VersioningType } from '@nestjs/common';
+import { VersioningType, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
 
-import { RedisStore } from 'connect-redis';
-import { createClient } from 'redis';
-import * as session from 'express-session';
+// import { RedisStore } from 'connect-redis';
+// import { createClient } from 'redis';
+// import * as session from 'express-session';
 import * as fs from 'fs';
 import * as path from 'path';
 
 async function bootstrap() {
   let app;
   if (process.env.NODE_ENV === 'development') {
-    console.log('Running in development mode');
     const httpsOptions = {
       key: fs.readFileSync(path.join(__dirname, '../certificates/localhost-key.pem')),
       cert: fs.readFileSync(path.join(__dirname, '../certificates/localhost.pem')),
@@ -26,7 +25,7 @@ async function bootstrap() {
   // Server configs
   const configService = app.get(ConfigService);
   const port = configService.get<number>('http.port');
-  const prefix = configService.get<string>('http.prefix') ?? '';
+  const prefix = configService.get<string>('http.prefix');
   const allowedOrigin = configService.get<string>('http.allowedOrigin');
   const sessionSecret = configService.get<string>('security.sessionSecret');
 
@@ -34,7 +33,7 @@ async function bootstrap() {
   // const redisUsername = configService.get<string>('db.redisUsername');
   // const redisPassword = configService.get<string>('db.redisPassword');
   // const redisHost = configService.get<string>('db.redisHost');
-  const redisPort = configService.get<number>('db.redisPort');
+  // const redisPort = configService.get<number>('db.redisPort');
 
   if (!port || !allowedOrigin || !sessionSecret) throw new Error('Server config is missing!');
   // if (!redisUsername || !redisPassword || !redisHost || !redisPort)
@@ -75,7 +74,7 @@ async function bootstrap() {
   // );
 
   // Global configs
-  app.setGlobalPrefix(prefix);
+  if (prefix) app.setGlobalPrefix(prefix);
   app.enableVersioning({
     type: VersioningType.URI,
   });
@@ -84,5 +83,8 @@ async function bootstrap() {
     credentials: true,
   });
   await app.listen(port);
+
+  const logger = new Logger('Bootstrap');
+  logger.log(`🚀 Server running on https://localhost:${port}${prefix ? prefix : ''}`);
 }
 bootstrap();

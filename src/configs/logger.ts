@@ -12,8 +12,8 @@ type LogMeta = {
   context?: string;
 };
 
-function padString(str: string, width: number) {
-  return str.padEnd(width);
+function padString(str: string, width: number, align: 'left' | 'right' = 'left') {
+  return align === 'left' ? str.padEnd(width) : str.padStart(width);
 }
 
 export const winstonTransports = [
@@ -49,7 +49,7 @@ export const winstonTransports = [
 
           const coloredResponseTime = colorizer.colorize('warn', `+${responseTime}`);
 
-          return `${coloredContext} ${padString(String(timestamp), 26)} HTTP [${method}] ${coloredStatus} ${url} ${coloredResponseTime}`;
+          return `${coloredContext} ${padString(String(timestamp), 22)} ${padString('HTTP', 7, 'right')} [${method}] ${coloredStatus} ${url} ${coloredResponseTime}`;
         }
 
         const logMeta = meta as unknown as LogMeta;
@@ -61,7 +61,7 @@ export const winstonTransports = [
           ? colorizer.colorize(rawLevel, ` - ${logMeta.location}`)
           : '';
 
-        return `${coloredContext} ${padString(String(timestamp), 26)} ${upperLevel} ${contextStr} ${coloredMessage}${locationStr}`;
+        return `${coloredContext} ${padString(String(timestamp), 22, 'left')} ${padString(upperLevel, 17, 'right')} ${contextStr} ${coloredMessage}${locationStr}`;
       })
     ),
   }),

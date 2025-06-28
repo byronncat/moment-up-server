@@ -2,19 +2,19 @@ import {
   Controller,
   Post,
   Body,
-  UsePipes,
+  // UsePipes,
   HttpCode,
   HttpStatus,
   Req,
-  Get,
-  Res,
-  Delete,
+  // Get,
+  // Res,
+  // Delete,
   Query,
 } from '@nestjs/common';
-import { ValidationPipe } from '@nestjs/common/pipes/validation.pipe';
-import { Request, Response } from 'express';
+// import { ValidationPipe } from '@nestjs/common/pipes/validation.pipe';
+import { Request } from 'express';
 import { AuthService } from './auth.service';
-import { LoginAuthDto, SignupAuthDto } from './dto';
+import { LoginAuthDto } from './dto';
 
 @Controller({
   path: 'auth',
