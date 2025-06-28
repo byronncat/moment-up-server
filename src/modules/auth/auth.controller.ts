@@ -2,36 +2,28 @@ import {
   Controller,
   Post,
   Body,
-  // UsePipes,
   HttpCode,
   HttpStatus,
-  Req,
   // Get,
   // Res,
   // Delete,
-  Query,
+  // Query,
 } from '@nestjs/common';
-// import { ValidationPipe } from '@nestjs/common/pipes/validation.pipe';
-import { Request } from 'express';
+import { ValidationPipe } from '@nestjs/common/pipes/validation.pipe';
 import { AuthService } from './auth.service';
-import { LoginAuthDto } from './dto';
+import { LoginDto } from './dto';
 
 @Controller({
   path: 'auth',
   version: '1',
 })
-// @UsePipes(new ValidationPipe())
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  login(
-    @Query('type') type: 'google' | 'credentials',
-    @Body() loginAuthDto: LoginAuthDto,
-    @Req() request: Request
-  ) {
-    return this.authService.login(type, loginAuthDto, request);
+  login(@Body(new ValidationPipe()) loginDto: LoginDto) {
+    return this.authService.login(loginDto);
   }
 
   // @Delete('logout')

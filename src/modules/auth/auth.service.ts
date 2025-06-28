@@ -1,60 +1,32 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { Request, Response } from 'express';
+// import { ConfigService } from '@nestjs/config';
 // import { SupabaseClient } from '@supabase/supabase-js';
-import * as bcrypt from 'bcrypt';
-import { LoginAuthDto } from './dto/login-auth.dto';
+// import * as bcrypt from 'bcrypt';
+import { LoginDto } from './dto/login.dto';
 // import { SignupAuthDto } from './dto/signup-auth.dto';
 // import { SupabaseService } from '../supabase/supabase.service';
+import { accounts } from '../../__mocks__/auth';
 
 @Injectable()
 export class AuthService {
   // private readonly supabase: SupabaseClient;
-  private readonly saltRounds: number;
+  // private readonly saltRounds: number;
 
-  constructor(
-    // private readonly supabaseService: SupabaseService,
-    private readonly configService: ConfigService
-  ) {
-    // this.supabase = this.supabaseService.getClient();
-    this.saltRounds = Number(this.configService.get<number>('security.hashSaltRounds') || 10);
-  }
+  // constructor(
+  //   private readonly supabaseService: SupabaseService,
+  //   private readonly configService: ConfigService
+  // ) {
+  //   this.supabase = this.supabaseService.getClient();
+  //   this.saltRounds = Number(this.configService.get<number>('security.hashSaltRounds') || 10);
+  // }
 
-  async login(type: 'google' | 'credentials', loginAuthDto: LoginAuthDto, req: Request) {
-    // console.log(type, loginAuthDto, req);
-    return 'Login successful';
-    // if (type === 'google') {
-    //   req.session.user = { id: loginAuthDto.identity };
-    //   return JSON.stringify('Google login success');
-    // }
-
-    // if (type === 'credentials') {
-    //   if (!loginAuthDto.password)
-    //     throw new HttpException('Password is required', HttpStatus.BAD_REQUEST);
-
-    //   const { data: user, error } = await this.supabase
-    //     .from('users')
-    //     .select('id,password_hash')
-    //     .or(`email.eq.${loginAuthDto.identity},username.eq.${loginAuthDto.identity}`)
-    //     .single();
-
-    //   if (error) {
-    //     if (error.code === 'PGRST116')
-    //       throw new HttpException('User not found', HttpStatus.NOT_FOUND);
-    //     console.error(error);
-    //     throw new HttpException('Internal server error', HttpStatus.INTERNAL_SERVER_ERROR);
-    //   }
-
-    //   if (!user.password_hash) throw new HttpException('User not found', HttpStatus.NOT_FOUND);
-
-    //   if (!(await this.comparePasswords(loginAuthDto.password, user.password_hash)))
-    //     throw new HttpException('Incorrect password', HttpStatus.UNAUTHORIZED);
-
-    //   req.session.user = { id: user.id };
-    //   return JSON.stringify('Login success');
-    // }
-
-    // throw new HttpException('Invalid login type', HttpStatus.BAD_REQUEST);
+  async login(data: LoginDto) {
+    const account = accounts.find((account) => account.email === data.identity);
+    if (!account) throw new HttpException('Invalid credentials', HttpStatus.UNAUTHORIZED);
+    if (account.blocked) throw new HttpException('Account is blocked', HttpStatus.FORBIDDEN);
+    if (account.password !== data.password)
+      throw new HttpException('Invalid credentials', HttpStatus.UNAUTHORIZED);
+    return 'Login success';
   }
 
   // async signup(signupAuthDto: SignupAuthDto, req: Request) {
