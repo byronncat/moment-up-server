@@ -26,7 +26,7 @@ async function bootstrap() {
   // Server configs
   const configService = app.get(ConfigService);
   const port = configService.get<number>('http.port');
-  const prefix = configService.get<string>('http.prefix') || '';
+  const prefix = configService.get<string>('http.prefix') ?? '';
   const allowedOrigin = configService.get<string>('http.allowedOrigin');
   const sessionSecret = configService.get<string>('security.sessionSecret');
 

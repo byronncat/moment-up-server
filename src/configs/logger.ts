@@ -1,10 +1,15 @@
 import * as winston from 'winston';
 
-type ApiLog = {
+type HttpMeta = {
   method: string;
   url: string;
   status: number;
   responseTime: number;
+};
+
+type LogMeta = {
+  location?: string;
+  context?: string;
 };
 
 function padString(str: string, width: number) {
@@ -13,24 +18,25 @@ function padString(str: string, width: number) {
 
 export const winstonTransports = [
   new winston.transports.Console({
-    level: 'silly', // Show all log levels
+    level: 'silly', // To show all log levels
     format: winston.format.combine(
       winston.format.timestamp({ format: 'MM/DD/YYYY, h:mm:ss A' }),
       winston.format.colorize(),
       winston.format.printf((info) => {
-        const { timestamp, level, message, ...meta } = info;
-        const rawLevel = info[Symbol.for('level')]; // Get the original level without color codes
+        const { timestamp, message, ...meta } = info;
+        const rawLevel = info[Symbol.for('level')] as string;
         const pid = process.pid;
         const colorizer = winston.format.colorize();
-        const coloredContext = colorizer.colorize('info', `[${meta.context || 'Nest'}] ${pid}  -`);
+        const coloredContext = colorizer.colorize('info', `[Nest] ${pid}  -`);
+        const upperLevel = colorizer.colorize(rawLevel, rawLevel.toUpperCase());
 
         if (rawLevel === 'http') {
-          const logData = meta as ApiLog;
+          const httpData = meta as unknown as HttpMeta;
 
-          const method = logData.method || 'UNKNOWN_METHOD';
-          const url = logData.url || 'UNKNOWN_URL';
-          const status = logData.status || 'UNKNOWN_STATUS';
-          const responseTime = `${logData.responseTime}ms` || 'UNKNOWN_TIME';
+          const method = httpData.method || 'UNKNOWN_METHOD';
+          const url = httpData.url || 'UNKNOWN_URL';
+          const status = httpData.status || 'UNKNOWN_STATUS';
+          const responseTime = `${httpData.responseTime}ms` || 'UNKNOWN_TIME';
 
           const coloredStatus =
             typeof status === 'number'
@@ -41,9 +47,21 @@ export const winstonTransports = [
                   : colorizer.colorize('error', `${status}`)
               : status;
 
-          return `${coloredContext} ${padString(String(timestamp), 26)} ${method} ${coloredStatus} ${url} +${responseTime}`;
+          const coloredResponseTime = colorizer.colorize('warn', `+${responseTime}`);
+
+          return `${coloredContext} ${padString(String(timestamp), 26)} HTTP [${method}] ${coloredStatus} ${url} ${coloredResponseTime}`;
         }
-        return `${coloredContext} ${padString(String(timestamp), 26)} ${level} ${String(message)}`;
+
+        const logMeta = meta as unknown as LogMeta;
+        const coloredMessage = colorizer.colorize(rawLevel, String(message));
+        const contextStr = logMeta.context
+          ? colorizer.colorize(rawLevel, `[${logMeta.context}]`)
+          : '[General]';
+        const locationStr = logMeta.location
+          ? colorizer.colorize(rawLevel, ` - ${logMeta.location}`)
+          : '';
+
+        return `${coloredContext} ${padString(String(timestamp), 26)} ${upperLevel} ${contextStr} ${coloredMessage}${locationStr}`;
       })
     ),
   }),
