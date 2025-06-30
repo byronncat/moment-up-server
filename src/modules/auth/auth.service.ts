@@ -1,4 +1,10 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import {
+  ForbiddenException,
+  HttpException,
+  HttpStatus,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 // import { ConfigService } from '@nestjs/config';
 // import { SupabaseClient } from '@supabase/supabase-js';
 // import * as bcrypt from 'bcrypt';
@@ -21,12 +27,15 @@ export class AuthService {
   // }
 
   async login(data: LoginDto) {
-    const account = accounts.find((account) => account.email === data.identity);
-    if (!account) throw new HttpException('Invalid credentials', HttpStatus.UNAUTHORIZED);
-    if (account.blocked) throw new HttpException('Account is blocked', HttpStatus.FORBIDDEN);
+    const account = accounts.find(
+      (account) => account.email === data.identity || account.username === data.identity
+    );
+    // if (!account) throw new HttpException('Invalid credentials', HttpStatus.UNAUTHORIZED);
+    if (!account) throw new UnauthorizedException('Invalid credentials');
+    if (account.blocked) throw new ForbiddenException('Account is blocked');
     if (account.password !== data.password)
       throw new HttpException('Invalid credentials', HttpStatus.UNAUTHORIZED);
-    return 'Login success';
+    return account;
   }
 
   // async signup(signupAuthDto: SignupAuthDto, req: Request) {

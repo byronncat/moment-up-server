@@ -1,9 +1,12 @@
 declare module 'schema' {
+  type uuidv4 = string;
+
   export type User = {
     readonly id: uuidv4;
     username: string;
+    display_name: string;
     email: string;
-    password_hash?: string;
+    password: string;
     bio?: string;
     profile_picture?: string;
     readonly created_at: Date;

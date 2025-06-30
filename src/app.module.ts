@@ -1,9 +1,10 @@
-import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import { WinstonModule } from 'nest-winston';
 import { AuthModule } from './modules';
-import { RequestLoggerMiddleware } from './common/middlewares';
-import { environment, winstonTransports } from './configs';
+import { RequestLogger } from './common/interceptors';
+import { environment, winstonTransports } from './core';
 
 @Module({
   imports: [
@@ -15,9 +16,11 @@ import { environment, winstonTransports } from './configs';
     }),
     AuthModule,
   ],
+  providers: [
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: RequestLogger,
+    },
+  ],
 })
-export class AppModule implements NestModule {
-  configure(consumer: MiddlewareConsumer) {
-    consumer.apply(RequestLoggerMiddleware).forRoutes('*path');
-  }
-}
+export class AppModule {}

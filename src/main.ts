@@ -22,24 +22,23 @@ async function bootstrap() {
     });
   } else app = await NestFactory.create(AppModule);
 
-  // Server configs
+  // === Configurations ===
   const configService = app.get(ConfigService);
   const port = configService.get<number>('http.port');
   const prefix = configService.get<string>('http.prefix');
   const allowedOrigin = configService.get<string>('http.allowedOrigin');
   const sessionSecret = configService.get<string>('security.sessionSecret');
 
-  // Redis config
-  // const redisUsername = configService.get<string>('db.redisUsername');
-  // const redisPassword = configService.get<string>('db.redisPassword');
-  // const redisHost = configService.get<string>('db.redisHost');
-  // const redisPort = configService.get<number>('db.redisPort');
+  const redisUsername = configService.get<string>('db.redisUsername');
+  const redisPassword = configService.get<string>('db.redisPassword');
+  const redisHost = configService.get<string>('db.redisHost');
+  const redisPort = configService.get<number>('db.redisPort');
 
   if (!port || !allowedOrigin || !sessionSecret) throw new Error('Server config is missing!');
-  // if (!redisUsername || !redisPassword || !redisHost || !redisPort)
-  //   throw new Error('Redis config is missing!');
+  if (!redisUsername || !redisPassword || !redisHost || !redisPort)
+    throw new Error('Redis config is missing!');
 
-  // Session handling
+  // === Session ===
   // const redisClient = createClient({
   //   username: redisUsername,
   //   password: redisPassword,
@@ -73,7 +72,7 @@ async function bootstrap() {
   //   })
   // );
 
-  // Global configs
+  // === Global configs ===
   if (prefix) app.setGlobalPrefix(prefix);
   app.enableVersioning({
     type: VersioningType.URI,

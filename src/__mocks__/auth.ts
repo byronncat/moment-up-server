@@ -1,17 +1,31 @@
+import { getRandomFile } from './avatar';
+
 export const accounts = [
   {
     id: '1',
-    username: 'Byron',
+    username: 'byron',
+    displayName: 'Byron Arclight',
     email: '1@gmail.com',
     password: '1',
     blocked: false,
+    avatar: getRandomFile('byronat445'),
+    verified: true,
+    followers: 1000,
+    following: 1000,
+    hasFeed: true,
   },
   {
     id: '2',
-    username: 'Yuna',
+    username: 'yuna',
+    displayName: 'Yuna',
     email: '2@gmail.com',
     password: '1',
     blocked: false,
+    avatar: getRandomFile('yuna'),
+    verified: true,
+    followers: 1000,
+    following: 1000,
+    hasFeed: true,
   },
   {
     id: 'blocked',
@@ -19,5 +33,10 @@ export const accounts = [
     email: 'blocked@gmail.com',
     password: '1',
     blocked: true,
+    avatar: getRandomFile('blocked'),
+    verified: true,
+    followers: 1000,
+    following: 1000,
+    hasFeed: true,
   },
 ];

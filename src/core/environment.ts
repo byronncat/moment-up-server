@@ -6,7 +6,7 @@ export const environment = () => ({
     allowedOrigin: process.env.ALLOWED_ORIGIN || 'http://localhost:3000',
   },
   security: {
-    sessionSecret: process.env.SESSION_SECRET || 'session-secret',
+    sessionSecret: process.env.SESSION_SECRET,
     hashSaltRounds: process.env.HASH_SALT_ROUNDS || 10,
   },
   db: {
