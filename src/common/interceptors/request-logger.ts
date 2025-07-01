@@ -2,7 +2,6 @@ import { Inject, Injectable, NestInterceptor, ExecutionContext, CallHandler } fr
 import { Request, Response } from 'express';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
-import { Observable } from 'rxjs';
 import { tap, catchError } from 'rxjs/operators';
 import { throwError } from 'rxjs';
 

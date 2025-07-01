@@ -1,8 +1,10 @@
+import type { Response } from 'express';
+import type { Session, SessionData } from 'express-session';
+
 import {
   ForbiddenException,
-  HttpException,
-  HttpStatus,
   Injectable,
+  InternalServerErrorException,
   UnauthorizedException,
 } from '@nestjs/common';
 // import { ConfigService } from '@nestjs/config';
@@ -12,6 +14,7 @@ import { LoginDto } from './dto/login.dto';
 // import { SignupAuthDto } from './dto/signup-auth.dto';
 // import { SupabaseService } from '../supabase/supabase.service';
 import { accounts } from '../../__mocks__/auth';
+import { SESSION_COOKIE_NAME } from 'src/common/constants';
 
 @Injectable()
 export class AuthService {
@@ -23,19 +26,33 @@ export class AuthService {
   //   private readonly configService: ConfigService
   // ) {
   //   this.supabase = this.supabaseService.getClient();
-  //   this.saltRounds = Number(this.configService.get<number>('security.hashSaltRounds') || 10);
+  //   this.saltRounds = Number(this.configService.get<numbe  r>('security.hashSaltRounds') || 10);
   // }
 
-  async login(data: LoginDto) {
+  async login(data: LoginDto, session: SessionData) {
     const account = accounts.find(
       (account) => account.email === data.identity || account.username === data.identity
     );
-    // if (!account) throw new HttpException('Invalid credentials', HttpStatus.UNAUTHORIZED);
     if (!account) throw new UnauthorizedException('Invalid credentials');
     if (account.blocked) throw new ForbiddenException('Account is blocked');
-    if (account.password !== data.password)
-      throw new HttpException('Invalid credentials', HttpStatus.UNAUTHORIZED);
+    if (account.password !== data.password) throw new UnauthorizedException('Invalid credentials');
+
+    session.user = { id: account.id, username: account.username };
     return account;
+  }
+
+  async logout(session: Session, response: Response) {
+    return new Promise((resolve, reject) => {
+      session.destroy((err) => {
+        if (err) {
+          console.error(err);
+          reject(new InternalServerErrorException('Internal server error'));
+        } else {
+          response.clearCookie(SESSION_COOKIE_NAME);
+          resolve('Logout successful');
+        }
+      });
+    });
   }
 
   // async signup(signupAuthDto: SignupAuthDto, req: Request) {
@@ -74,17 +91,6 @@ export class AuthService {
 
   //   req.session.user = { id: createdUser.id };
   //   return JSON.stringify('Signup successful');
-  // }
-
-  // async logout(req: Request, res: Response) {
-  //   req.session.destroy((err) => {
-  //     if (err) {
-  //       console.error(err);
-  //       throw new HttpException('Internal server error', HttpStatus.INTERNAL_SERVER_ERROR);
-  //     }
-  //   });
-  //   res.clearCookie('session');
-  //   return JSON.stringify('Logout successful');
   // }
 
   // async verify(req: Request, res: Response) {

@@ -3,11 +3,12 @@ import { VersioningType, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
 
-// import { RedisStore } from 'connect-redis';
-// import { createClient } from 'redis';
-// import * as session from 'express-session';
+import { RedisStore } from 'connect-redis';
+import { createClient } from 'redis';
+import * as session from 'express-session';
 import * as fs from 'fs';
 import * as path from 'path';
+import { SESSION_COOKIE_NAME } from './common/constants';
 
 async function bootstrap() {
   let app;
@@ -39,38 +40,38 @@ async function bootstrap() {
     throw new Error('Redis config is missing!');
 
   // === Session ===
-  // const redisClient = createClient({
-  //   username: redisUsername,
-  //   password: redisPassword,
-  //   socket: {
-  //     host: redisHost,
-  //     port: redisPort,
-  //   },
-  // });
+  const redisClient = createClient({
+    username: redisUsername,
+    password: redisPassword,
+    socket: {
+      host: redisHost,
+      port: redisPort,
+    },
+  });
 
-  // redisClient.on('error', (err) => console.log('Redis Client Error', err));
+  redisClient.on('error', (err) => console.log('Redis Client Error', err));
 
-  // await redisClient.connect();
-  // const redisStore = new RedisStore({
-  //   client: redisClient,
-  //   prefix: 'session:',
-  // });
+  await redisClient.connect();
+  const redisStore = new RedisStore({
+    client: redisClient,
+    prefix: 'session:',
+  });
 
-  // app.use(
-  //   session({
-  //     store: redisStore,
-  //     secret: sessionSecret,
-  //     name: 'session',
-  //     resave: false,
-  //     saveUninitialized: false,
-  //     cookie: {
-  //       httpOnly: true,
-  //       secure: true,
-  //       sameSite: 'none',
-  //       maxAge: 365 * 24 * 60 * 60 * 1000,
-  //     },
-  //   })
-  // );
+  app.use(
+    session({
+      store: redisStore,
+      secret: sessionSecret,
+      name: SESSION_COOKIE_NAME,
+      resave: false,
+      saveUninitialized: false,
+      cookie: {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'none',
+        maxAge: 365 * 24 * 60 * 60 * 1000,
+      },
+    })
+  );
 
   // === Global configs ===
   if (prefix) app.setGlobalPrefix(prefix);

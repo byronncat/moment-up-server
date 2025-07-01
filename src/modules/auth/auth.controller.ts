@@ -1,11 +1,15 @@
+import type { Response } from 'express';
+import type { Session as ExpressSession, SessionData } from 'express-session';
+
 import {
   Controller,
   Post,
   Body,
   HttpCode,
   HttpStatus,
+  Session,
+  Res,
   // Get,
-  // Res,
   // Delete,
   // Query,
 } from '@nestjs/common';
@@ -22,15 +26,15 @@ export class AuthController {
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  login(@Body(ValidationPipe) loginDto: LoginDto) {
-    return this.authService.login(loginDto);
+  login(@Body(ValidationPipe) loginDto: LoginDto, @Session() session: SessionData) {
+    return this.authService.login(loginDto, session);
   }
 
-  // @Delete('logout')
-  // @HttpCode(HttpStatus.OK)
-  // logout(@Req() request: Request, @Res({ passthrough: true }) response: Response) {
-  //   return this.authService.logout(request, response);
-  // }
+  @Post('logout')
+  @HttpCode(HttpStatus.OK)
+  logout(@Session() session: ExpressSession, @Res({ passthrough: true }) response: Response) {
+    return this.authService.logout(session, response);
+  }
 
   // @Post('signup')
   // @HttpCode(HttpStatus.CREATED)
