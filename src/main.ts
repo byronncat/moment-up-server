@@ -2,13 +2,13 @@ import { NestFactory } from '@nestjs/core';
 import { VersioningType, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
+import { SESSION_COOKIE_NAME } from './common/constants';
 
 import { RedisStore } from 'connect-redis';
 import { createClient } from 'redis';
 import * as session from 'express-session';
 import * as fs from 'fs';
 import * as path from 'path';
-import { SESSION_COOKIE_NAME } from './common/constants';
 
 async function bootstrap() {
   let app;
@@ -79,12 +79,12 @@ async function bootstrap() {
     type: VersioningType.URI,
   });
   app.enableCors({
-    origin: [allowedOrigin, 'https://localhost:3000'],
+    origin: [allowedOrigin],
     credentials: true,
   });
-  await app.listen(port);
+  await app.listen(port, '0.0.0.0');
 
   const logger = new Logger('Bootstrap');
-  logger.log(`🚀 Server running on https://localhost:${port}${prefix ? prefix : ''}`);
+  logger.log(`🚀 Server running on https://localhost:${port}${prefix ? `/${prefix}` : ''}`);
 }
 bootstrap();

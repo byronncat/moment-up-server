@@ -1,7 +1,6 @@
 export const environment = () => ({
-  nodeEnv: process.env.NODE_ENV,
   http: {
-    port: process.env.PORT || 3000,
+    port: process.env.PORT || 4000,
     prefix: process.env.PREFIX || '',
     allowedOrigin: process.env.ALLOWED_ORIGIN || 'http://localhost:3000',
   },
