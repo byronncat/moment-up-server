@@ -10,6 +10,7 @@ import {
 // import { ConfigService } from '@nestjs/config';
 // import { SupabaseClient } from '@supabase/supabase-js';
 // import * as bcrypt from 'bcrypt';
+// import { JwtService } from '@nestjs/jwt';
 import { LoginDto } from './dto/login.dto';
 // import { SignupAuthDto } from './dto/signup-auth.dto';
 // import { SupabaseService } from '../supabase/supabase.service';
@@ -37,7 +38,7 @@ export class AuthService {
     if (account.blocked) throw new ForbiddenException('Account is blocked');
     if (account.password !== data.password) throw new UnauthorizedException('Invalid credentials');
 
-    session.user = { id: account.id, username: account.username };
+    session.user = { sub: account.id, jti: account.username };
     return account;
   }
 

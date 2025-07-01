@@ -17,12 +17,12 @@ async function bootstrap() {
       key: fs.readFileSync(path.join(__dirname, '../certificates/localhost-key.pem')),
       cert: fs.readFileSync(path.join(__dirname, '../certificates/localhost.pem')),
     };
-
+    
     app = await NestFactory.create(AppModule, {
       httpsOptions,
     });
   } else app = await NestFactory.create(AppModule);
-
+  
   // === Configurations ===
   const configService = app.get(ConfigService);
   const port = configService.get<number>('http.port');
@@ -34,10 +34,6 @@ async function bootstrap() {
   const redisPassword = configService.get<string>('db.redisPassword');
   const redisHost = configService.get<string>('db.redisHost');
   const redisPort = configService.get<number>('db.redisPort');
-
-  if (!port || !allowedOrigin || !sessionSecret) throw new Error('Server config is missing!');
-  if (!redisUsername || !redisPassword || !redisHost || !redisPort)
-    throw new Error('Redis config is missing!');
 
   // === Session ===
   const redisClient = createClient({
@@ -54,13 +50,13 @@ async function bootstrap() {
   await redisClient.connect();
   const redisStore = new RedisStore({
     client: redisClient,
-    prefix: 'session:',
+    prefix: 'refresh:',
   });
 
   app.use(
     session({
       store: redisStore,
-      secret: sessionSecret,
+      secret: sessionSecret!,
       name: SESSION_COOKIE_NAME,
       resave: false,
       saveUninitialized: false,
@@ -82,9 +78,9 @@ async function bootstrap() {
     origin: [allowedOrigin],
     credentials: true,
   });
-  await app.listen(port, '0.0.0.0');
-
-  const logger = new Logger('Bootstrap');
-  logger.log(`🚀 Server running on https://localhost:${port}${prefix ? `/${prefix}` : ''}`);
+  await app.listen(port!, () => {
+    const logger = new Logger('Bootstrap');
+    logger.log(`Server is running on http://localhost:${port}${prefix ? `/${prefix}` : ''}`);
+  }); 
 }
 bootstrap();

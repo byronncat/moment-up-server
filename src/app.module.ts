@@ -12,7 +12,8 @@ import { environment, winstonTransports } from './core';
       transports: winstonTransports,
     }),
     ConfigModule.forRoot({
-      load: [environment],
+      load: [environment.load],
+      validationSchema: environment.schema,
     }),
     AuthModule,
   ],
