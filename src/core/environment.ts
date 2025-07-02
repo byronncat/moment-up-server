@@ -8,6 +8,7 @@ export const load = () => ({
     allowedOrigin: process.env.ALLOWED_ORIGIN,
   },
   security: {
+    jwtSecret: process.env.JWT_SECRET,
     sessionSecret: process.env.SESSION_SECRET,
     hashSaltRounds: process.env.HASH_SALT_ROUNDS || 10,
   },
@@ -26,6 +27,7 @@ export const schema = Joi.object({
   PORT: Joi.number().default(4000),
   PREFIX: Joi.string().default(''),
   ALLOWED_ORIGIN: Joi.string().default('http://localhost:3000'),
+  JWT_SECRET: Joi.string().required(),
   SESSION_SECRET: Joi.string().required(),
   HASH_SALT_ROUNDS: Joi.number().default(10),
   SUPABASE_URL: Joi.string().uri().required(),

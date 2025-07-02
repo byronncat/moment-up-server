@@ -17,12 +17,12 @@ async function bootstrap() {
       key: fs.readFileSync(path.join(__dirname, '../certificates/localhost-key.pem')),
       cert: fs.readFileSync(path.join(__dirname, '../certificates/localhost.pem')),
     };
-    
+
     app = await NestFactory.create(AppModule, {
       httpsOptions,
     });
   } else app = await NestFactory.create(AppModule);
-  
+
   // === Configurations ===
   const configService = app.get(ConfigService);
   const port = configService.get<number>('http.port');
@@ -81,6 +81,6 @@ async function bootstrap() {
   await app.listen(port!, () => {
     const logger = new Logger('Bootstrap');
     logger.log(`Server is running on http://localhost:${port}${prefix ? `/${prefix}` : ''}`);
-  }); 
+  });
 }
 bootstrap();

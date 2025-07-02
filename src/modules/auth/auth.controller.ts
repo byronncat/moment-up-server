@@ -24,6 +24,12 @@ import { LoginDto } from './dto';
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  @Post('verify')
+  @HttpCode(HttpStatus.OK)
+  verify(@Session() session: SessionData, @Res({ passthrough: true }) response: Response) {
+    return this.authService.verify(session, response);
+  }
+
   @Post('login')
   @HttpCode(HttpStatus.OK)
   login(@Body(ValidationPipe) loginDto: LoginDto, @Session() session: SessionData) {
@@ -40,11 +46,5 @@ export class AuthController {
   // @HttpCode(HttpStatus.CREATED)
   // signup(@Body() signupAuthDto: SignupAuthDto, @Req() request: Request) {
   //   return this.authService.signup(signupAuthDto, request);
-  // }
-
-  // @Get('verify')
-  // @HttpCode(HttpStatus.OK)
-  // authenticate(@Req() request: Request, @Res({ passthrough: true }) response: Response) {
-  //   return this.authService.verify(request, response);
   // }
 }

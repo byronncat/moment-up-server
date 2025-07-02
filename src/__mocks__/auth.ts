@@ -6,7 +6,7 @@ export const accounts = [
     username: 'byron',
     displayName: 'Byron Arclight',
     email: '1@gmail.com',
-    password: '1',
+    password: '$2a$12$ixH0oPx0IwNquNZAfsbd..9yo1gh82UZqK7ICIQKl6HV//SXAlARS',
     blocked: false,
     avatar: getRandomFile('byronat445'),
     verified: true,

@@ -7,39 +7,60 @@ import {
   InternalServerErrorException,
   UnauthorizedException,
 } from '@nestjs/common';
-// import { ConfigService } from '@nestjs/config';
+import { ConfigService } from '@nestjs/config';
 // import { SupabaseClient } from '@supabase/supabase-js';
-// import * as bcrypt from 'bcrypt';
-// import { JwtService } from '@nestjs/jwt';
+import { authLib } from 'src/common/libraries';
 import { LoginDto } from './dto/login.dto';
 // import { SignupAuthDto } from './dto/signup-auth.dto';
 // import { SupabaseService } from '../supabase/supabase.service';
 import { accounts } from '../../__mocks__/auth';
 import { SESSION_COOKIE_NAME } from 'src/common/constants';
+import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
 export class AuthService {
   // private readonly supabase: SupabaseClient;
-  // private readonly saltRounds: number;
+  private readonly saltRounds: number = this.configService.get<number>('security.hashSaltRounds')!;
+  private readonly jwtSecret: string = this.configService.get<string>('security.jwtSecret')!;
 
-  // constructor(
-  //   private readonly supabaseService: SupabaseService,
-  //   private readonly configService: ConfigService
-  // ) {
-  //   this.supabase = this.supabaseService.getClient();
-  //   this.saltRounds = Number(this.configService.get<numbe  r>('security.hashSaltRounds') || 10);
-  // }
+  constructor(
+    //   private readonly supabaseService: SupabaseService,
+    private readonly configService: ConfigService,
+    private readonly jwtService: JwtService
+  ) {
+    //   this.supabase = this.supabaseService.getClient();
+  }
+
+  async verify(session: SessionData, res: Response) {
+    if (session.user) {
+      const account = accounts.find((acc) => acc.id === session.user.sub);
+      if (account)
+        return {
+          accessToken: this.createAccessToken(account.id, account.username).value,
+          user: account,
+        };
+    }
+    res.clearCookie(SESSION_COOKIE_NAME);
+    throw new UnauthorizedException('User not authenticated');
+  }
 
   async login(data: LoginDto, session: SessionData) {
     const account = accounts.find(
       (account) => account.email === data.identity || account.username === data.identity
     );
+
     if (!account) throw new UnauthorizedException('Invalid credentials');
     if (account.blocked) throw new ForbiddenException('Account is blocked');
-    if (account.password !== data.password) throw new UnauthorizedException('Invalid credentials');
+    if (!(await authLib.compare(data.password, account.password)))
+      throw new UnauthorizedException('Invalid credentials');
 
-    session.user = { sub: account.id, jti: account.username };
-    return account;
+    const token = this.createAccessToken(account.id, account.username);
+    session.user = { sub: account.id, jti: token.jti };
+
+    return {
+      accessToken: token.value,
+      user: account,
+    };
   }
 
   async logout(session: Session, response: Response) {
@@ -54,6 +75,19 @@ export class AuthService {
         }
       });
     });
+  }
+
+  createAccessToken(userId: string, username: string) {
+    const jti = authLib.generateJti();
+    const payload = { sub: userId, username: username, jti };
+    const token = this.jwtService.sign(payload, {
+      secret: this.jwtSecret,
+      expiresIn: '15m',
+    });
+    return {
+      jti,
+      value: token,
+    };
   }
 
   // async signup(signupAuthDto: SignupAuthDto, req: Request) {
@@ -92,21 +126,5 @@ export class AuthService {
 
   //   req.session.user = { id: createdUser.id };
   //   return JSON.stringify('Signup successful');
-  // }
-
-  // async verify(req: Request, res: Response) {
-  //   if (req.session.user) return JSON.stringify('User authenticated');
-  //   res.clearCookie('session');
-  //   throw new HttpException('User not authenticated', HttpStatus.UNAUTHORIZED);
-  // }
-
-  // async hashPassword(password: string): Promise<string> {
-  //   const salt = await bcrypt.genSalt(this.saltRounds);
-  //   return bcrypt.hash(password, salt);
-  // }
-
-  // async comparePasswords(password?: string, hash?: string): Promise<boolean> {
-  //   if (!password || !hash) return false;
-  //   return bcrypt.compare(password, hash);
   // }
 }
