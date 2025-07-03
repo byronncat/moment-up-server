@@ -1,5 +1,10 @@
-import type { Response } from 'express';
-import type { Session as ExpressSession, SessionData } from 'express-session';
+import type { Response, Request } from 'express';
+import type { Session as ExpressSession } from 'express-session';
+
+type AuthRequest = Request & {
+  session: ExpressSession;
+  csrfToken(): string;
+};
 
 import {
   Controller,
@@ -9,13 +14,14 @@ import {
   HttpStatus,
   Session,
   Res,
-  // Get,
-  // Delete,
-  // Query,
+  Get,
+  Req,
 } from '@nestjs/common';
 import { ValidationPipe } from '@nestjs/common/pipes/validation.pipe';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto';
+import { Cookie } from 'src/common/decorators';
+import { COOKIE_NAME } from 'src/common/constants';
 
 @Controller({
   path: 'auth',
@@ -26,14 +32,22 @@ export class AuthController {
 
   @Post('verify')
   @HttpCode(HttpStatus.OK)
-  verify(@Session() session: SessionData, @Res({ passthrough: true }) response: Response) {
-    return this.authService.verify(session, response);
+  verify(
+    @Session() session: ExpressSession,
+    @Cookie(COOKIE_NAME.REFRESH) refreshToken: string,
+    @Res({ passthrough: true }) response: Response
+  ) {
+    return this.authService.verify(session, refreshToken, response);
   }
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  login(@Body(ValidationPipe) loginDto: LoginDto, @Session() session: SessionData) {
-    return this.authService.login(loginDto, session);
+  login(
+    @Body(ValidationPipe) loginDto: LoginDto,
+    @Session() session: ExpressSession,
+    @Res({ passthrough: true }) response: Response
+  ) {
+    return this.authService.login(loginDto, session, response);
   }
 
   @Post('logout')
@@ -42,9 +56,10 @@ export class AuthController {
     return this.authService.logout(session, response);
   }
 
-  // @Post('signup')
-  // @HttpCode(HttpStatus.CREATED)
-  // signup(@Body() signupAuthDto: SignupAuthDto, @Req() request: Request) {
-  //   return this.authService.signup(signupAuthDto, request);
-  // }
+  @Get('csrf')
+  @HttpCode(HttpStatus.OK)
+  getCsrfToken(@Req() request: AuthRequest) {
+    const csrfToken = request.csrfToken();
+    return { csrfToken };
+  }
 }

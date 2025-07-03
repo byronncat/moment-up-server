@@ -1,50 +1,61 @@
-import type { Response } from 'express';
-import type { Session, SessionData } from 'express-session';
-
-import {
-  ForbiddenException,
-  Injectable,
-  InternalServerErrorException,
-  UnauthorizedException,
-} from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-// import { SupabaseClient } from '@supabase/supabase-js';
-import { authLib } from 'src/common/libraries';
-import { LoginDto } from './dto/login.dto';
-// import { SignupAuthDto } from './dto/signup-auth.dto';
-// import { SupabaseService } from '../supabase/supabase.service';
 import { accounts } from '../../__mocks__/auth';
-import { SESSION_COOKIE_NAME } from 'src/common/constants';
+
+import type { Response } from 'express';
+import type { ExpressSession } from 'express-session';
+
+import { ForbiddenException, Injectable, UnauthorizedException, Inject } from '@nestjs/common';
+import { Logger } from 'winston';
 import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
+import { authLib } from 'src/common/libraries';
+import { COOKIE_NAME, TOKEN_ID_LENGTH } from 'src/common/constants';
+import { LoginDto } from './dto/login.dto';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+
+type JwtPayload = {
+  sub: string;
+  jti: string;
+};
 
 @Injectable()
 export class AuthService {
-  // private readonly supabase: SupabaseClient;
   private readonly saltRounds: number = this.configService.get<number>('security.hashSaltRounds')!;
   private readonly jwtSecret: string = this.configService.get<string>('security.jwtSecret')!;
 
   constructor(
-    //   private readonly supabaseService: SupabaseService,
+    @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
     private readonly configService: ConfigService,
     private readonly jwtService: JwtService
-  ) {
-    //   this.supabase = this.supabaseService.getClient();
-  }
+  ) {}
 
-  async verify(session: SessionData, res: Response) {
-    if (session.user) {
-      const account = accounts.find((acc) => acc.id === session.user.sub);
-      if (account)
+  public async verify(session: ExpressSession, refreshToken: string, response: Response) {
+    const payload = this.verifyJwtToken(refreshToken);
+    if (session.user && payload) {
+      const userId = session.user.sub;
+      const account = accounts.find((acc) => acc.id === userId);
+      if (account && session.user.jti === payload.jti) {
+        const newRefreshToken = this.createJwtToken(account.id, '7d');
+        const newAccessToken = this.createJwtToken(account.id, '15m', newRefreshToken.jti);
+
+        session.user.jti = newRefreshToken.jti;
+        response.cookie(COOKIE_NAME.REFRESH, newRefreshToken.value, {
+          httpOnly: true,
+          secure: true,
+          sameSite: 'none',
+          maxAge: 365 * 24 * 60 * 60 * 1000,
+        });
+
         return {
-          accessToken: this.createAccessToken(account.id, account.username).value,
+          accessToken: newAccessToken.value,
           user: account,
         };
+      }
     }
-    res.clearCookie(SESSION_COOKIE_NAME);
+    this.clearAuthState(session, response);
     throw new UnauthorizedException('User not authenticated');
   }
 
-  async login(data: LoginDto, session: SessionData) {
+  public async login(data: LoginDto, session: ExpressSession, response: Response) {
     const account = accounts.find(
       (account) => account.email === data.identity || account.username === data.identity
     );
@@ -54,40 +65,58 @@ export class AuthService {
     if (!(await authLib.compare(data.password, account.password)))
       throw new UnauthorizedException('Invalid credentials');
 
-    const token = this.createAccessToken(account.id, account.username);
-    session.user = { sub: account.id, jti: token.jti };
+    const refreshToken = this.createJwtToken(account.id, '7d');
+    const accessToken = this.createJwtToken(account.id, '15m', refreshToken.jti);
+    session.user = { sub: account.id, jti: refreshToken.jti };
+    response.cookie(COOKIE_NAME.REFRESH, refreshToken.value, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'none',
+      maxAge: 365 * 24 * 60 * 60 * 1000,
+    });
 
     return {
-      accessToken: token.value,
+      accessToken: accessToken.value,
       user: account,
     };
   }
 
-  async logout(session: Session, response: Response) {
-    return new Promise((resolve, reject) => {
-      session.destroy((err) => {
-        if (err) {
-          console.error(err);
-          reject(new InternalServerErrorException('Internal server error'));
-        } else {
-          response.clearCookie(SESSION_COOKIE_NAME);
-          resolve('Logout successful');
-        }
-      });
-    });
+  public async logout(session: ExpressSession, response: Response) {
+    this.clearAuthState(session, response);
+    return 'Logout successful';
   }
 
-  createAccessToken(userId: string, username: string) {
-    const jti = authLib.generateJti();
-    const payload = { sub: userId, username: username, jti };
+  private clearAuthState(session: ExpressSession, response: Response) {
+    session.user = undefined;
+    response.clearCookie(COOKIE_NAME.REFRESH);
+  }
+
+  private createJwtToken(userId: string, expiresIn: string, _jti?: string) {
+    const jti = _jti || authLib.generateId('nanoid', { length: TOKEN_ID_LENGTH });
+    const payload = { sub: userId, jti };
     const token = this.jwtService.sign(payload, {
       secret: this.jwtSecret,
-      expiresIn: '15m',
+      expiresIn,
     });
     return {
       jti,
       value: token,
     };
+  }
+
+  private verifyJwtToken(token: string): JwtPayload | null {
+    try {
+      const payload = this.jwtService.verify<JwtPayload>(token, {
+        secret: this.jwtSecret,
+      });
+      return payload;
+    } catch (error) {
+      this.logger.info(error, {
+        location: 'AuthService.verifyJwtToken',
+        context: 'JWT',
+      });
+      return null;
+    }
   }
 
   // async signup(signupAuthDto: SignupAuthDto, req: Request) {

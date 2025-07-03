@@ -1,13 +1,13 @@
 import * as winston from 'winston';
 
-type HttpMeta = {
+export type HttpMeta = {
   method: string;
   url: string;
   status: number;
   responseTime: number;
 };
 
-type LogMeta = {
+export type LogMeta = {
   location?: string;
   context?: string;
 };
@@ -16,8 +16,8 @@ function padString(str: string, width: number, align: 'left' | 'right' = 'left')
   return align === 'left' ? str.padEnd(width) : str.padStart(width);
 }
 
-export const winstonTransports = new winston.transports.Console({
-  level: 'silly', // To show all log levels
+const consoleTransport = new winston.transports.Console({
+  level: 'silly', // Show all log levels
   format: winston.format.combine(
     winston.format.timestamp({ format: 'MM/DD/YYYY, h:mm:ss A' }),
     winston.format.colorize(),
@@ -29,6 +29,7 @@ export const winstonTransports = new winston.transports.Console({
       const coloredContext = colorizer.colorize('info', `[Nest] ${pid}  -`);
       const upperLevel = colorizer.colorize(rawLevel, rawLevel.toUpperCase());
 
+      // === HTTP ===
       if (rawLevel === 'http') {
         const httpData = meta as unknown as HttpMeta;
 
@@ -51,16 +52,53 @@ export const winstonTransports = new winston.transports.Console({
         return `${coloredContext} ${padString(String(timestamp), 22)} ${padString('HTTP', 7, 'right')} [${method}] ${coloredStatus} ${url} ${coloredResponseTime}`;
       }
 
+      // === Other Logs ===
       const logMeta = meta as unknown as LogMeta;
+
+      let context = logMeta.context;
+      let location = logMeta.location;
+      const metaWithStack = meta as unknown as {
+        stack?: Array<{ context?: string; location?: string }>;
+      };
+      if (!context && !location && metaWithStack.stack && Array.isArray(metaWithStack.stack)) {
+        const stackMeta = metaWithStack.stack[0];
+        if (stackMeta) {
+          context = stackMeta.context;
+          location = stackMeta.location;
+        }
+      }
+
       const coloredMessage = colorizer.colorize(rawLevel, String(message));
-      const contextStr = logMeta.context
-        ? colorizer.colorize(rawLevel, `[${logMeta.context}]`)
-        : '[General]';
-      const locationStr = logMeta.location
-        ? colorizer.colorize(rawLevel, ` - ${logMeta.location}`)
-        : '';
+      const contextStr = context ? `[${context}]` : '[General]';
+      const locationStr = location ? ` -${location}` : '';
 
       return `${coloredContext} ${padString(String(timestamp), 22, 'left')} ${padString(upperLevel, 17, 'right')} ${contextStr} ${coloredMessage}${locationStr}`;
     })
   ),
 });
+
+export function createWinstonTransports(isDevelopment: boolean): winston.transport[] {
+  const transports: winston.transport[] = [consoleTransport];
+
+  if (isDevelopment) {
+    transports.push(
+      new winston.transports.File({
+        filename: 'logs/combined.log',
+        format: winston.format.combine(
+          winston.format.timestamp({ format: 'MM/DD/YYYY, h:mm:ss A' }),
+          winston.format.json()
+        ),
+      }),
+      new winston.transports.File({
+        filename: 'logs/error.log',
+        level: 'error',
+        format: winston.format.combine(
+          winston.format.timestamp({ format: 'MM/DD/YYYY, h:mm:ss A' }),
+          winston.format.json()
+        ),
+      })
+    );
+  }
+
+  return transports;
+}

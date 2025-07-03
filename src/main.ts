@@ -2,7 +2,11 @@ import { NestFactory } from '@nestjs/core';
 import { VersioningType, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
-import { SESSION_COOKIE_NAME } from './common/constants';
+import { COOKIE_NAME } from './common/constants';
+
+import helmet from 'helmet';
+import { csrfSync } from 'csrf-sync';
+import * as cookieParser from 'cookie-parser';
 
 import { RedisStore } from 'connect-redis';
 import { createClient } from 'redis';
@@ -22,6 +26,7 @@ async function bootstrap() {
       httpsOptions,
     });
   } else app = await NestFactory.create(AppModule);
+  const logger = new Logger('Bootstrap');
 
   // === Configurations ===
   const configService = app.get(ConfigService);
@@ -45,26 +50,26 @@ async function bootstrap() {
     },
   });
 
-  redisClient.on('error', (err) => console.log('Redis Client Error', err));
+  redisClient.on('error', (error) => logger.error('Redis Error:', error));
 
   await redisClient.connect();
   const redisStore = new RedisStore({
     client: redisClient,
-    prefix: 'refresh:',
+    prefix: 'session:',
   });
 
   app.use(
     session({
       store: redisStore,
       secret: sessionSecret!,
-      name: SESSION_COOKIE_NAME,
+      name: COOKIE_NAME.CSRF,
       resave: false,
       saveUninitialized: false,
       cookie: {
         httpOnly: true,
         secure: true,
         sameSite: 'none',
-        maxAge: 365 * 24 * 60 * 60 * 1000,
+        maxAge: 7 * 24 * 60 * 60 * 1000,
       },
     })
   );
@@ -78,8 +83,23 @@ async function bootstrap() {
     origin: [allowedOrigin],
     credentials: true,
   });
+  app.use(helmet());
+  app.use(cookieParser());
+  const { csrfSynchronisedProtection } = csrfSync({
+    getTokenFromRequest: (req) => {
+      const token = req.headers['x-csrf-token'];
+      return Array.isArray(token) ? token[0] : token;
+    },
+    getTokenFromState: (req) => req.session.csrfToken,
+    storeTokenInState: (req, token) => {
+      req.session.csrfToken = token;
+    },
+    size: 128,
+    ignoredMethods: ['GET', 'HEAD', 'OPTIONS'],
+  });
+  app.use(csrfSynchronisedProtection);
+
   await app.listen(port!, () => {
-    const logger = new Logger('Bootstrap');
     logger.log(`Server is running on http://localhost:${port}${prefix ? `/${prefix}` : ''}`);
   });
 }

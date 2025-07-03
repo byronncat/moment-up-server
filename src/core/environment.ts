@@ -10,6 +10,7 @@ export const load = () => ({
   security: {
     jwtSecret: process.env.JWT_SECRET,
     sessionSecret: process.env.SESSION_SECRET,
+    csrfSecret: process.env.CSRF_SECRET,
     hashSaltRounds: process.env.HASH_SALT_ROUNDS || 10,
   },
   db: {
@@ -29,6 +30,7 @@ export const schema = Joi.object({
   ALLOWED_ORIGIN: Joi.string().default('http://localhost:3000'),
   JWT_SECRET: Joi.string().required(),
   SESSION_SECRET: Joi.string().required(),
+  CSRF_SECRET: Joi.string().required(),
   HASH_SALT_ROUNDS: Joi.number().default(10),
   SUPABASE_URL: Joi.string().uri().required(),
   SUPABASE_KEY: Joi.string().required(),
