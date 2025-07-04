@@ -1,4 +1,4 @@
-import { getRandomFile } from './avatar';
+import { getRandomFile } from './file';
 
 export const accounts = [
   {

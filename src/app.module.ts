@@ -3,7 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { APP_INTERCEPTOR, APP_FILTER } from '@nestjs/core';
 import { WinstonModule } from 'nest-winston';
-import { AuthModule } from './modules';
+import { AuthModule, CoreModule } from './modules';
 import { RequestLogger } from './common/interceptors';
 import { CsrfExceptionFilter } from './common/filters';
 import { environment, createWinstonTransports } from './core';
@@ -36,6 +36,7 @@ import { environment, createWinstonTransports } from './core';
       inject: [ConfigService],
     }),
     AuthModule,
+    CoreModule,
   ],
   providers: [
     {

@@ -18,8 +18,8 @@ async function bootstrap() {
   let app;
   if (process.env.NODE_ENV === 'development') {
     const httpsOptions = {
-      key: fs.readFileSync(path.join(__dirname, '../certificates/localhost-key.pem')),
-      cert: fs.readFileSync(path.join(__dirname, '../certificates/localhost.pem')),
+      key: fs.readFileSync(path.join(__dirname, '../certificates/localhost+2-key.pem')),
+      cert: fs.readFileSync(path.join(__dirname, '../certificates/localhost+2.pem')),
     };
 
     app = await NestFactory.create(AppModule, {
@@ -80,7 +80,7 @@ async function bootstrap() {
     type: VersioningType.URI,
   });
   app.enableCors({
-    origin: [allowedOrigin],
+    origin: [allowedOrigin, "https://localhost:3000"],
     credentials: true,
   });
   app.use(helmet());
