@@ -16,10 +16,8 @@ import {
   Res,
   Get,
   Req,
-  UseGuards,
 } from '@nestjs/common';
 import { ValidationPipe } from '@nestjs/common/pipes/validation.pipe';
-import { ThrottlerGuard } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto';
 import { Cookie } from 'src/common/decorators';
@@ -29,7 +27,6 @@ import { COOKIE_NAME } from 'src/common/constants';
   path: 'auth',
   version: '1',
 })
-@UseGuards(ThrottlerGuard)
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 

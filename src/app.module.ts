@@ -30,19 +30,8 @@ import { environment, createWinstonTransports } from './core';
     ThrottlerModule.forRoot({
       throttlers: [
         {
-          name: 'short',
-          ttl: 1000,
-          limit: 3,
-        },
-        {
-          name: 'medium',
           ttl: 10000,
-          limit: 20,
-        },
-        {
-          name: 'long',
-          ttl: 60000,
-          limit: 100,
+          limit: 10,
         },
       ],
       errorMessage: 'Too many requests',
