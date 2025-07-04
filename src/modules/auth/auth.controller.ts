@@ -16,8 +16,10 @@ import {
   Res,
   Get,
   Req,
+  UseGuards,
 } from '@nestjs/common';
 import { ValidationPipe } from '@nestjs/common/pipes/validation.pipe';
+import { ThrottlerGuard } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto';
 import { Cookie } from 'src/common/decorators';
@@ -27,6 +29,7 @@ import { COOKIE_NAME } from 'src/common/constants';
   path: 'auth',
   version: '1',
 })
+@UseGuards(ThrottlerGuard)
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
@@ -61,5 +64,15 @@ export class AuthController {
   getCsrfToken(@Req() request: AuthRequest) {
     const csrfToken = request.csrfToken();
     return { csrfToken };
+  }
+
+  @Get('test-rate-limit')
+  @HttpCode(HttpStatus.OK)
+  testRateLimit(@Req() request: Request) {
+    return { 
+      message: 'Rate limit test successful', 
+      timestamp: new Date().toISOString(),
+      ip: request.ip || request.connection.remoteAddress
+    };
   }
 }

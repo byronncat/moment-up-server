@@ -80,7 +80,7 @@ async function bootstrap() {
     type: VersioningType.URI,
   });
   app.enableCors({
-    origin: [allowedOrigin, "https://localhost:3000"],
+    origin: [allowedOrigin, 'https://localhost:3000'],
     credentials: true,
   });
   app.use(helmet());

@@ -1,16 +1,16 @@
-import { accounts } from '../../__mocks__/auth';
-
 import type { Response } from 'express';
 import type { ExpressSession } from 'express-session';
 
 import { ForbiddenException, Injectable, UnauthorizedException, Inject } from '@nestjs/common';
-import { Logger } from 'winston';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { authLib } from 'src/common/libraries';
-import { COOKIE_NAME, TOKEN_ID_LENGTH } from 'src/common/constants';
-import { LoginDto } from './dto/login.dto';
+import { Logger } from 'winston';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+
+import { authLib } from 'src/common/libraries';
+import { LoginDto } from './dto/login.dto';
+import { UserService } from '../user/user.service';
+import { COOKIE_NAME, TOKEN_ID_LENGTH } from 'src/common/constants';
 
 type JwtPayload = {
   sub: string;
@@ -25,14 +25,15 @@ export class AuthService {
   constructor(
     @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
     private readonly configService: ConfigService,
-    private readonly jwtService: JwtService
+    private readonly jwtService: JwtService,
+    private readonly userService: UserService
   ) {}
 
   public async verify(session: ExpressSession, refreshToken: string, response: Response) {
     const payload = this.verifyJwtToken(refreshToken);
     if (session.user && payload) {
       const userId = session.user.sub;
-      const account = accounts.find((acc) => acc.id === userId);
+      const account = await this.userService.getUser(userId);
       if (account && session.user.jti === payload.jti) {
         const newRefreshToken = this.createJwtToken(account.id, '7d');
         const newAccessToken = this.createJwtToken(account.id, '15m', newRefreshToken.jti);
@@ -56,9 +57,7 @@ export class AuthService {
   }
 
   public async login(data: LoginDto, session: ExpressSession, response: Response) {
-    const account = accounts.find(
-      (account) => account.email === data.identity || account.username === data.identity
-    );
+    const account = await this.userService.getUser(data.identity);
 
     if (!account) throw new UnauthorizedException('Invalid credentials');
     if (account.blocked) throw new ForbiddenException('Account is blocked');
