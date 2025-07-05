@@ -36,7 +36,7 @@ export const schema = Joi.object({
   JWT_SECRET: Joi.string().required(),
   SESSION_SECRET: Joi.string().required(),
   CSRF_SECRET: Joi.string().required(),
-  HASH_SALT_ROUNDS: Joi.number().default(10),
+  HASH_SALT_ROUNDS: Joi.number().integer().default(10),
   SUPABASE_URL: Joi.string().uri().required(),
   SUPABASE_KEY: Joi.string().required(),
   REDIS_USERNAME: Joi.string().required(),

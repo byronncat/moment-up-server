@@ -1,7 +1,13 @@
 import type { Response } from 'express';
 import type { ExpressSession } from 'express-session';
 
-import { ForbiddenException, Injectable, UnauthorizedException, Inject } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  UnauthorizedException,
+  Inject,
+  ConflictException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { Logger } from 'winston';
@@ -9,7 +15,7 @@ import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { MailerService } from '@nestjs-modules/mailer';
 
 import { authLib } from 'src/common/libraries';
-import { LoginDto } from './dto/login.dto';
+import { LoginDto, RegisterDto } from './dto';
 import { UserService } from '../user/user.service';
 import { COOKIE_NAME, TOKEN_ID_LENGTH } from 'src/common/constants';
 
@@ -29,7 +35,9 @@ type JwtPayload = {
 
 @Injectable()
 export class AuthService {
-  private readonly saltRounds: number = this.configService.get<number>('security.hashSaltRounds')!;
+  private readonly saltRounds: number = parseInt(
+    this.configService.get('security.hashSaltRounds')!
+  );
   private readonly jwtSecret: string = this.configService.get<string>('security.jwtSecret')!;
 
   constructor(
@@ -88,6 +96,37 @@ export class AuthService {
     return {
       accessToken: accessToken.value,
       user: account,
+    };
+  }
+
+  public async register(data: RegisterDto, session: ExpressSession, response: Response) {
+    const existingUser = await this.userService.getUser(data.email);
+    if (existingUser) throw new ConflictException('User with this email already exists');
+
+    const existingUsername = await this.userService.getUser(data.username);
+    if (existingUsername) throw new ConflictException('Username already taken');
+
+    const hashedPassword = await authLib.hash(data.password, this.saltRounds);
+
+    const newUser = await this.userService.addUser({
+      username: data.username,
+      email: data.email,
+      password: hashedPassword,
+    });
+
+    const refreshToken = this.createJwtToken(newUser.id, '7d');
+    const accessToken = this.createJwtToken(newUser.id, '15m', refreshToken.jti);
+    session.user = { sub: newUser.id, jti: refreshToken.jti };
+    response.cookie(COOKIE_NAME.REFRESH, refreshToken.value, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'none',
+      maxAge: 365 * 24 * 60 * 60 * 1000,
+    });
+
+    return {
+      accessToken: accessToken.value,
+      user: newUser,
     };
   }
 
@@ -208,6 +247,7 @@ export class AuthService {
     }
   }
 
+  // DO NOT REMOVE COMMENTED CODE
   // async signup(signupAuthDto: SignupAuthDto, req: Request) {
   //   const { data: existingUser, error: checkError } = await this.supabase
   //     .from('users')

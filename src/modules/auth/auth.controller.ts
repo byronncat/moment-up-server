@@ -19,7 +19,7 @@ import {
 } from '@nestjs/common';
 import { ValidationPipe } from '@nestjs/common/pipes/validation.pipe';
 import { AuthService } from './auth.service';
-import { LoginDto } from './dto';
+import { LoginDto, RegisterDto } from './dto';
 import { Cookie } from 'src/common/decorators';
 import { COOKIE_NAME } from 'src/common/constants';
 
@@ -48,6 +48,16 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response
   ) {
     return this.authService.login(loginDto, session, response);
+  }
+
+  @Post('register')
+  @HttpCode(HttpStatus.CREATED)
+  register(
+    @Body(ValidationPipe) registerDto: RegisterDto,
+    @Session() session: ExpressSession,
+    @Res({ passthrough: true }) response: Response
+  ) {
+    return this.authService.register(registerDto, session, response);
   }
 
   @Post('logout')
