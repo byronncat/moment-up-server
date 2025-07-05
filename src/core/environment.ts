@@ -21,6 +21,11 @@ export const load = () => ({
     redisHost: process.env.REDIS_HOST,
     redisPort: process.env.REDIS_PORT,
   },
+  email: {
+    host: process.env.EMAIL_HOST,
+    username: process.env.EMAIL_USERNAME,
+    password: process.env.EMAIL_PASSWORD,
+  },
 });
 
 export const schema = Joi.object({
@@ -38,4 +43,7 @@ export const schema = Joi.object({
   REDIS_PASSWORD: Joi.string().required(),
   REDIS_HOST: Joi.string().hostname().required(),
   REDIS_PORT: Joi.number().port().required(),
+  EMAIL_HOST: Joi.string().required(),
+  EMAIL_USERNAME: Joi.string().required(),
+  EMAIL_PASSWORD: Joi.string().required(),
 });

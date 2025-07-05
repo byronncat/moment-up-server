@@ -2,7 +2,6 @@ import { accounts } from '../../__mocks__/auth';
 
 import { Injectable } from '@nestjs/common';
 
-
 @Injectable()
 export class UserService {
   private readonly accounts = accounts;

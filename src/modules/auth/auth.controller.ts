@@ -62,14 +62,4 @@ export class AuthController {
     const csrfToken = request.csrfToken();
     return { csrfToken };
   }
-
-  @Get('test-rate-limit')
-  @HttpCode(HttpStatus.OK)
-  testRateLimit(@Req() request: Request) {
-    return { 
-      message: 'Rate limit test successful', 
-      timestamp: new Date().toISOString(),
-      ip: request.ip || request.connection.remoteAddress
-    };
-  }
 }

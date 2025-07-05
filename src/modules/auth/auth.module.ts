@@ -1,11 +1,52 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { MailerModule } from '@nestjs-modules/mailer';
+import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handlebars.adapter';
 import { UserModule } from '../user/user.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import * as path from 'path';
 
 @Module({
-  imports: [ConfigModule, UserModule],
+  imports: [
+    ConfigModule,
+    UserModule,
+    MailerModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => ({
+        transport: {
+          host: configService.get<string>('email.host'),
+          // port: configService.get<number>('email.port'),
+          // secure: configService.get<boolean>('email.secure'),
+          auth: {
+            user: configService.get<string>('email.username'),
+            pass: configService.get<string>('email.password'),
+          },
+        },
+        template: {
+          dir: path.join(process.cwd(), 'src/common/templates/emails'),
+          adapter: new HandlebarsAdapter(),
+          options: {
+            strict: true,
+          },
+        },
+        options: {
+          partials: {
+            dir: path.join(process.cwd(), 'src/common/templates/emails/partials'),
+            options: {
+              strict: true,
+            },
+          },
+        },
+        /*
+         * Strict mode for Handlebars templates
+         * true = Throws an error if a partial is not found
+         * false = Ignores the error and continues
+         */
+      }),
+      inject: [ConfigService],
+    }),
+  ],
   controllers: [AuthController],
   providers: [AuthService],
 })

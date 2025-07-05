@@ -6,6 +6,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { Logger } from 'winston';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import { MailerService } from '@nestjs-modules/mailer';
 
 import { authLib } from 'src/common/libraries';
 import { LoginDto } from './dto/login.dto';
@@ -17,6 +18,15 @@ type JwtPayload = {
   jti: string;
 };
 
+// interface EmailTemplateContext {
+//   appName: string;
+//   appUrl: string;
+//   companyName: string;
+//   year: number;
+//   helpUrl?: string;
+//   [key: string]: any;
+// }
+
 @Injectable()
 export class AuthService {
   private readonly saltRounds: number = this.configService.get<number>('security.hashSaltRounds')!;
@@ -24,9 +34,10 @@ export class AuthService {
 
   constructor(
     @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
-    private readonly configService: ConfigService,
     private readonly jwtService: JwtService,
-    private readonly userService: UserService
+    private readonly userService: UserService,
+    private readonly configService: ConfigService,
+    private readonly mailService: MailerService
   ) {}
 
   public async verify(session: ExpressSession, refreshToken: string, response: Response) {
@@ -84,6 +95,85 @@ export class AuthService {
     this.clearAuthState(session, response);
     return 'Logout successful';
   }
+
+  // public async sendEmail(
+  //   to: string,
+  //   subject: string,
+  //   templateName: string,
+  //   context: EmailTemplateContext
+  // ) {
+  //   try {
+  //     await this.mailService.sendMail({
+  //       from: 'MomentUP <momentup@gmail.com>',
+  //       to,
+  //       subject,
+  //       template: templateName,
+  //       context: {
+  //         ...this.getDefaultTemplateContext(),
+  //         ...context,
+  //       },
+  //     });
+  //     return 'Email sent successfully';
+  //   } catch (error) {
+  //     this.logger.error('Failed to send email', {
+  //       location: 'AuthService.sendEmail',
+  //       context: 'Email',
+  //       error: error.message,
+  //     });
+  //     throw new Error('Failed to send email');
+  //   }
+  // }
+
+  // public async sendPasswordResetEmail(to: string, userName: string, resetUrl: string) {
+  //   const context: EmailTemplateContext = {
+  //     ...this.getDefaultTemplateContext(),
+  //     userName,
+  //     resetUrl,
+  //     expirationTime: '24 hours',
+  //   };
+
+  //   return this.sendEmail(to, 'Password Reset Request - MomentUP', 'password-reset', context);
+  // }
+
+  // public async sendGeneralEmail(
+  //   to: string,
+  //   subject: string,
+  //   title: string,
+  //   message: string,
+  //   buttonUrl?: string,
+  //   buttonText?: string
+  // ) {
+  //   const context: EmailTemplateContext = {
+  //     ...this.getDefaultTemplateContext(),
+  //     title,
+  //     message,
+  //     buttonUrl,
+  //     buttonText,
+  //   };
+
+  //   return this.sendEmail(to, subject, 'general', context);
+  // }
+
+  // public async sendWelcomeEmail(to: string, userName: string) {
+  //   const context: EmailTemplateContext = {
+  //     ...this.getDefaultTemplateContext(),
+  //     userName,
+  //     buttonUrl: 'https://momentup.com/dashboard',
+  //     buttonText: 'Get Started',
+  //   };
+
+  //   return this.sendEmail(to, 'Welcome to MomentUP!', 'welcome', context);
+  // }
+
+  // private getDefaultTemplateContext(): EmailTemplateContext {
+  //   return {
+  //     appName: 'MomentUP',
+  //     appUrl: 'https://momentup.com',
+  //     companyName: 'NCAT',
+  //     year: new Date().getFullYear(),
+  //     helpUrl: 'https://momentup.com/help',
+  //   };
+  // }
 
   private clearAuthState(session: ExpressSession, response: Response) {
     session.user = undefined;
