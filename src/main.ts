@@ -33,6 +33,9 @@ async function bootstrap() {
   const port = configService.get<number>('http.port');
   const prefix = configService.get<string>('http.prefix');
   const allowedOrigin = configService.get<string>('http.allowedOrigin');
+
+  // Debug logging for CORS configuration
+  logger.log(`CORS allowedOrigin: ${allowedOrigin}`);
   const sessionSecret = configService.get<string>('security.sessionSecret');
 
   const redisUsername = configService.get<string>('db.redisUsername');
@@ -87,7 +90,7 @@ async function bootstrap() {
   app.use(cookieParser());
   const { csrfSynchronisedProtection } = csrfSync({
     getTokenFromRequest: (req) => {
-      const token = req.headers['x-csrf-token'];
+      const token = req.headers['X-CSRF-Token'];
       return Array.isArray(token) ? token[0] : token;
     },
     getTokenFromState: (req) => req.session.csrfToken,
