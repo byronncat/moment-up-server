@@ -13,6 +13,7 @@ import { createClient } from 'redis';
 import * as session from 'express-session';
 import * as fs from 'fs';
 import * as path from 'path';
+import { Format } from './common/utilities';
 
 async function bootstrap() {
   let app;
@@ -32,7 +33,7 @@ async function bootstrap() {
   const configService = app.get(ConfigService);
   const port = configService.get<number>('http.port');
   const prefix = configService.get<string>('http.prefix');
-  const allowedOrigin = configService.get<string>('http.allowedOrigin');
+  const allowedOrigin = Format.origin(configService.get<string>('http.allowedOrigin')!);
 
   // Debug logging for CORS configuration
   logger.log(`CORS allowedOrigin: ${allowedOrigin}`);
