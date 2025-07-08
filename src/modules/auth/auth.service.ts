@@ -7,6 +7,7 @@ import {
   UnauthorizedException,
   Inject,
   ConflictException,
+  NotFoundException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -15,7 +16,8 @@ import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { MailerService } from '@nestjs-modules/mailer';
 
 import { authLib } from 'src/common/libraries';
-import { LoginDto, RegisterDto } from './dto';
+import { Otp } from 'src/common/utilities';
+import { LoginDto, IdentityDto, RegisterDto, ChangePasswordDto } from './dto';
 import { UserService } from '../user/user.service';
 import { COOKIE_NAME, TOKEN_ID_LENGTH } from 'src/common/constants';
 
@@ -35,9 +37,7 @@ type JwtPayload = {
 
 @Injectable()
 export class AuthService {
-  private readonly saltRounds: number = parseInt(
-    this.configService.get('security.hashSaltRounds')!
-  );
+  private readonly saltRounds: number = this.configService.get('security.hashSaltRounds')!;
   private readonly jwtSecret: string = this.configService.get<string>('security.jwtSecret')!;
 
   constructor(
@@ -52,7 +52,7 @@ export class AuthService {
     const payload = this.verifyJwtToken(refreshToken);
     if (session.user && payload) {
       const userId = session.user.sub;
-      const account = await this.userService.getUser(userId);
+      const account = await this.userService.getById(userId);
       if (account && session.user.jti === payload.jti) {
         const newRefreshToken = this.createJwtToken(account.id, '7d');
         const newAccessToken = this.createJwtToken(account.id, '15m', newRefreshToken.jti);
@@ -76,7 +76,7 @@ export class AuthService {
   }
 
   public async login(data: LoginDto, session: ExpressSession, response: Response) {
-    const account = await this.userService.getUser(data.identity);
+    const account = await this.userService.getById(data.identity);
 
     if (!account) throw new UnauthorizedException('Invalid credentials');
     if (account.blocked) throw new ForbiddenException('Account is blocked');
@@ -99,40 +99,57 @@ export class AuthService {
     };
   }
 
-  public async register(data: RegisterDto, session: ExpressSession, response: Response) {
-    const existingUser = await this.userService.getUser(data.email);
+  public async register(data: RegisterDto) {
+    const existingUser = await this.userService.getById(data.email);
     if (existingUser) throw new ConflictException('User with this email already exists');
 
-    const existingUsername = await this.userService.getUser(data.username);
+    const existingUsername = await this.userService.getById(data.username);
     if (existingUsername) throw new ConflictException('Username already taken');
 
     const hashedPassword = await authLib.hash(data.password, this.saltRounds);
 
-    const newUser = await this.userService.addUser({
+    await this.userService.add({
       username: data.username,
       email: data.email,
       password: hashedPassword,
     });
 
-    const refreshToken = this.createJwtToken(newUser.id, '7d');
-    const accessToken = this.createJwtToken(newUser.id, '15m', refreshToken.jti);
-    session.user = { sub: newUser.id, jti: refreshToken.jti };
-    response.cookie(COOKIE_NAME.REFRESH, refreshToken.value, {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'none',
-      maxAge: 365 * 24 * 60 * 60 * 1000,
-    });
-
-    return {
-      accessToken: accessToken.value,
-      user: newUser,
-    };
+    return 'User registered successfully';
   }
 
   public async logout(session: ExpressSession, response: Response) {
     this.clearAuthState(session, response);
     return 'Logout successful';
+  }
+
+  public async sendOtpEmail(data: IdentityDto, session: ExpressSession) {
+    const account = await this.userService.getById(data.identity);
+    if (account) {
+      const otpConfig = {
+        expirationTimeMs: 7 * 60 * 1000,
+        purpose: 'password-reset' as const,
+      };
+      session.otp = Otp.create(account.id, otpConfig);
+    }
+    return 'Send successful';
+  }
+
+  public async changePassword(data: ChangePasswordDto, session: ExpressSession) {
+    if (data.newPassword !== data.confirmPassword)
+      throw new UnauthorizedException('Passwords do not match');
+
+    const { otp } = session;
+    if (!otp || !Otp.verify(session, data.otp, 'password-reset'))
+      throw new UnauthorizedException('OTP expired. Please request a new one.');
+
+    const account = await this.userService.getById(otp.uid);
+    if (!account) throw new NotFoundException('User not found');
+
+    const hashedPassword = await authLib.hash(data.newPassword, this.saltRounds);
+    await this.userService.updatePassword(account.id, hashedPassword);
+
+    Otp.clear(session);
+    return 'Password changed successfully';
   }
 
   // public async sendEmail(
@@ -246,43 +263,4 @@ export class AuthService {
       return null;
     }
   }
-
-  // DO NOT REMOVE COMMENTED CODE
-  // async signup(signupAuthDto: SignupAuthDto, req: Request) {
-  //   const { data: existingUser, error: checkError } = await this.supabase
-  //     .from('users')
-  //     .select('email,username')
-  //     .or(`email.eq.${signupAuthDto.email},username.eq.${signupAuthDto.username}`)
-  //     .single();
-
-  //   if (checkError && checkError.code !== 'PGRST116') {
-  //     console.error(checkError);
-  //     throw new HttpException('Internal server error', HttpStatus.INTERNAL_SERVER_ERROR);
-  //   }
-
-  //   if (existingUser) {
-  //     if (existingUser.email === signupAuthDto.email)
-  //       throw new HttpException('Email already exists', HttpStatus.BAD_REQUEST);
-  //     if (existingUser.username === signupAuthDto.username)
-  //       throw new HttpException('Username already exists', HttpStatus.BAD_REQUEST);
-  //   }
-
-  //   const { data: createdUser, error } = await this.supabase
-  //     .from('users')
-  //     .insert({
-  //       email: signupAuthDto.email,
-  //       username: signupAuthDto.username,
-  //       password_hash: await this.hashPassword(signupAuthDto.password),
-  //     })
-  //     .select('id')
-  //     .single();
-
-  //   if (error || !createdUser) {
-  //     console.error(error);
-  //     throw new HttpException('Internal server error', HttpStatus.INTERNAL_SERVER_ERROR);
-  //   }
-
-  //   req.session.user = { id: createdUser.id };
-  //   return JSON.stringify('Signup successful');
-  // }
 }

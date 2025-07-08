@@ -7,13 +7,13 @@ import { authLib } from 'src/common/libraries';
 export class UserService {
   private readonly accounts = accounts;
 
-  public async getUser(sub: string) {
+  public async getById(sub: string | undefined) {
     return this.accounts.find(
       (account) => account.id === sub || account.username === sub || account.email === sub
     );
   }
 
-  public async addUser(userData: { username: string; email: string; password: string }) {
+  public async add(userData: { username: string; email: string; password: string }) {
     const newUser = {
       id: authLib.generateId('uuid'),
       username: userData.username,
@@ -30,5 +30,13 @@ export class UserService {
 
     this.accounts.push(newUser);
     return newUser;
+  }
+
+  public async updatePassword(userId: string, hashedPassword: string) {
+    const userIndex = this.accounts.findIndex((account) => account.id === userId);
+    if (userIndex === -1) throw new Error('User not found');
+
+    this.accounts[userIndex].password = hashedPassword;
+    return this.accounts[userIndex];
   }
 }

@@ -11,7 +11,7 @@ export const load = () => ({
     jwtSecret: process.env.JWT_SECRET,
     sessionSecret: process.env.SESSION_SECRET,
     csrfSecret: process.env.CSRF_SECRET,
-    hashSaltRounds: process.env.HASH_SALT_ROUNDS || 10,
+    hashSaltRounds: parseInt(process.env.HASH_SALT_ROUNDS || '10'),
   },
   db: {
     supabaseUrl: process.env.SUPABASE_URL,

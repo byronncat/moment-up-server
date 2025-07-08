@@ -1,4 +1,12 @@
-import { IsEmail, IsNotEmpty, MinLength, Matches, ValidatorConstraint, ValidatorConstraintInterface, Validate } from 'class-validator';
+import {
+  IsEmail,
+  IsNotEmpty,
+  MinLength,
+  Matches,
+  ValidatorConstraint,
+  ValidatorConstraintInterface,
+  Validate,
+} from 'class-validator';
 
 @ValidatorConstraint({ name: 'passwordStrength', async: false })
 export class PasswordStrengthValidator implements ValidatorConstraintInterface {
@@ -16,19 +24,19 @@ export class PasswordStrengthValidator implements ValidatorConstraintInterface {
 }
 
 export class RegisterDto {
-  @MinLength(2, { message: 'Username must be at least 2 characters' })
-  @IsNotEmpty({ message: 'Username is required' })
-  @Matches(/^[a-zA-Z0-9._-]+$/, {
-    message: 'Only letters, numbers, dots, underscores, and hyphens are allowed',
-  })
-  username: string;
-
   @IsEmail({}, { message: 'Invalid email address' })
   @IsNotEmpty({ message: 'Email is required' })
   email: string;
 
+  @Matches(/^[a-zA-Z0-9._-]+$/, {
+    message: 'Only letters, numbers, dots, underscores, and hyphens are allowed',
+  })
+  @MinLength(2, { message: 'Username must be at least 2 characters' })
+  @IsNotEmpty({ message: 'Username is required' })
+  username: string;
+
+  @Validate(PasswordStrengthValidator)
   @MinLength(8, { message: 'Password must be at least 8 characters' })
   @IsNotEmpty({ message: 'Password is required' })
-  @Validate(PasswordStrengthValidator)
   password: string;
 }

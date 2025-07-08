@@ -19,7 +19,7 @@ import {
 } from '@nestjs/common';
 import { ValidationPipe } from '@nestjs/common/pipes/validation.pipe';
 import { AuthService } from './auth.service';
-import { LoginDto, RegisterDto } from './dto';
+import { LoginDto, IdentityDto, RegisterDto, ChangePasswordDto } from './dto';
 import { Cookie } from 'src/common/decorators';
 import { COOKIE_NAME } from 'src/common/constants';
 
@@ -30,7 +30,7 @@ import { COOKIE_NAME } from 'src/common/constants';
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  @Post('verify')
+  @Get('verify')
   @HttpCode(HttpStatus.OK)
   verify(
     @Session() session: ExpressSession,
@@ -52,12 +52,8 @@ export class AuthController {
 
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
-  register(
-    @Body(ValidationPipe) registerDto: RegisterDto,
-    @Session() session: ExpressSession,
-    @Res({ passthrough: true }) response: Response
-  ) {
-    return this.authService.register(registerDto, session, response);
+  register(@Body(ValidationPipe) registerDto: RegisterDto) {
+    return this.authService.register(registerDto);
   }
 
   @Post('logout')
@@ -71,5 +67,20 @@ export class AuthController {
   getCsrfToken(@Req() request: AuthRequest) {
     const csrfToken = request.csrfToken();
     return { csrfToken };
+  }
+
+  @Post('send-otp-email')
+  @HttpCode(HttpStatus.OK)
+  sendOtpEmail(@Body(ValidationPipe) identityDto: IdentityDto, @Session() session: ExpressSession) {
+    return this.authService.sendOtpEmail(identityDto, session);
+  }
+
+  @Post('change-password')
+  @HttpCode(HttpStatus.OK)
+  changePassword(
+    @Body(ValidationPipe) changePasswordDto: ChangePasswordDto,
+    @Session() session: ExpressSession
+  ) {
+    return this.authService.changePassword(changePasswordDto, session);
   }
 }
