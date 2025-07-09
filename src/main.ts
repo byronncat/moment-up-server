@@ -91,7 +91,7 @@ async function bootstrap() {
   app.use(cookieParser());
   const { csrfSynchronisedProtection } = csrfSync({
     getTokenFromRequest: (req) => {
-      const token = req.headers['X-CSRF-Token'];
+      const token = req.headers['x-csrf-token'];
       return Array.isArray(token) ? token[0] : token;
     },
     getTokenFromState: (req) => req.session.csrfToken,
