@@ -21,6 +21,10 @@ import { ValidationPipe } from '@nestjs/common/pipes/validation.pipe';
 import { AuthService } from './auth.service';
 import { LoginDto, IdentityDto, RegisterDto, ChangePasswordDto } from './dto';
 
+import { readFileSync } from 'fs';
+import { join } from 'path';
+import * as Handlebars from 'handlebars';
+
 @Controller({
   path: 'auth',
   version: '1',
@@ -30,18 +34,14 @@ export class AuthController {
 
   @Get('verify')
   @HttpCode(HttpStatus.OK)
-  verify(@Session() session: ExpressSession, @Res({ passthrough: true }) response: Response) {
-    return this.authService.verify(session, response);
+  verify(@Session() session: ExpressSession) {
+    return this.authService.verify(session);
   }
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  login(
-    @Body(ValidationPipe) loginDto: LoginDto,
-    @Session() session: ExpressSession,
-    @Res({ passthrough: true }) response: Response
-  ) {
-    return this.authService.login(loginDto, session, response);
+  login(@Body(ValidationPipe) loginDto: LoginDto, @Session() session: ExpressSession) {
+    return this.authService.login(loginDto, session);
   }
 
   @Post('register')
@@ -52,8 +52,8 @@ export class AuthController {
 
   @Post('logout')
   @HttpCode(HttpStatus.OK)
-  logout(@Session() session: ExpressSession, @Res({ passthrough: true }) response: Response) {
-    return this.authService.logout(session, response);
+  logout(@Session() session: ExpressSession) {
+    return this.authService.logout(session);
   }
 
   @Get('csrf')
@@ -76,5 +76,47 @@ export class AuthController {
     @Session() session: ExpressSession
   ) {
     return this.authService.changePassword(changePasswordDto, session);
+  }
+
+  @Get('generate-email-template')
+  @HttpCode(HttpStatus.OK)
+  generateEmailTemplate(@Res() response: Response) {
+    try {
+      // Read the template file
+      const templatePath = join(process.cwd(), 'src/common/templates/emails/general.hbs');
+      const cssPath = join(process.cwd(), 'src/common/templates/emails/css/general.css');
+      const template = readFileSync(templatePath, 'utf-8');
+      const css = readFileSync(cssPath, 'utf-8');
+
+      // Compile the template with Handlebars
+      const compiledTemplate = Handlebars.compile(template);
+
+      // Sample data for preview
+      const data = {
+        subject: 'Welcome to MomentUP',
+        appName: 'MomentUP',
+        title: 'Welcome to Our Community!',
+        message:
+          "Thank you for joining MomentUP. We're excited to have you on board! Get ready to share your amazing moments with the world.",
+        buttonUrl: 'https://momentup.com/dashboard',
+        buttonText: 'Get Started',
+        year: new Date().getFullYear(),
+        companyName: 'NCAT',
+        helpUrl: 'https://momentup.com/help',
+      };
+
+      // Inject CSS directly into the template for browser preview
+      const htmlWithInlineStyles = compiledTemplate(data).replace(
+        '</head>',
+        `<style>${css}</style></head>`
+      );
+
+      // Set content type and send the response
+      response.header('Content-Type', 'text/html');
+      response.send(htmlWithInlineStyles);
+    } catch (error) {
+      console.error(error);
+      response.status(500).send('Error generating email template');
+    }
   }
 }

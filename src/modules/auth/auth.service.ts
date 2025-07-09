@@ -1,4 +1,3 @@
-import type { Response } from 'express';
 import type { ExpressSession } from 'express-session';
 
 import {
@@ -19,7 +18,7 @@ import { authLib } from 'src/common/libraries';
 import { Otp } from 'src/common/utilities';
 import { LoginDto, IdentityDto, RegisterDto, ChangePasswordDto } from './dto';
 import { UserService } from '../user/user.service';
-import { COOKIE_NAME, TOKEN_ID_LENGTH } from 'src/common/constants';
+import { TOKEN_ID_LENGTH } from 'src/common/constants';
 
 type JwtPayload = {
   sub: string;
@@ -50,7 +49,7 @@ export class AuthService {
     private readonly mailService: MailerService
   ) {}
 
-  public async verify(session: ExpressSession, response: Response) {
+  public async verify(session: ExpressSession) {
     if (session.user) {
       const userId = session.user.sub;
       const account = await this.userService.getById(userId);
@@ -58,23 +57,17 @@ export class AuthService {
         const newAccessToken = this.createJwtToken(account.id, '15m');
 
         session.user.jti = newAccessToken.jti;
-        response.cookie(COOKIE_NAME.GUARD, '', {
-          secure: true,
-          sameSite: 'none',
-          maxAge: MAX_AGE,
-        });
-
         return {
           accessToken: newAccessToken.value,
           user: account,
         };
       }
     }
-    this.clearAuthState(session, response);
+    this.clearAuthState(session);
     throw new UnauthorizedException('User not authenticated');
   }
 
-  public async login(data: LoginDto, session: ExpressSession, response: Response) {
+  public async login(data: LoginDto, session: ExpressSession) {
     const account = await this.userService.getById(data.identity);
 
     if (!account) throw new UnauthorizedException('Invalid credentials');
@@ -85,11 +78,6 @@ export class AuthService {
     const accessToken = this.createJwtToken(account.id, '15m');
     session.user = { sub: account.id, jti: accessToken.jti };
     session.cookie.maxAge = MAX_AGE;
-    response.cookie(COOKIE_NAME.GUARD, '', {
-      secure: true,
-      sameSite: 'none',
-      maxAge: MAX_AGE,
-    });
 
     return {
       accessToken: accessToken.value,
@@ -115,8 +103,8 @@ export class AuthService {
     return 'User registered successfully';
   }
 
-  public async logout(session: ExpressSession, response: Response) {
-    this.clearAuthState(session, response);
+  public async logout(session: ExpressSession) {
+    this.clearAuthState(session);
     return 'Logout successful';
   }
 
@@ -229,10 +217,9 @@ export class AuthService {
   //   };
   // }
 
-  private clearAuthState(session: ExpressSession, response: Response) {
+  private clearAuthState(session: ExpressSession) {
     session.user = undefined;
     session.cookie.maxAge = 7 * 24 * 60 * 60 * 1000;
-    response.clearCookie(COOKIE_NAME.GUARD);
   }
 
   private createJwtToken(userId: string, expiresIn: string, _jti?: string) {
