@@ -58,7 +58,7 @@ export class AuthService {
         const newAccessToken = this.createJwtToken(account.id, '15m');
 
         session.user.jti = newAccessToken.jti;
-        response.cookie(COOKIE_NAME.GUARD, {
+        response.cookie(COOKIE_NAME.GUARD, '', {
           secure: true,
           sameSite: 'none',
           maxAge: MAX_AGE,
@@ -85,7 +85,7 @@ export class AuthService {
     const accessToken = this.createJwtToken(account.id, '15m');
     session.user = { sub: account.id, jti: accessToken.jti };
     session.cookie.maxAge = MAX_AGE;
-    response.cookie(COOKIE_NAME.GUARD, {
+    response.cookie(COOKIE_NAME.GUARD, '', {
       secure: true,
       sameSite: 'none',
       maxAge: MAX_AGE,
