@@ -1,5 +1,5 @@
 export const COOKIE_NAME = {
-  CSRF: '__Host-psifi.csrf',
+  CSRF: 'connect.sid',
   REFRESH: 'refresh',
 };
 
