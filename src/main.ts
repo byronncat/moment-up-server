@@ -1,3 +1,5 @@
+import type { NestExpressApplication } from '@nestjs/platform-express';
+
 import { NestFactory } from '@nestjs/core';
 import { VersioningType, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -16,7 +18,7 @@ import * as path from 'path';
 import { Format } from './common/utilities';
 
 async function bootstrap() {
-  let app;
+  let app: NestExpressApplication;
   if (process.env.NODE_ENV === 'development') {
     const httpsOptions = {
       key: fs.readFileSync(path.join(__dirname, '../certificates/localhost+2-key.pem')),
@@ -28,6 +30,7 @@ async function bootstrap() {
     });
   } else app = await NestFactory.create(AppModule);
   const logger = new Logger('Bootstrap');
+  app.set('trust proxy', 1);
 
   // === Configurations ===
   const configService = app.get(ConfigService);
