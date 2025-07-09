@@ -21,7 +21,7 @@ export class CsrfExceptionFilter implements ExceptionFilter {
         (exception.name === 'ForbiddenError' && exception.message.includes('csrf')))
     ) {
       if (request.session) delete request.session.user;
-      response.clearCookie(COOKIE_NAME.CSRF);
+      response.clearCookie(COOKIE_NAME.SESSION);
 
       response.status(403).json({
         statusCode: 403,

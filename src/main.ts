@@ -69,7 +69,7 @@ async function bootstrap() {
     session({
       store: redisStore,
       secret: sessionSecret!,
-      name: COOKIE_NAME.CSRF,
+      name: COOKIE_NAME.SESSION,
       resave: false,
       saveUninitialized: false,
       cookie: {

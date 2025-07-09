@@ -1,6 +1,6 @@
 export const COOKIE_NAME = {
-  CSRF: 'connect.sid',
-  REFRESH: 'refresh',
+  SESSION: 'connect.sid',
+  GUARD: '_guard',
 };
 
 export const TOKEN_ID_LENGTH = 10;

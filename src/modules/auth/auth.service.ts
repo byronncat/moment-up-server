@@ -26,6 +26,8 @@ type JwtPayload = {
   jti: string;
 };
 
+const MAX_AGE = 365 * 24 * 60 * 60 * 1000;
+
 // interface EmailTemplateContext {
 //   appName: string;
 //   appUrl: string;
@@ -48,21 +50,18 @@ export class AuthService {
     private readonly mailService: MailerService
   ) {}
 
-  public async verify(session: ExpressSession, refreshToken: string, response: Response) {
-    const payload = this.verifyJwtToken(refreshToken);
-    if (session.user && payload) {
+  public async verify(session: ExpressSession, response: Response) {
+    if (session.user) {
       const userId = session.user.sub;
       const account = await this.userService.getById(userId);
-      if (account && session.user.jti === payload.jti) {
-        const newRefreshToken = this.createJwtToken(account.id, '7d');
-        const newAccessToken = this.createJwtToken(account.id, '15m', newRefreshToken.jti);
+      if (account) {
+        const newAccessToken = this.createJwtToken(account.id, '15m');
 
-        session.user.jti = newRefreshToken.jti;
-        response.cookie(COOKIE_NAME.REFRESH, newRefreshToken.value, {
-          httpOnly: true,
+        session.user.jti = newAccessToken.jti;
+        response.cookie(COOKIE_NAME.GUARD, {
           secure: true,
           sameSite: 'none',
-          maxAge: 365 * 24 * 60 * 60 * 1000,
+          maxAge: MAX_AGE,
         });
 
         return {
@@ -83,14 +82,13 @@ export class AuthService {
     if (!(await authLib.compare(data.password, account.password)))
       throw new UnauthorizedException('Invalid credentials');
 
-    const refreshToken = this.createJwtToken(account.id, '7d');
-    const accessToken = this.createJwtToken(account.id, '15m', refreshToken.jti);
-    session.user = { sub: account.id, jti: refreshToken.jti };
-    response.cookie(COOKIE_NAME.REFRESH, refreshToken.value, {
-      httpOnly: true,
+    const accessToken = this.createJwtToken(account.id, '15m');
+    session.user = { sub: account.id, jti: accessToken.jti };
+    session.cookie.maxAge = MAX_AGE;
+    response.cookie(COOKIE_NAME.GUARD, {
       secure: true,
       sameSite: 'none',
-      maxAge: 365 * 24 * 60 * 60 * 1000,
+      maxAge: MAX_AGE,
     });
 
     return {
@@ -233,7 +231,8 @@ export class AuthService {
 
   private clearAuthState(session: ExpressSession, response: Response) {
     session.user = undefined;
-    response.clearCookie(COOKIE_NAME.REFRESH);
+    session.cookie.maxAge = 7 * 24 * 60 * 60 * 1000;
+    response.clearCookie(COOKIE_NAME.GUARD);
   }
 
   private createJwtToken(userId: string, expiresIn: string, _jti?: string) {

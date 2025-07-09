@@ -20,8 +20,6 @@ import {
 import { ValidationPipe } from '@nestjs/common/pipes/validation.pipe';
 import { AuthService } from './auth.service';
 import { LoginDto, IdentityDto, RegisterDto, ChangePasswordDto } from './dto';
-import { Cookie } from 'src/common/decorators';
-import { COOKIE_NAME } from 'src/common/constants';
 
 @Controller({
   path: 'auth',
@@ -32,12 +30,8 @@ export class AuthController {
 
   @Get('verify')
   @HttpCode(HttpStatus.OK)
-  verify(
-    @Session() session: ExpressSession,
-    @Cookie(COOKIE_NAME.REFRESH) refreshToken: string,
-    @Res({ passthrough: true }) response: Response
-  ) {
-    return this.authService.verify(session, refreshToken, response);
+  verify(@Session() session: ExpressSession, @Res({ passthrough: true }) response: Response) {
+    return this.authService.verify(session, response);
   }
 
   @Post('login')
