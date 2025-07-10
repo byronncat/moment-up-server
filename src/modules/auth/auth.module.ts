@@ -16,23 +16,28 @@ import * as path from 'path';
       useFactory: (configService: ConfigService) => ({
         transport: {
           host: configService.get<string>('email.host'),
-          // port: configService.get<number>('email.port'),
-          // secure: configService.get<boolean>('email.secure'),
+          port: configService.get<number>('email.port'),
+          secure: configService.get<boolean>('email.secure'),
           auth: {
             user: configService.get<string>('email.username'),
             pass: configService.get<string>('email.password'),
           },
         },
+        defaults: {
+          from: `MomentUp <${configService.get<string>('email.username')}>`,
+        },
         template: {
-          dir: path.join(process.cwd(), 'src/common/templates/emails'),
-          adapter: new HandlebarsAdapter(),
+          dir: path.join(process.cwd(), 'src/common/views/templates'),
+          adapter: new HandlebarsAdapter({
+            eq: (a: any, b: any) => a === b,
+          }),
           options: {
             strict: true,
           },
         },
         options: {
           partials: {
-            dir: path.join(process.cwd(), 'src/common/templates/emails/partials'),
+            dir: path.join(process.cwd(), 'src/common/views/partials'),
             options: {
               strict: true,
             },

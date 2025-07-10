@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang='en'>
+
+<head>
+  <meta charset='UTF-8' />
+  <meta name='viewport' content='width=device-width, initial-scale=1.0' />
+  <title>{{title}}</title>
+  <style>
+    /* Reset styles */
+    body, table, td, p, h1, h2, h3, h4, ul, li {
+      margin: 0;
+      padding: 0;
+      border: 0;
+    }
+    
+    body {
+      font-family: Arial, sans-serif !important;
+      color: #333333 !important;
+      background-color: #f4f4f4 !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+    }
+    
+    /* Email-safe styles */
+    .email-container {
+      background-color: #f4f4f4;
+      padding: 20px 0;
+    }
+    
+    .email-wrapper {
+      max-width: 500px;
+      margin: 0 auto;
+      background-color: #ffffff;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+    
+    .header-section {
+      text-align: center;
+      padding: 20px 20px 0 20px;
+      background-color: #ffffff;
+    }
+    
+    .logo-container {
+      display: inline-block;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+    
+    .logo-img {
+      width: 32px;
+      height: 32px;
+      vertical-align: middle;
+    }
+    
+    .brand-text {
+      color: hsl(341 92% 60%);
+      font-size: 24px;
+      font-weight: bold;
+      text-decoration: none;
+      display: inline-block;
+      vertical-align: middle;
+    }
+    
+    .divider {
+      height: 1px;
+      background-color: #e0e0e0;
+      margin: 20px auto 0 auto;
+      width: 80%;
+    }
+    
+    .content-section {
+      padding: 20px 32px;
+      text-align: center;
+      background-color: #ffffff;
+    }
+    
+    .icon-text {
+      font-size: 32px;
+      margin-bottom: 16px;
+      display: block;
+    }
+    
+    .title-text {
+      font-size: 20px;
+      color: #2b303a;
+      margin: 0 0 12px 0;
+      font-weight: bold;
+    }
+    
+    .subtitle-text {
+      font-size: 14px;
+      color: #666;
+      margin: 0 0 30px 0;
+    }
+    
+    .message-text {
+      font-size: 16px;
+      color: #666;
+      line-height: 1.5;
+      margin: 0 0 16px 0;
+    }
+    
+    .otp-code {
+      font-size: 28px;
+      font-weight: 500;
+      letter-spacing: 0.3rem;
+      color: #2b303a;
+      display: inline-block;
+      margin: 12px 0;
+    }
+    
+    .cta-button {
+      display: inline-block;
+      background: linear-gradient(135deg, #d00cf7, #960be6);
+      background-color: #d00cf7; /* Fallback for clients that don't support gradients */
+      padding: 18px 40px;
+      border-radius: 30px;
+      box-shadow: 0 4px 15px rgba(247, 12, 169, 0.3);
+      color: white !important;
+      font-size: 16px;
+      font-weight: bold;
+      text-decoration: none;
+      margin: 0 0 24px 0;
+    }
+    
+    .features-box {
+      background-color: #f8f9fa;
+      padding: 16px 20px;
+      margin: 30px 0;
+      border-radius: 10px;
+      text-align: center;
+    }
+    
+    .features-title {
+      color: #2b303a;
+      font-size: 16px;
+      font-weight: bold;
+      margin: 0 0 12px 0;
+    }
+    
+    .feature-list {
+      text-align: left;
+      margin: 12px 0;
+      padding: 0;
+      list-style: none;
+    }
+    
+    .feature-item {
+      margin: 0 0 8px 0;
+      padding: 0;
+      list-style: none;
+      color: #666;
+      font-size: 14px;
+    }
+    
+    .warning-box {
+      background-color: #fff3cd;
+      border: 1px solid #ffeaa7;
+      border-radius: 5px;
+      padding: 15px;
+      color: #856404;
+      font-size: 14px;
+      margin: 16px 0;
+    }
+    
+    .footer-section {
+      color: #6d6d6e;
+      text-align: center;
+      font-size: 12px;
+      padding: 12px 20px 24px 20px;
+      background-color: #ffffff;
+    }
+    
+    .footer-text {
+      margin: 0 0 12px 0;
+      color: #6d6d6e;
+    }
+    
+    .footer-link {
+      color: #6d6d6e;
+      text-decoration: underline;
+    }
+    
+    .social-links {
+      margin: 12px 0 0 0;
+    }
+    
+    .social-link {
+      color: #6d6d6e;
+      text-decoration: underline;
+      margin: 0 5px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="email-container">
+    <div class="email-wrapper">
+      <!-- Header -->
+      <div class="header-section">
+        <div class="logo-container">
+          <img src="{{logoUrl}}" alt="{{brandName}} Logo" class="logo-img" />
+        </div>
+        <span class="brand-text">{{brandName}}</span>
+        <div class="divider"></div>
+      </div>
+
+      <!-- Email Content Based on Type -->
+      {{#if (eq templateName "otp")}}
+        {{> email-otp}}
+      {{else if (eq templateName "welcome")}}
+        {{> email-welcome}}
+      {{else if (eq templateName "verify")}}
+        {{> email-link-verification}}
+      {{/if}}
+
+      <!-- Footer -->
+      <div class="footer-section">
+        <p class="footer-text">©️ {{brandName}} - Byron</p>
+        <p class="footer-text">
+          Need Help? <a href="{{url.contact}}" class="footer-link">Contact Support</a>
+        </p>
+        <div class="social-links">
+          <a href="{{url.github}}" class="social-link">GitHub</a>
+          |
+          <a href="{{url.linkedin}}" class="social-link">LinkedIn</a>
+          |
+          <a href="{{url.facebook}}" class="social-link">Facebook</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+
+</html> 

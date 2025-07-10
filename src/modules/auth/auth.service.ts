@@ -7,6 +7,7 @@ import {
   Inject,
   ConflictException,
   NotFoundException,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -20,21 +21,13 @@ import { LoginDto, IdentityDto, RegisterDto, ChangePasswordDto } from './dto';
 import { UserService } from '../user/user.service';
 import { TOKEN_ID_LENGTH } from 'src/common/constants';
 
+type EmailTemplate = 'otp' | 'verify' | 'welcome';
 type JwtPayload = {
   sub: string;
   jti: string;
 };
 
 const MAX_AGE = 365 * 24 * 60 * 60 * 1000;
-
-// interface EmailTemplateContext {
-//   appName: string;
-//   appUrl: string;
-//   companyName: string;
-//   year: number;
-//   helpUrl?: string;
-//   [key: string]: any;
-// }
 
 @Injectable()
 export class AuthService {
@@ -112,15 +105,51 @@ export class AuthService {
     const account = await this.userService.getById(data.identity);
     if (account) {
       const otpConfig = {
-        expirationTimeMs: 7 * 60 * 1000,
+        expirationTimeMs: 5 * 60 * 1000,
         purpose: 'password-reset' as const,
       };
       session.otp = Otp.create(account.id, otpConfig);
+
+      const context = {
+        otp: session.otp.code,
+        expirationTime: '5 minutes',
+      };
+      await this.sendEmail(
+        {
+          to: account.email,
+          subject: 'Password Reset Request | MomentUp',
+          templateName: 'otp',
+        },
+        context
+      );
+      await this.sendEmail(
+        {
+          to: account.email,
+          subject: 'Welcome to MomentUp',
+          templateName: 'welcome',
+        },
+        {
+          username: account.username,
+          clientHostUrl: 'https://momment-up-client.vercel.app',
+        }
+      );
+      await this.sendEmail(
+        {
+          to: account.email,
+          subject: 'Verify your email | MomentUp',
+          templateName: 'verify',
+        },
+        {
+          verifyUrl: 'https://momment-up-client.vercel.app/verify',
+          expirationTime: '5 minutes',
+        }
+      );
     }
+
     return 'Send successful';
   }
 
-  public async changePassword(data: ChangePasswordDto, session: ExpressSession) {
+  public async recoverPassword(data: ChangePasswordDto, session: ExpressSession) {
     if (data.newPassword !== data.confirmPassword)
       throw new UnauthorizedException('Passwords do not match');
 
@@ -138,84 +167,39 @@ export class AuthService {
     return 'Password changed successfully';
   }
 
-  // public async sendEmail(
-  //   to: string,
-  //   subject: string,
-  //   templateName: string,
-  //   context: EmailTemplateContext
-  // ) {
-  //   try {
-  //     await this.mailService.sendMail({
-  //       from: 'MomentUP <momentup@gmail.com>',
-  //       to,
-  //       subject,
-  //       template: templateName,
-  //       context: {
-  //         ...this.getDefaultTemplateContext(),
-  //         ...context,
-  //       },
-  //     });
-  //     return 'Email sent successfully';
-  //   } catch (error) {
-  //     this.logger.error('Failed to send email', {
-  //       location: 'AuthService.sendEmail',
-  //       context: 'Email',
-  //       error: error.message,
-  //     });
-  //     throw new Error('Failed to send email');
-  //   }
-  // }
-
-  // public async sendPasswordResetEmail(to: string, userName: string, resetUrl: string) {
-  //   const context: EmailTemplateContext = {
-  //     ...this.getDefaultTemplateContext(),
-  //     userName,
-  //     resetUrl,
-  //     expirationTime: '24 hours',
-  //   };
-
-  //   return this.sendEmail(to, 'Password Reset Request - MomentUP', 'password-reset', context);
-  // }
-
-  // public async sendGeneralEmail(
-  //   to: string,
-  //   subject: string,
-  //   title: string,
-  //   message: string,
-  //   buttonUrl?: string,
-  //   buttonText?: string
-  // ) {
-  //   const context: EmailTemplateContext = {
-  //     ...this.getDefaultTemplateContext(),
-  //     title,
-  //     message,
-  //     buttonUrl,
-  //     buttonText,
-  //   };
-
-  //   return this.sendEmail(to, subject, 'general', context);
-  // }
-
-  // public async sendWelcomeEmail(to: string, userName: string) {
-  //   const context: EmailTemplateContext = {
-  //     ...this.getDefaultTemplateContext(),
-  //     userName,
-  //     buttonUrl: 'https://momentup.com/dashboard',
-  //     buttonText: 'Get Started',
-  //   };
-
-  //   return this.sendEmail(to, 'Welcome to MomentUP!', 'welcome', context);
-  // }
-
-  // private getDefaultTemplateContext(): EmailTemplateContext {
-  //   return {
-  //     appName: 'MomentUP',
-  //     appUrl: 'https://momentup.com',
-  //     companyName: 'NCAT',
-  //     year: new Date().getFullYear(),
-  //     helpUrl: 'https://momentup.com/help',
-  //   };
-  // }
+  public async sendEmail(
+    { to, subject, templateName }: { to: string; subject: string; templateName: EmailTemplate },
+    context: Record<string, string | number>
+  ) {
+    try {
+      await this.mailService.sendMail({
+        to,
+        subject,
+        template: 'email',
+        context: {
+          ...context,
+          title: 'MomentUp',
+          brandName: 'MomentUp',
+          logoUrl: 'https://pbs.twimg.com/media/GuiEzByXUAA9Yz9?format=jpg&name=4096x4096',
+          url: {
+            contact:
+              'https://docs.google.com/forms/d/1oUM87A2Kkv7ME9OhRtNDZ_HyMsoKzJR_lOCwna4T_rU/',
+            github: 'https://github.com/byronncat',
+            linkedin: 'https://www.linkedin.com/in/thinh-ngo-byron/',
+            facebook: 'https://www.facebook.com/profile.php?id=100085017111681',
+          },
+          templateName,
+        },
+      });
+      return 'Email sent successfully';
+    } catch (error) {
+      this.logger.error(error.message, {
+        location: 'AuthService.sendEmail',
+        context: 'Email',
+      });
+      throw new InternalServerErrorException('Failed to send email');
+    }
+  }
 
   private clearAuthState(session: ExpressSession) {
     session.user = undefined;
