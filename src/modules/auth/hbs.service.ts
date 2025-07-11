@@ -9,13 +9,11 @@ type TemplateType = 'success' | 'failure';
 
 @Injectable()
 export class HbsService {
-  private isInitialized = false;
-
-  constructor(@Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger) {}
+  constructor(@Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger) {
+    this.initializeHandlebars();
+  }
 
   private initializeHandlebars() {
-    if (this.isInitialized) return;
-
     try {
       handlebars.registerHelper('eq', function (a, b) {
         return a === b;
@@ -35,8 +33,6 @@ export class HbsService {
 
       handlebars.registerPartial('success-verification', successPartialContent);
       handlebars.registerPartial('failure-verification', failurePartialContent);
-
-      this.isInitialized = true;
     } catch (error) {
       this.logger.error(error, {
         location: 'HbsService.initializeHandlebars',
@@ -52,8 +48,6 @@ export class HbsService {
     context: Record<string, string>
   ): { html: string; statusCode: number } {
     try {
-      this.initializeHandlebars();
-
       const templatePath = path.join(
         process.cwd(),
         `src/common/views/templates/${templateName}.hbs`

@@ -7,7 +7,7 @@ import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { AuthModule, CoreModule } from './modules';
 import { RequestLogger } from './common/interceptors';
 import { CsrfExceptionFilter } from './common/filters';
-import { environment, createWinstonTransports } from './core';
+import { environment, createWinstonTransports } from './configurations';
 
 @Module({
   imports: [

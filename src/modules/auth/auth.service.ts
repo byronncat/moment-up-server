@@ -52,7 +52,6 @@ export class AuthService {
       const account = await this.userService.getById(userId);
       if (account) {
         const newAccessToken = this.createJwtToken(account.id, '15m');
-
         session.user.jti = newAccessToken.jti;
         return {
           accessToken: newAccessToken.value,
@@ -92,11 +91,12 @@ export class AuthService {
 
     const hashedPassword = await authLib.hash(data.password, this.saltRounds);
 
-    await this.userService.add({
+    const newUser = await this.userService.add({
       username: data.username,
       email: data.email,
       password: hashedPassword,
     });
+    if (!newUser) throw new InternalServerErrorException('Failed to create user account');
 
     const verificationToken = this.createJwtToken(data.email, '30m');
     const verifyUrl = `${this.baseUrl}/v1/auth/verify?token=${verificationToken.value}`;
@@ -145,7 +145,13 @@ export class AuthService {
       });
     }
 
-    await this.userService.verifyEmail(account.id);
+    const user = await this.userService.verifyEmail(account.id);
+    if (!user) {
+      return this.hbsService.renderSuccessTemplate('failure', {
+        ...baseContext,
+        errorMessage: 'Email verification failed. Please try again later.',
+      });
+    }
 
     try {
       await this.sendEmail(
@@ -190,17 +196,6 @@ export class AuthService {
         },
         context
       );
-      await this.sendEmail(
-        {
-          to: account.email,
-          subject: 'Welcome to MomentUp',
-          templateName: 'welcome',
-        },
-        {
-          username: account.username,
-          clientHostUrl: 'https://momment-up-client.vercel.app',
-        }
-      );
     }
 
     return 'Send successful';
@@ -218,7 +213,8 @@ export class AuthService {
     if (!account) throw new NotFoundException('User not found');
 
     const hashedPassword = await authLib.hash(data.newPassword, this.saltRounds);
-    await this.userService.updatePassword(account.id, hashedPassword);
+    const user = await this.userService.updatePassword(account.id, hashedPassword);
+    if (!user) throw new InternalServerErrorException('Failed to update password');
 
     Otp.clear(session);
     return 'Password changed successfully';

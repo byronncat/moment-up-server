@@ -1,14 +1,15 @@
 import * as Joi from 'joi';
+import { Format } from 'src/common/utilities';
 
 export const load = () => ({
   nodeEnv: process.env.NODE_ENV,
   app: {
-    baseUrl: process.env.BASE_URL,
+    baseUrl: Format.origin(process.env.BASE_URL),
   },
   http: {
     port: process.env.PORT,
     prefix: process.env.PREFIX,
-    allowedOrigin: process.env.ALLOWED_ORIGIN,
+    allowedOrigin: Format.origin(process.env.ALLOWED_ORIGIN),
   },
   security: {
     jwtSecret: process.env.JWT_SECRET,
