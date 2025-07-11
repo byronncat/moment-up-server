@@ -124,7 +124,7 @@ export class AuthService {
     const baseContext = {
       title: 'MomentUp',
       brandName: 'MomentUp',
-      logoUrl: `${this.baseUrl}/static/logo.svg`,
+      logoUrl: `/static/logo.svg`,
       clientHostUrl: this.clientUrl,
       contactUrl: 'https://docs.google.com/forms/d/1oUM87A2Kkv7ME9OhRtNDZ_HyMsoKzJR_lOCwna4T_rU/',
     };
@@ -232,7 +232,7 @@ export class AuthService {
         context: {
           title: 'MomentUp',
           brandName: 'MomentUp',
-          logoUrl: '/static/logo.svg',
+          logoUrl: `${this.baseUrl}/static/logo.svg`,
           url: {
             contact:
               'https://docs.google.com/forms/d/1oUM87A2Kkv7ME9OhRtNDZ_HyMsoKzJR_lOCwna4T_rU/',
