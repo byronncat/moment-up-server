@@ -1,0 +1,104 @@
+import { Injectable, InternalServerErrorException, HttpStatus, Inject } from '@nestjs/common';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import { Logger } from 'winston';
+import * as handlebars from 'handlebars';
+import * as fs from 'fs';
+import * as path from 'path';
+
+type TemplateType = 'success' | 'failure';
+
+@Injectable()
+export class HbsService {
+  private isInitialized = false;
+
+  constructor(@Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger) {}
+
+  private initializeHandlebars() {
+    if (this.isInitialized) return;
+
+    try {
+      handlebars.registerHelper('eq', function (a, b) {
+        return a === b;
+      });
+
+      const successPartialPath = path.join(
+        process.cwd(),
+        'src/common/views/partials/success-verification.hbs'
+      );
+      const failurePartialPath = path.join(
+        process.cwd(),
+        'src/common/views/partials/failure-verification.hbs'
+      );
+
+      const successPartialContent = fs.readFileSync(successPartialPath, 'utf8');
+      const failurePartialContent = fs.readFileSync(failurePartialPath, 'utf8');
+
+      handlebars.registerPartial('success-verification', successPartialContent);
+      handlebars.registerPartial('failure-verification', failurePartialContent);
+
+      this.isInitialized = true;
+    } catch (error) {
+      this.logger.error(error, {
+        location: 'HbsService.initializeHandlebars',
+        context: 'Handlebars Initialization',
+      });
+      throw new InternalServerErrorException('Failed to initialize Handlebars');
+    }
+  }
+
+  public renderTemplate(
+    templateName: string,
+    templateType: TemplateType,
+    context: Record<string, string>
+  ): { html: string; statusCode: number } {
+    try {
+      this.initializeHandlebars();
+
+      const templatePath = path.join(
+        process.cwd(),
+        `src/common/views/templates/${templateName}.hbs`
+      );
+      const templateContent = fs.readFileSync(templatePath, 'utf8');
+      const template = handlebars.compile(templateContent);
+
+      const templateContext = {
+        ...context,
+        templateType,
+      };
+
+      const statusCode = this.getStatusCode(templateType, context);
+
+      return {
+        html: template(templateContext),
+        statusCode,
+      };
+    } catch (error) {
+      this.logger.error(error, {
+        location: 'HbsService.renderTemplate',
+        context: 'Template Rendering',
+      });
+      throw new InternalServerErrorException('Failed to render template');
+    }
+  }
+
+  public renderSuccessTemplate(
+    templateType: TemplateType,
+    context: Record<string, string>
+  ): { html: string; statusCode: number } {
+    return this.renderTemplate('success', templateType, context);
+  }
+
+  private getStatusCode(templateType: TemplateType, context: Record<string, string>): number {
+    let statusCode = HttpStatus.OK;
+    if (templateType === 'failure')
+      if (
+        context.errorMessage?.includes('Invalid verification token') ||
+        context.errorMessage?.includes('expired')
+      )
+        statusCode = HttpStatus.UNAUTHORIZED;
+      else if (context.errorMessage?.includes('not found')) statusCode = HttpStatus.NOT_FOUND;
+      else statusCode = HttpStatus.BAD_REQUEST;
+
+    return statusCode;
+  }
+}

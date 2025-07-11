@@ -18,7 +18,7 @@ export const accounts = [
     id: '2',
     username: 'yuna',
     displayName: 'Yuna',
-    email: 'thgnao@gmail.com',
+    email: 'ByronAT445@gmail.com',
     password: '$2a$12$ixH0oPx0IwNquNZAfsbd..9yo1gh82UZqK7ICIQKl6HV//SXAlARS',
     blocked: false,
     avatar: getRandomFile('yuna'),

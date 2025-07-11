@@ -6,10 +6,22 @@ type AuthRequest = Request & {
   csrfToken(): string;
 };
 
-import { Controller, Post, Body, HttpCode, HttpStatus, Session, Get, Req } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  HttpCode,
+  HttpStatus,
+  Session,
+  Get,
+  Req,
+  Query,
+  Res,
+} from '@nestjs/common';
+import type { Response } from 'express';
 import { ValidationPipe } from '@nestjs/common/pipes/validation.pipe';
 import { AuthService } from './auth.service';
-import { LoginDto, IdentityDto, RegisterDto, ChangePasswordDto } from './dto';
+import { LoginDto, IdentityDto, RegisterDto, ChangePasswordDto, VerifyDto } from './dto';
 
 @Controller({
   path: 'auth',
@@ -18,10 +30,18 @@ import { LoginDto, IdentityDto, RegisterDto, ChangePasswordDto } from './dto';
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  @Get('verify')
+  @Get('authenticate')
   @HttpCode(HttpStatus.OK)
-  verify(@Session() session: ExpressSession) {
-    return this.authService.verify(session);
+  authenticate(@Session() session: ExpressSession) {
+    return this.authService.authenticate(session);
+  }
+
+  @Get('verify')
+  async verify(@Query() query: VerifyDto, @Res() res: Response) {
+    const result = await this.authService.verify(query);
+    res.status(result.statusCode);
+    res.setHeader('Content-Type', 'text/html');
+    res.send(result.html);
   }
 
   @Post('login')

@@ -2,6 +2,9 @@ import * as Joi from 'joi';
 
 export const load = () => ({
   nodeEnv: process.env.NODE_ENV,
+  app: {
+    baseUrl: process.env.BASE_URL,
+  },
   http: {
     port: process.env.PORT,
     prefix: process.env.PREFIX,
@@ -32,9 +35,10 @@ export const load = () => ({
 
 export const schema = Joi.object({
   NODE_ENV: Joi.string().valid('development', 'production', 'test').default('development'),
+  BASE_URL: Joi.string().uri().default('http://localhost:4000'),
   PORT: Joi.number().default(4000),
   PREFIX: Joi.string().default(''),
-  ALLOWED_ORIGIN: Joi.string().default('http://localhost:3000'),
+  ALLOWED_ORIGIN: Joi.string().uri().default('http://localhost:3000'),
   JWT_SECRET: Joi.string().required(),
   SESSION_SECRET: Joi.string().required(),
   CSRF_SECRET: Joi.string().required(),

@@ -1,4 +1,5 @@
 import type { NestExpressApplication } from '@nestjs/platform-express';
+import type { Request, Response } from 'express';
 
 import { NestFactory } from '@nestjs/core';
 import { VersioningType, Logger } from '@nestjs/common';
@@ -90,6 +91,17 @@ async function bootstrap() {
     origin: [allowedOrigin],
     credentials: true,
   });
+
+  const staticPath = path.join(process.cwd(), 'src', 'common', 'static');
+  logger.log(`Serving static assets from: ${staticPath}`);
+  app.useStaticAssets(staticPath, {
+    prefix: '/static/',
+  });
+
+  app.use('/favicon.ico', (req: Request, res: Response) => {
+    res.sendFile(path.join(staticPath, 'favicon.ico'));
+  });
+
   app.use(helmet());
   app.use(cookieParser());
   const { csrfSynchronisedProtection } = csrfSync({

@@ -34,9 +34,16 @@ export class UserService {
 
   public async updatePassword(userId: string, hashedPassword: string) {
     const userIndex = this.accounts.findIndex((account) => account.id === userId);
-    if (userIndex === -1) throw new Error('User not found');
+    if (userIndex === -1) return null;
 
     this.accounts[userIndex].password = hashedPassword;
+    return this.accounts[userIndex];
+  }
+
+  public async verifyEmail(userId: string) {
+    const userIndex = this.accounts.findIndex((account) => account.id === userId);
+    if (userIndex === -1) return null;
+    this.accounts[userIndex].verified = true;
     return this.accounts[userIndex];
   }
 }

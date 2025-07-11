@@ -5,6 +5,7 @@ import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handleba
 import { UserModule } from '../user/user.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { HbsService } from './hbs.service';
 import * as path from 'path';
 
 @Module({
@@ -53,6 +54,6 @@ import * as path from 'path';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService],
+  providers: [AuthService, HbsService],
 })
 export class AuthModule {}

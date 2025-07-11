@@ -16,8 +16,9 @@ import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { MailerService } from '@nestjs-modules/mailer';
 
 import { authLib } from 'src/common/libraries';
+import { HbsService } from './hbs.service';
 import { Otp } from 'src/common/utilities';
-import { LoginDto, IdentityDto, RegisterDto, ChangePasswordDto } from './dto';
+import { LoginDto, IdentityDto, RegisterDto, ChangePasswordDto, VerifyDto } from './dto';
 import { UserService } from '../user/user.service';
 import { TOKEN_ID_LENGTH } from 'src/common/constants';
 
@@ -32,17 +33,20 @@ const MAX_AGE = 365 * 24 * 60 * 60 * 1000;
 @Injectable()
 export class AuthService {
   private readonly saltRounds: number = this.configService.get('security.hashSaltRounds')!;
-  private readonly jwtSecret: string = this.configService.get<string>('security.jwtSecret')!;
+  private readonly jwtSecret: string = this.configService.get('security.jwtSecret')!;
+  private readonly baseUrl: string = this.configService.get('app.baseUrl')!;
+  private readonly clientUrl: string = this.configService.get('http.allowedOrigin')!;
 
   constructor(
     @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
     private readonly jwtService: JwtService,
     private readonly userService: UserService,
     private readonly configService: ConfigService,
-    private readonly mailService: MailerService
+    private readonly mailService: MailerService,
+    private readonly hbsService: HbsService
   ) {}
 
-  public async verify(session: ExpressSession) {
+  public async authenticate(session: ExpressSession) {
     if (session.user) {
       const userId = session.user.sub;
       const account = await this.userService.getById(userId);
@@ -64,6 +68,7 @@ export class AuthService {
     const account = await this.userService.getById(data.identity);
 
     if (!account) throw new UnauthorizedException('Invalid credentials');
+    if (!account.verified) throw new UnauthorizedException('Email not verified');
     if (account.blocked) throw new ForbiddenException('Account is blocked');
     if (!(await authLib.compare(data.password, account.password)))
       throw new UnauthorizedException('Invalid credentials');
@@ -93,12 +98,75 @@ export class AuthService {
       password: hashedPassword,
     });
 
-    return 'User registered successfully';
+    const verificationToken = this.createJwtToken(data.email, '30m');
+    const verifyUrl = `${this.baseUrl}/v1/auth/verify?token=${verificationToken.value}`;
+    await this.sendEmail(
+      {
+        to: data.email,
+        subject: 'Verify your email | MomentUp',
+        templateName: 'verify',
+      },
+      {
+        verifyUrl,
+        expirationTime: '24 hours',
+      }
+    );
+
+    return 'User registered successfully. Please check your email to verify your account.';
   }
 
   public async logout(session: ExpressSession) {
     this.clearAuthState(session);
     return 'Logout successful';
+  }
+
+  public async verify(data: VerifyDto) {
+    const baseContext = {
+      title: 'MomentUp',
+      brandName: 'MomentUp',
+      logoUrl: `${this.baseUrl}/static/logo.svg`,
+      clientHostUrl: this.clientUrl,
+      contactUrl: 'https://docs.google.com/forms/d/1oUM87A2Kkv7ME9OhRtNDZ_HyMsoKzJR_lOCwna4T_rU/',
+    };
+
+    const payload = this.verifyJwtToken(data.token);
+    if (!payload) {
+      return this.hbsService.renderSuccessTemplate('failure', {
+        ...baseContext,
+        errorMessage: 'Invalid verification token. The link may be corrupted or malformed.',
+      });
+    }
+
+    const account = await this.userService.getById(payload.sub);
+    if (!account) {
+      return this.hbsService.renderSuccessTemplate('failure', {
+        ...baseContext,
+        errorMessage: 'User account not found. The account may have been deleted.',
+      });
+    }
+
+    await this.userService.verifyEmail(account.id);
+
+    try {
+      await this.sendEmail(
+        {
+          to: account.email,
+          subject: 'Welcome to MomentUp',
+          templateName: 'welcome',
+        },
+        {
+          username: account.username,
+          clientHostUrl: this.clientUrl,
+        }
+      );
+    } catch (error) {
+      this.logger.error(error, {
+        location: 'AuthService.verifyEmail',
+        context: 'Welcome Email',
+      });
+    }
+
+    return this.hbsService.renderSuccessTemplate('success', baseContext);
   }
 
   public async sendOtpEmail(data: IdentityDto, session: ExpressSession) {
@@ -133,17 +201,6 @@ export class AuthService {
           clientHostUrl: 'https://momment-up-client.vercel.app',
         }
       );
-      await this.sendEmail(
-        {
-          to: account.email,
-          subject: 'Verify your email | MomentUp',
-          templateName: 'verify',
-        },
-        {
-          verifyUrl: 'https://momment-up-client.vercel.app/verify',
-          expirationTime: '5 minutes',
-        }
-      );
     }
 
     return 'Send successful';
@@ -167,7 +224,7 @@ export class AuthService {
     return 'Password changed successfully';
   }
 
-  public async sendEmail(
+  private async sendEmail(
     { to, subject, templateName }: { to: string; subject: string; templateName: EmailTemplate },
     context: Record<string, string | number>
   ) {
@@ -177,10 +234,9 @@ export class AuthService {
         subject,
         template: 'email',
         context: {
-          ...context,
           title: 'MomentUp',
           brandName: 'MomentUp',
-          logoUrl: 'https://pbs.twimg.com/media/GuiEzByXUAA9Yz9?format=jpg&name=4096x4096',
+          logoUrl: '/static/logo.svg',
           url: {
             contact:
               'https://docs.google.com/forms/d/1oUM87A2Kkv7ME9OhRtNDZ_HyMsoKzJR_lOCwna4T_rU/',
@@ -189,6 +245,7 @@ export class AuthService {
             facebook: 'https://www.facebook.com/profile.php?id=100085017111681',
           },
           templateName,
+          ...context,
         },
       });
       return 'Email sent successfully';
@@ -206,6 +263,21 @@ export class AuthService {
     session.cookie.maxAge = 7 * 24 * 60 * 60 * 1000;
   }
 
+  private verifyJwtToken(token: string): JwtPayload | null {
+    try {
+      const payload = this.jwtService.verify(token, {
+        secret: this.jwtSecret,
+      });
+      return payload;
+    } catch (error) {
+      this.logger.info(error, {
+        location: 'AuthService.verifyJwtToken',
+        context: 'JWT',
+      });
+      return null;
+    }
+  }
+
   private createJwtToken(userId: string, expiresIn: string, _jti?: string) {
     const jti = _jti || authLib.generateId('nanoid', { length: TOKEN_ID_LENGTH });
     const payload = { sub: userId, jti };
@@ -217,20 +289,5 @@ export class AuthService {
       jti,
       value: token,
     };
-  }
-
-  private verifyJwtToken(token: string): JwtPayload | null {
-    try {
-      const payload = this.jwtService.verify<JwtPayload>(token, {
-        secret: this.jwtSecret,
-      });
-      return payload;
-    } catch (error) {
-      this.logger.info(error, {
-        location: 'AuthService.verifyJwtToken',
-        context: 'JWT',
-      });
-      return null;
-    }
   }
 }

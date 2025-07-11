@@ -1,0 +1,27 @@
+<div class="failure-icon">
+  <span class="error-mark">✗</span>
+</div>
+
+<h1 class="failure-title">Verification Failed</h1>
+<p class="failure-description">
+  {{#if errorMessage}}
+  {{errorMessage}}
+  {{else}}
+  We couldn't verify your email address. The verification link may have expired or is invalid.
+  {{/if}}
+</p>
+
+<div class="button-group">
+  <a href="{{clientHostUrl}}/signup" class="cta-button secondary">
+    Try Again
+  </a>
+  <a href="{{clientHostUrl}}/login" class="cta-button">
+    Go to Login
+  </a>
+</div>
+
+<div class="support-info">
+  <p class="support-text">
+    Need help? <a href="{{contactUrl}}" class="support-link">Contact Support</a>
+  </p>
+</div>
