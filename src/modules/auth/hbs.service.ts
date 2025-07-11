@@ -1,6 +1,6 @@
 import { Injectable, InternalServerErrorException, HttpStatus, Inject } from '@nestjs/common';
-import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import * as handlebars from 'handlebars';
 import * as fs from 'fs';
 import * as path from 'path';

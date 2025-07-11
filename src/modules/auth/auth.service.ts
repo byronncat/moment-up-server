@@ -1,4 +1,6 @@
 import type { ExpressSession } from 'express-session';
+import type { GoogleUser } from 'library';
+import type { User } from 'schema';
 
 import {
   ForbiddenException,
@@ -20,7 +22,7 @@ import { HbsService } from './hbs.service';
 import { Otp } from 'src/common/utilities';
 import { LoginDto, IdentityDto, RegisterDto, ChangePasswordDto, VerifyDto } from './dto';
 import { UserService } from '../user/user.service';
-import { TOKEN_ID_LENGTH } from 'src/common/constants';
+import { TOKEN_ID_LENGTH, URL } from 'src/common/constants';
 
 type EmailTemplate = 'otp' | 'verify' | 'welcome';
 type JwtPayload = {
@@ -69,7 +71,7 @@ export class AuthService {
     if (!account) throw new UnauthorizedException('Invalid credentials');
     if (!account.verified) throw new UnauthorizedException('Email not verified');
     if (account.blocked) throw new ForbiddenException('Account is blocked');
-    if (!(await authLib.compare(data.password, account.password)))
+    if (!account.password || !(await authLib.compare(data.password, account.password)))
       throw new UnauthorizedException('Invalid credentials');
 
     const accessToken = this.createJwtToken(account.id, '15m');
@@ -91,7 +93,7 @@ export class AuthService {
 
     const hashedPassword = await authLib.hash(data.password, this.saltRounds);
 
-    const newUser = await this.userService.add({
+    const newUser = await this.userService.addCredentialUser({
       username: data.username,
       email: data.email,
       password: hashedPassword,
@@ -126,7 +128,7 @@ export class AuthService {
       brandName: 'MomentUp',
       logoUrl: `/static/logo.svg`,
       clientHostUrl: this.clientUrl,
-      contactUrl: 'https://docs.google.com/forms/d/1oUM87A2Kkv7ME9OhRtNDZ_HyMsoKzJR_lOCwna4T_rU/',
+      contactUrl: URL.CONTACT,
     };
 
     const payload = this.verifyJwtToken(data.token);
@@ -153,25 +155,7 @@ export class AuthService {
       });
     }
 
-    try {
-      await this.sendEmail(
-        {
-          to: account.email,
-          subject: 'Welcome to MomentUp',
-          templateName: 'welcome',
-        },
-        {
-          username: account.username,
-          clientHostUrl: this.clientUrl,
-        }
-      );
-    } catch (error) {
-      this.logger.error(error, {
-        location: 'AuthService.verifyEmail',
-        context: 'Welcome Email',
-      });
-    }
-
+    await this.sendWelcomeEmail(user.email, user.username);
     return this.hbsService.renderSuccessTemplate('success', baseContext);
   }
 
@@ -220,6 +204,57 @@ export class AuthService {
     return 'Password changed successfully';
   }
 
+  public async googleLogin(googleUser: GoogleUser, session: ExpressSession) {
+    try {
+      let account = await this.userService.getById(googleUser.googleId);
+      if (!account) account = await this.userService.getById(googleUser.email);
+
+      if (account) {
+        if (account.blocked) throw new ForbiddenException('Account is blocked');
+      } else {
+        account = await this.userService.addGoogleUser(googleUser);
+        if (!account) throw new InternalServerErrorException('Failed to create user account');
+        await this.sendWelcomeEmail(account.email, account.username);
+      }
+
+      const accessToken = this.createJwtToken(account.id, '15m');
+      session.user = { sub: account.id, jti: accessToken.jti };
+      session.cookie.maxAge = MAX_AGE;
+
+      return {
+        accessToken: accessToken.value,
+        user: account,
+      };
+    } catch (error) {
+      this.logger.error(`Google login failed: ${error.message}`, {
+        location: 'AuthService.googleLogin',
+        context: 'OAuth',
+      });
+      throw error;
+    }
+  }
+
+  private async sendWelcomeEmail(to: string, username: User['username']) {
+    try {
+      await this.sendEmail(
+        {
+          to,
+          subject: 'Welcome to MomentUp',
+          templateName: 'welcome',
+        },
+        {
+          username,
+          clientHostUrl: this.clientUrl,
+        }
+      );
+    } catch (error) {
+      this.logger.error(error, {
+        location: 'AuthService.googleLogin',
+        context: 'Welcome Email',
+      });
+    }
+  }
+
   private async sendEmail(
     { to, subject, templateName }: { to: string; subject: string; templateName: EmailTemplate },
     context: Record<string, string | number>
@@ -234,11 +269,10 @@ export class AuthService {
           brandName: 'MomentUp',
           logoUrl: `${this.baseUrl}/static/logo.svg`,
           url: {
-            contact:
-              'https://docs.google.com/forms/d/1oUM87A2Kkv7ME9OhRtNDZ_HyMsoKzJR_lOCwna4T_rU/',
-            github: 'https://github.com/byronncat',
-            linkedin: 'https://www.linkedin.com/in/thinh-ngo-byron/',
-            facebook: 'https://www.facebook.com/profile.php?id=100085017111681',
+            contact: URL.CONTACT,
+            github: URL.GITHUB,
+            linkedin: URL.LINKEDIN,
+            facebook: URL.FACEBOOK,
           },
           templateName,
           ...context,

@@ -1,6 +1,7 @@
+import type { User } from 'schema';
 import { getRandomFile } from './file';
 
-export const accounts = [
+export const accounts: User[] = [
   {
     id: '1',
     username: 'byron',
@@ -13,6 +14,7 @@ export const accounts = [
     followers: 1000,
     following: 1000,
     hasFeed: true,
+    created_at: new Date('2024-01-01'),
   },
   {
     id: '2',
@@ -26,10 +28,12 @@ export const accounts = [
     followers: 1000,
     following: 1000,
     hasFeed: true,
+    created_at: new Date('2024-01-02'),
   },
   {
     id: 'blocked',
     username: 'Blocked',
+    displayName: 'Blocked User',
     email: 'blocked@gmail.com',
     password: '$2a$12$ixH0oPx0IwNquNZAfsbd..9yo1gh82UZqK7ICIQKl6HV//SXAlARS',
     blocked: true,
@@ -38,5 +42,6 @@ export const accounts = [
     followers: 1000,
     following: 1000,
     hasFeed: true,
+    created_at: new Date('2024-01-03'),
   },
 ];
