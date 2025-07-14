@@ -26,7 +26,7 @@ const consoleTransport = new winston.transports.Console({
       const rawLevel = info[Symbol.for('level')] as string;
       const pid = process.pid;
       const colorizer = winston.format.colorize();
-      const coloredContext = colorizer.colorize('info', `[Nest] ${pid}  -`);
+      const coloredContext = colorizer.colorize(rawLevel, `[Nest] ${pid}  -`);
       const upperLevel = colorizer.colorize(rawLevel, rawLevel.toUpperCase());
 
       // === HTTP ===

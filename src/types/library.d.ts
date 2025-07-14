@@ -1,5 +1,10 @@
 declare module 'library' {
-  export type GoogleUser = {
+  type JwtPayload = {
+    sub: string;
+    jti: string;
+  };
+
+  type GoogleUser = {
     googleId: string;
     email: string;
     firstName?: string;
@@ -7,7 +12,7 @@ declare module 'library' {
     picture?: string;
   };
 
-  export interface GoogleProfile {
+  interface GoogleProfile {
     id: string;
     displayName: string;
     name: {

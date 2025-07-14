@@ -26,9 +26,10 @@ export class UserService {
       password: userData.password,
       blocked: false,
       verified: false,
-      followers: 0,
-      following: 0,
       hasFeed: false,
+      avatar: null,
+      backgroundImage: null,
+      bio: null,
       created_at: new Date(),
     };
 
@@ -48,11 +49,12 @@ export class UserService {
       displayName,
       email: googleData.email,
       blocked: false,
-      avatar: googleData.picture || '',
       verified: true,
-      followers: 0,
-      following: 0,
       hasFeed: false,
+      password: null,
+      avatar: googleData.picture || null,
+      backgroundImage: null,
+      bio: null,
       created_at: new Date(),
     };
 

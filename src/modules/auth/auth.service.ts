@@ -1,5 +1,5 @@
 import type { ExpressSession } from 'express-session';
-import type { GoogleUser } from 'library';
+import type { JwtPayload, GoogleUser } from 'library';
 import type { User } from 'schema';
 
 import {
@@ -25,10 +25,6 @@ import { UserService } from '../user/user.service';
 import { TOKEN_ID_LENGTH, URL } from 'src/common/constants';
 
 type EmailTemplate = 'otp' | 'verify' | 'welcome';
-type JwtPayload = {
-  sub: string;
-  jti: string;
-};
 
 const MAX_AGE = 365 * 24 * 60 * 60 * 1000;
 
@@ -53,7 +49,7 @@ export class AuthService {
       const userId = session.user.sub;
       const account = await this.userService.getById(userId);
       if (account) {
-        const newAccessToken = this.createJwtToken(account.id, '15m');
+        const newAccessToken = await this.createJwtToken(account.id, '15m');
         session.user.jti = newAccessToken.jti;
         return {
           accessToken: newAccessToken.value,
@@ -74,7 +70,7 @@ export class AuthService {
     if (!account.password || !(await authLib.compare(data.password, account.password)))
       throw new UnauthorizedException('Invalid credentials');
 
-    const accessToken = this.createJwtToken(account.id, '15m');
+    const accessToken = await this.createJwtToken(account.id, '15m');
     session.user = { sub: account.id, jti: accessToken.jti };
     session.cookie.maxAge = MAX_AGE;
 
@@ -100,7 +96,7 @@ export class AuthService {
     });
     if (!newUser) throw new InternalServerErrorException('Failed to create user account');
 
-    const verificationToken = this.createJwtToken(data.email, '30m');
+    const verificationToken = await this.createJwtToken(data.email, '30m');
     const verifyUrl = `${this.baseUrl}/v1/auth/verify?token=${verificationToken.value}`;
     await this.sendEmail(
       {
@@ -131,7 +127,7 @@ export class AuthService {
       contactUrl: URL.CONTACT,
     };
 
-    const payload = this.verifyJwtToken(data.token);
+    const payload = await this.verifyJwtToken(data.token);
     if (!payload) {
       return this.hbsService.renderSuccessTemplate('failure', {
         ...baseContext,
@@ -217,7 +213,7 @@ export class AuthService {
         await this.sendWelcomeEmail(account.email, account.username);
       }
 
-      const accessToken = this.createJwtToken(account.id, '15m');
+      const accessToken = await this.createJwtToken(account.id, '15m');
       session.user = { sub: account.id, jti: accessToken.jti };
       session.cookie.maxAge = MAX_AGE;
 
@@ -293,9 +289,13 @@ export class AuthService {
     session.cookie.maxAge = 7 * 24 * 60 * 60 * 1000;
   }
 
-  private verifyJwtToken(token: string): JwtPayload | null {
+  /*
+   * Using sync version of verifyJwtToken to avoid blocking the event loop.
+   */
+
+  private async verifyJwtToken(token: string): Promise<JwtPayload | null> {
     try {
-      const payload = this.jwtService.verify(token, {
+      const payload = await this.jwtService.verifyAsync(token, {
         secret: this.jwtSecret,
       });
       return payload;
@@ -308,10 +308,10 @@ export class AuthService {
     }
   }
 
-  private createJwtToken(userId: string, expiresIn: string, _jti?: string) {
+  private async createJwtToken(userId: string, expiresIn: string, _jti?: string) {
     const jti = _jti || authLib.generateId('nanoid', { length: TOKEN_ID_LENGTH });
     const payload = { sub: userId, jti };
-    const token = this.jwtService.sign(payload, {
+    const token = await this.jwtService.signAsync(payload, {
       secret: this.jwtSecret,
       expiresIn,
     });

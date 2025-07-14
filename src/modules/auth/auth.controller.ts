@@ -43,8 +43,8 @@ export class AuthController {
 
   @Get('authenticate')
   @HttpCode(HttpStatus.OK)
-  authenticate(@Session() session: ExpressSession) {
-    return this.authService.authenticate(session);
+  async authenticate(@Session() session: ExpressSession) {
+    return await this.authService.authenticate(session);
   }
 
   @Get('verify')
@@ -57,20 +57,20 @@ export class AuthController {
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  login(@Body(ValidationPipe) loginDto: LoginDto, @Session() session: ExpressSession) {
-    return this.authService.login(loginDto, session);
+  async login(@Body(ValidationPipe) loginDto: LoginDto, @Session() session: ExpressSession) {
+    return await this.authService.login(loginDto, session);
   }
 
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
-  register(@Body(ValidationPipe) registerDto: RegisterDto) {
-    return this.authService.register(registerDto);
+  async register(@Body(ValidationPipe) registerDto: RegisterDto) {
+    return await this.authService.register(registerDto);
   }
 
   @Post('logout')
   @HttpCode(HttpStatus.OK)
-  logout(@Session() session: ExpressSession) {
-    return this.authService.logout(session);
+  async logout(@Session() session: ExpressSession) {
+    return await this.authService.logout(session);
   }
 
   @Get('csrf')
@@ -82,17 +82,20 @@ export class AuthController {
 
   @Post('send-otp-email')
   @HttpCode(HttpStatus.OK)
-  sendOtpEmail(@Body(ValidationPipe) identityDto: IdentityDto, @Session() session: ExpressSession) {
-    return this.authService.sendOtpEmail(identityDto, session);
+  async sendOtpEmail(
+    @Body(ValidationPipe) identityDto: IdentityDto,
+    @Session() session: ExpressSession
+  ) {
+    return await this.authService.sendOtpEmail(identityDto, session);
   }
 
   @Post('recover-password')
   @HttpCode(HttpStatus.OK)
-  recoverPassword(
+  async recoverPassword(
     @Body(ValidationPipe) changePasswordDto: ChangePasswordDto,
     @Session() session: ExpressSession
   ) {
-    return this.authService.recoverPassword(changePasswordDto, session);
+    return await this.authService.recoverPassword(changePasswordDto, session);
   }
 
   @Get('google')

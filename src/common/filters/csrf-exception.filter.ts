@@ -39,7 +39,7 @@ export class CsrfExceptionFilter implements ExceptionFilter {
       const nestException = exception as { getStatus: () => number; getResponse: () => unknown };
       const status = nestException.getStatus();
 
-      this.logger.error(`NestJS Exception: ${JSON.stringify(nestException.getResponse())}`, {
+      this.logger.debug(`NestJS Exception: ${JSON.stringify(nestException.getResponse())}`, {
         location: 'CsrfExceptionFilter.catch',
         context: 'Exception',
         status,

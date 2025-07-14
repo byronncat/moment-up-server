@@ -1,1 +1,2 @@
-export * from './cookie';
+export { Cookie } from './cookie';
+export { AccessToken } from './access-token.decorator';
