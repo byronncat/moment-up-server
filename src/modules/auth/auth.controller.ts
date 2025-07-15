@@ -43,16 +43,19 @@ export class AuthController {
 
   @Get('authenticate')
   @HttpCode(HttpStatus.OK)
-  async authenticate(@Session() session: ExpressSession) {
-    return await this.authService.authenticate(session);
+  async authenticate(
+    @Session() session: ExpressSession,
+    @Res({ passthrough: true }) resposne: Response
+  ) {
+    return await this.authService.authenticate(session, resposne);
   }
 
   @Get('verify')
-  async verify(@Query() query: VerifyDto, @Res() res: Response) {
+  async verify(@Query() query: VerifyDto, @Res() resposne: Response) {
     const result = await this.authService.verify(query);
-    res.status(result.statusCode);
-    res.setHeader('Content-Type', 'text/html');
-    res.send(result.html);
+    resposne.status(result.statusCode);
+    resposne.setHeader('Content-Type', 'text/html');
+    resposne.send(result.html);
   }
 
   @Post('login')

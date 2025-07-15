@@ -6,7 +6,7 @@ import { WinstonModule } from 'nest-winston';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { AuthModule, CoreModule, SuggestionModule, UserModule } from './modules';
 import { RequestLogger } from './common/interceptors';
-import { CsrfExceptionFilter } from './common/filters';
+import { CsrfExceptionFilter, HttpExceptionFilter } from './common/filters';
 import { environment, createWinstonTransports } from './configurations';
 
 @Module({
@@ -63,6 +63,10 @@ import { environment, createWinstonTransports } from './configurations';
     {
       provide: APP_FILTER,
       useClass: CsrfExceptionFilter,
+    },
+    {
+      provide: APP_FILTER,
+      useClass: HttpExceptionFilter,
     },
   ],
 })

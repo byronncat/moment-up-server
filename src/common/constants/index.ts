@@ -1,5 +1,6 @@
 export const COOKIE_NAME = {
   SESSION: 'connect.sid',
+  ACCESS_TOKEN: 'access-token',
 };
 
 export const TOKEN_ID_LENGTH = 10;

@@ -2,7 +2,7 @@ import type { NestExpressApplication } from '@nestjs/platform-express';
 import type { Request, Response } from 'express';
 
 import { NestFactory } from '@nestjs/core';
-import { VersioningType, Logger } from '@nestjs/common';
+import { VersioningType } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
 import { COOKIE_NAME } from './common/constants';
@@ -17,8 +17,15 @@ import * as session from 'express-session';
 import * as fs from 'fs';
 import * as path from 'path';
 
+import { WinstonModule } from 'nest-winston';
+import { createWinstonTransports } from './configurations';
+
 async function bootstrap() {
   let app: NestExpressApplication;
+  const logger = WinstonModule.createLogger({
+    transports: createWinstonTransports(false),
+  });
+
   if (process.env.NODE_ENV === 'development') {
     const httpsOptions = {
       key: fs.readFileSync(path.join(__dirname, '../certificates/localhost+2-key.pem')),
@@ -27,9 +34,9 @@ async function bootstrap() {
 
     app = await NestFactory.create(AppModule, {
       httpsOptions,
+      logger,
     });
   } else app = await NestFactory.create(AppModule);
-  const logger = new Logger('Bootstrap');
   app.set('trust proxy', 1);
 
   // === Configurations ===
@@ -38,10 +45,7 @@ async function bootstrap() {
   const prefix = configService.get<string>('http.prefix');
   const allowedOrigin = configService.get<string>('http.allowedOrigin')!;
 
-  // Debug logging for CORS configuration
-  logger.log(`CORS allowedOrigin: ${allowedOrigin}`);
   const sessionSecret = configService.get<string>('security.sessionSecret');
-
   const redisUsername = configService.get<string>('db.redisUsername');
   const redisPassword = configService.get<string>('db.redisPassword');
   const redisHost = configService.get<string>('db.redisHost');
@@ -92,7 +96,6 @@ async function bootstrap() {
   });
 
   const staticPath = path.join(process.cwd(), 'src', 'common', 'static');
-  logger.log(`Serving static assets from: ${staticPath}`);
   app.useStaticAssets(staticPath, {
     prefix: '/static/',
   });

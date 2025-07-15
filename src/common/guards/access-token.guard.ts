@@ -11,6 +11,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { UserService } from '../../modules/user/user.service';
+import { COOKIE_NAME } from '../constants';
 
 interface AuthRequest extends Request {
   accessToken?: {
@@ -31,7 +32,7 @@ export class AccessTokenGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<AuthRequest>();
-    const token = this.extractTokenFromHeader(request);
+    const token = request.cookies[COOKIE_NAME.ACCESS_TOKEN];
 
     if (!token) throw new UnauthorizedException('Access token is required');
     try {
@@ -55,14 +56,15 @@ export class AccessTokenGuard implements CanActivate {
     }
   }
 
-  private extractTokenFromHeader(request: AuthRequest): string | undefined {
-    const authHeader = request.headers.authorization;
-    if (!authHeader) return undefined;
-    console.log('Access token:', authHeader);
+  // @deprecated
+  // private extractTokenFromHeader(request: AuthRequest): string | undefined {
+  //   const authHeader = request.headers.authorization;
+  //   if (!authHeader) return undefined;
+  //   console.log('Access token:', authHeader);
 
-    const [type, token] = authHeader.split(' ') ?? [];
-    return type === 'Bearer' ? token : undefined;
-  }
+  //   const [type, token] = authHeader.split(' ') ?? [];
+  //   return type === 'Bearer' ? token : undefined;
+  // }
 
   private async verifyToken(token: string): Promise<{ sub: string; jti: string }> {
     try {

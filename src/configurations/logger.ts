@@ -4,7 +4,6 @@ export type HttpMeta = {
   method: string;
   url: string;
   status: number;
-  responseTime: number;
 };
 
 export type LogMeta = {
@@ -36,7 +35,6 @@ const consoleTransport = new winston.transports.Console({
         const method = httpData.method || 'UNKNOWN_METHOD';
         const url = httpData.url || 'UNKNOWN_URL';
         const status = httpData.status || 'UNKNOWN_STATUS';
-        const responseTime = `${httpData.responseTime}ms` || 'UNKNOWN_TIME';
 
         const coloredStatus =
           typeof status === 'number'
@@ -47,9 +45,7 @@ const consoleTransport = new winston.transports.Console({
                 : colorizer.colorize('error', `${status}`)
             : status;
 
-        const coloredResponseTime = colorizer.colorize('warn', `+${responseTime}`);
-
-        return `${coloredContext} ${padString(String(timestamp), 22)} ${padString('HTTP', 7, 'right')} [${method}] ${coloredStatus} ${url} ${coloredResponseTime}`;
+        return `${coloredContext} ${padString(String(timestamp), 22)} ${padString('HTTP', 7, 'right')} [${method}] ${coloredStatus} ${url}`;
       }
 
       // === Other Logs ===

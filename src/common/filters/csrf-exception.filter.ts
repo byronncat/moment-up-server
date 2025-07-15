@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 import type { ExpressSession } from 'express-session';
 
-import { ExceptionFilter, Catch, ArgumentsHost, Inject } from '@nestjs/common';
+import { ExceptionFilter, Catch, ArgumentsHost, Inject, HttpStatus } from '@nestjs/common';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
 import { COOKIE_NAME } from '../constants';
@@ -26,37 +26,14 @@ export class CsrfExceptionFilter implements ExceptionFilter {
     ) {
       if (request.session) delete request.session.user;
       response.clearCookie(COOKIE_NAME.SESSION);
-
-      response.status(403).json({
-        statusCode: 403,
+      response.status(HttpStatus.FORBIDDEN).json({
+        statusCode: HttpStatus.FORBIDDEN,
         message: 'Invalid CSRF token',
         error: 'Forbidden',
       });
       return;
     }
 
-    if (typeof exception === 'object' && exception !== null && 'getStatus' in exception) {
-      const nestException = exception as { getStatus: () => number; getResponse: () => unknown };
-      const status = nestException.getStatus();
-
-      this.logger.debug(`NestJS Exception: ${JSON.stringify(nestException.getResponse())}`, {
-        location: 'CsrfExceptionFilter.catch',
-        context: 'Exception',
-        status,
-      });
-
-      response.status(status).json(nestException.getResponse());
-    } else {
-      this.logger.error(`Unexpected error: ${exception}`, {
-        location: 'CsrfExceptionFilter.catch',
-        context: 'Exception',
-        error: exception,
-      });
-
-      response.status(500).json({
-        statusCode: 500,
-        message: 'Internal server error',
-      });
-    }
+    throw exception; // Re-throw if not a CSRF error
   }
 }

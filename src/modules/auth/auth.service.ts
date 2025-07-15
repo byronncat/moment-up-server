@@ -1,3 +1,4 @@
+import type { Response } from 'express';
 import type { ExpressSession } from 'express-session';
 import type { JwtPayload, GoogleUser } from 'library';
 import type { User } from 'schema';
@@ -22,7 +23,7 @@ import { HbsService } from './hbs.service';
 import { Otp } from 'src/common/utilities';
 import { LoginDto, IdentityDto, RegisterDto, ChangePasswordDto, VerifyDto } from './dto';
 import { UserService } from '../user/user.service';
-import { TOKEN_ID_LENGTH, URL } from 'src/common/constants';
+import { COOKIE_NAME, TOKEN_ID_LENGTH, URL } from 'src/common/constants';
 
 type EmailTemplate = 'otp' | 'verify' | 'welcome';
 
@@ -44,17 +45,20 @@ export class AuthService {
     private readonly hbsService: HbsService
   ) {}
 
-  public async authenticate(session: ExpressSession) {
+  public async authenticate(session: ExpressSession, resposne: Response) {
     if (session.user) {
       const userId = session.user.sub;
       const account = await this.userService.getById(userId);
       if (account) {
         const newAccessToken = await this.createJwtToken(account.id, '15m');
         session.user.jti = newAccessToken.jti;
-        return {
-          accessToken: newAccessToken.value,
-          user: account,
-        };
+        resposne.cookie(COOKIE_NAME.ACCESS_TOKEN, newAccessToken.value, {
+          httpOnly: true,
+          secure: true,
+          sameSite: 'none',
+          maxAge: 15 * 60 * 1000,
+        });
+        return account;
       }
     }
     this.clearAuthState(session);
@@ -74,10 +78,7 @@ export class AuthService {
     session.user = { sub: account.id, jti: accessToken.jti };
     session.cookie.maxAge = MAX_AGE;
 
-    return {
-      accessToken: accessToken.value,
-      user: account,
-    };
+    return account;
   }
 
   public async register(data: RegisterDto) {
