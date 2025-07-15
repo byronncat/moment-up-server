@@ -61,7 +61,12 @@ async function bootstrap() {
     },
   });
 
-  redisClient.on('error', (error) => logger.error('Redis Error:', error));
+  redisClient.on('error', (error) =>
+    logger.error(JSON.stringify(error), {
+      location: 'Redis Client',
+      context: 'Database',
+    })
+  );
 
   await redisClient.connect();
   const redisStore = new RedisStore({

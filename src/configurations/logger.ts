@@ -66,9 +66,13 @@ const consoleTransport = new winston.transports.Console({
 
       const coloredMessage = colorizer.colorize(rawLevel, String(message));
       const contextStr = context ? `[${context}]` : '[General]';
+      const coloredContextStr =
+        rawLevel === 'warn'
+          ? colorizer.colorize('white', contextStr)
+          : colorizer.colorize('warn', contextStr);
       const locationStr = location ? ` -${location}` : '';
 
-      return `${coloredContext} ${padString(String(timestamp), 22, 'left')} ${padString(upperLevel, 17, 'right')} ${contextStr} ${coloredMessage}${locationStr}`;
+      return `${coloredContext} ${padString(String(timestamp), 22, 'left')} ${padString(upperLevel, 17, 'right')} ${coloredContextStr} ${coloredMessage}${locationStr}`;
     })
   ),
 });

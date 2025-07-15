@@ -1,13 +1,20 @@
 import { accounts } from '../../__mocks__/auth';
-import type { User } from 'schema';
+import { follows } from '../../__mocks__/follow';
+import type { User, Follow } from 'schema';
 import type { GoogleUser } from 'library';
 
-import { Injectable } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ConflictException,
+} from '@nestjs/common';
 import { authLib } from 'src/common/libraries';
 
 @Injectable()
 export class UserService {
   private readonly accounts = accounts;
+  private readonly follows = follows;
 
   public async getById(sub: string | undefined): Promise<User | undefined> {
     return this.accounts.find(
@@ -75,5 +82,41 @@ export class UserService {
     if (userIndex === -1) return null;
     this.accounts[userIndex].verified = true;
     return this.accounts[userIndex] as User;
+  }
+
+  public async follow(currentUserId: User['id'], targetUserId: User['id']) {
+    const currentUser = await this.getById(currentUserId);
+    const targetUser = await this.getById(targetUserId);
+
+    if (!currentUser || !targetUser) throw new NotFoundException('User not found');
+    if (currentUserId === targetUserId) throw new BadRequestException('Cannot follow yourself');
+
+    const existingFollow = this.follows.find(
+      (follow) => follow.followerId === currentUserId && follow.followingId === targetUserId
+    );
+    if (existingFollow) throw new ConflictException('You are already following this user');
+
+    const newFollow: Follow = {
+      id: authLib.generateId('uuid'),
+      followerId: currentUserId,
+      followingId: targetUserId,
+      created_at: new Date(),
+    };
+    this.follows.push(newFollow);
+  }
+
+  public async unfollow(currentUserId: User['id'], targetUserId: User['id']) {
+    const currentUser = await this.getById(currentUserId);
+    const targetUser = await this.getById(targetUserId);
+
+    if (!currentUser || !targetUser) throw new NotFoundException('User not found');
+    if (currentUserId === targetUserId) throw new BadRequestException('Cannot unfollow yourself');
+
+    const existingFollowIndex = this.follows.findIndex(
+      (follow) => follow.followerId === currentUserId && follow.followingId === targetUserId
+    );
+    if (existingFollowIndex === -1) throw new ConflictException('You are not following this user');
+
+    this.follows.splice(existingFollowIndex, 1);
   }
 }

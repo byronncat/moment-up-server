@@ -11,3 +11,12 @@ export const URL = {
   LINKEDIN: 'https://www.linkedin.com/in/thinh-ngo-byron/',
   FACEBOOK: 'https://www.facebook.com/profile.php?id=100085017111681',
 };
+
+export enum ReportType {
+  NOT_RELEVANT = 0,
+  SPAM = 1,
+  ABUSIVE = 2,
+  NOT_INTERESTED = 3,
+  DUPLICATE = 4,
+  HARMFUL = 5,
+}

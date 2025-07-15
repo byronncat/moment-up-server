@@ -51,6 +51,7 @@ export class AuthController {
   }
 
   @Get('verify')
+  @HttpCode(HttpStatus.OK)
   async verify(@Query() query: VerifyDto, @Res() resposne: Response) {
     const result = await this.authService.verify(query);
     resposne.status(result.statusCode);
@@ -103,7 +104,7 @@ export class AuthController {
 
   @Get('google')
   @UseGuards(GoogleOAuthGuard)
-  @HttpCode(HttpStatus.OK)
+  @HttpCode(HttpStatus.FOUND)
   async googleAuth() {
     // This route initiates the Google OAuth flow
     // The actual redirect is handled by the GoogleOAuthGuard
@@ -111,7 +112,7 @@ export class AuthController {
 
   @Get('google/callback')
   @UseGuards(GoogleOAuthGuard)
-  @HttpCode(HttpStatus.OK)
+  @HttpCode(HttpStatus.FOUND)
   async googleAuthCallback(
     @Req() req: GoogleAuthRequest,
     @Session() session: ExpressSession,

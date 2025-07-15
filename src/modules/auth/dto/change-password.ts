@@ -19,7 +19,7 @@ export class MatchValidator implements ValidatorConstraintInterface {
     return value === relatedValue;
   }
 
-  defaultMessage(args: ValidationArguments): string {
+  defaultMessage(args: ValidationArguments) {
     const [relatedPropertyName] = args.constraints;
     return `${args.property} must match ${relatedPropertyName}`;
   }

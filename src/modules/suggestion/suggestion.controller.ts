@@ -1,9 +1,11 @@
 import type { JwtPayload } from 'library';
 
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs/common';
+import { ValidationPipe } from '@nestjs/common/pipes/validation.pipe';
 import { SuggestionService } from './suggestion.service';
 import { AccessToken } from '../../common/decorators';
 import { AccessTokenGuard } from '../../common/guards';
+import { ReportDto } from './dto';
 
 @Controller({
   path: 'suggestion',
@@ -13,6 +15,7 @@ export class SuggestionController {
   constructor(private readonly suggestionService: SuggestionService) {}
 
   @Get('users')
+  @HttpCode(HttpStatus.OK)
   @UseGuards(AccessTokenGuard)
   async getUserSuggestions(@AccessToken() accessToken: JwtPayload) {
     const { sub: userId } = accessToken;
@@ -20,7 +23,14 @@ export class SuggestionController {
   }
 
   @Get('trending')
+  @HttpCode(HttpStatus.OK)
   async getHashtagSuggestions() {
     return await this.suggestionService.getTrending();
+  }
+
+  @Post('trending/report')
+  @HttpCode(HttpStatus.OK) // TODO: Change to HttpStatus.CREATED if creating a report
+  async reportTrendingTopic(@Body(ValidationPipe) reportDto: ReportDto) {
+    return await this.suggestionService.reportTrendingTopic(reportDto);
   }
 }

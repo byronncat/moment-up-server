@@ -1,20 +1,30 @@
 import { mockSuggestedUsers, mockTrendingTopics } from 'src/__mocks__/suggestion';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
+import { Logger } from 'winston';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import { ReportDto } from './dto';
 
 @Injectable()
 export class SuggestionService {
-  // TODO: Implement suggestion methods
-  // - getUserSuggestions(userId)
-  // - getHashtagSuggestions(query)
-  // - getFriendSuggestions(userId)
-  // - getContentSuggestions(userId)
+  constructor(@Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger) {}
 
   public async getUser(userId: string) {
-    console.log('Fetching user suggestions for:', userId);
+    this.logger.silly(`Fetching user suggestions for userId: ${userId}`, {
+      location: 'SuggestionService.getUser',
+      context: 'Suggestion',
+    });
     return mockSuggestedUsers;
   }
 
   public async getTrending() {
     return mockTrendingTopics;
+  }
+
+  public async reportTrendingTopic(reportDto: ReportDto) {
+    this.logger.silly(`Reporting topic ${reportDto.topicId} with type ${reportDto.type}`, {
+      location: 'SuggestionService.reportTrendingTopic',
+      context: 'Topic Reporting',
+    });
+    return 'Report submitted successfully';
   }
 }
