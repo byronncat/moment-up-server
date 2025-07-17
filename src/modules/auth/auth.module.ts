@@ -1,9 +1,10 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule, RequestMethod } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handlebars.adapter';
 import { PassportModule } from '@nestjs/passport';
 import { AuthController } from './auth.controller';
+import { AccessTokenMiddleware } from '../../common/middlewares';
 import { UserService } from '../user/user.service';
 import { AuthService } from './auth.service';
 import { HbsService } from './hbs.service';
@@ -57,4 +58,11 @@ import * as path from 'path';
   controllers: [AuthController],
   providers: [AuthService, UserService, HbsService, GoogleStrategy],
 })
-export class AuthModule {}
+export class AuthModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(AccessTokenMiddleware).forRoutes({
+      path: '/v1/auth/me',
+      method: RequestMethod.GET,
+    });
+  }
+}

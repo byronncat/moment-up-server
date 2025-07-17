@@ -1,15 +1,11 @@
 import type { Request, Response } from 'express';
 import type { ExpressSession } from 'express-session';
 
-import { ExceptionFilter, Catch, ArgumentsHost, Inject, HttpStatus } from '@nestjs/common';
-import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
-import { Logger } from 'winston';
+import { ExceptionFilter, Catch, ArgumentsHost, HttpStatus } from '@nestjs/common';
 import { COOKIE_NAME } from '../constants';
 
 @Catch()
 export class CsrfExceptionFilter implements ExceptionFilter {
-  constructor(@Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger) {}
-
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();

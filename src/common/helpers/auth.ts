@@ -25,3 +25,9 @@ export function generateId(type: 'uuid' | 'nanoid' | 'otp', options?: { length?:
   }
   return nanoid(options?.length ?? 10);
 }
+
+export function parseBearer(authorizationHeader?: string): string | undefined {
+  if (!authorizationHeader) return undefined;
+  const [type, token] = authorizationHeader.split(' ') ?? [];
+  return type === 'Bearer' ? token : undefined;
+}

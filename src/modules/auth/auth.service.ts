@@ -1,7 +1,8 @@
-import type { Response } from 'express';
 import type { ExpressSession } from 'express-session';
 import type { JwtPayload, GoogleUser } from 'library';
 import type { User } from 'schema';
+
+type EmailTemplate = 'otp' | 'verify' | 'welcome';
 
 import {
   ForbiddenException,
@@ -18,14 +19,12 @@ import { Logger } from 'winston';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { MailerService } from '@nestjs-modules/mailer';
 
-import { authLib } from 'src/common/libraries';
+import { Auth } from 'src/common/helpers';
 import { HbsService } from './hbs.service';
 import { Otp } from 'src/common/utilities';
 import { LoginDto, IdentityDto, RegisterDto, ChangePasswordDto, VerifyDto } from './dto';
 import { UserService } from '../user/user.service';
-import { COOKIE_NAME, TOKEN_ID_LENGTH, URL } from 'src/common/constants';
-
-type EmailTemplate = 'otp' | 'verify' | 'welcome';
+import { TOKEN_ID_LENGTH, URL } from 'src/common/constants';
 
 const MAX_AGE = 365 * 24 * 60 * 60 * 1000;
 
@@ -45,24 +44,30 @@ export class AuthService {
     private readonly hbsService: HbsService
   ) {}
 
-  public async authenticate(session: ExpressSession, resposne: Response) {
+  public async refresh(session: ExpressSession) {
     if (session.user) {
       const userId = session.user.sub;
       const account = await this.userService.getById(userId);
       if (account) {
         const newAccessToken = await this.createJwtToken(account.id, '15m');
         session.user.jti = newAccessToken.jti;
-        resposne.cookie(COOKIE_NAME.ACCESS_TOKEN, newAccessToken.value, {
-          httpOnly: true,
-          secure: true,
-          sameSite: 'none',
-          maxAge: 15 * 60 * 1000,
-        });
-        return account;
+        return {
+          accessToken: newAccessToken.value,
+        };
       }
     }
     this.clearAuthState(session);
     throw new UnauthorizedException('User not authenticated');
+  }
+
+  public async currentUser(session: ExpressSession, accessToken?: JwtPayload) {
+    const userId = accessToken?.sub || session.user?.sub;
+    const account = await this.userService.getById(userId);
+    if (!account) throw new UnauthorizedException('User not authenticated');
+
+    return {
+      user: account,
+    };
   }
 
   public async login(data: LoginDto, session: ExpressSession) {
@@ -71,14 +76,17 @@ export class AuthService {
     if (!account) throw new UnauthorizedException('Invalid credentials');
     if (!account.verified) throw new UnauthorizedException('Email not verified');
     if (account.blocked) throw new ForbiddenException('Account is blocked');
-    if (!account.password || !(await authLib.compare(data.password, account.password)))
+    if (!account.password || !(await Auth.compare(data.password, account.password)))
       throw new UnauthorizedException('Invalid credentials');
 
     const accessToken = await this.createJwtToken(account.id, '15m');
     session.user = { sub: account.id, jti: accessToken.jti };
     session.cookie.maxAge = MAX_AGE;
 
-    return account;
+    return {
+      accessToken: accessToken.value,
+      user: account,
+    };
   }
 
   public async register(data: RegisterDto) {
@@ -88,7 +96,7 @@ export class AuthService {
     const existingUsername = await this.userService.getById(data.username);
     if (existingUsername) throw new ConflictException('Username already taken');
 
-    const hashedPassword = await authLib.hash(data.password, this.saltRounds);
+    const hashedPassword = await Auth.hash(data.password, this.saltRounds);
 
     const newUser = await this.userService.addCredentialUser({
       username: data.username,
@@ -111,12 +119,11 @@ export class AuthService {
       }
     );
 
-    return 'User registered successfully. Please check your email to verify your account.';
+    return newUser;
   }
 
-  public async logout(session: ExpressSession) {
+  public logout(session: ExpressSession) {
     this.clearAuthState(session);
-    return 'Logout successful';
   }
 
   public async verify(data: VerifyDto) {
@@ -178,8 +185,6 @@ export class AuthService {
         context
       );
     }
-
-    return 'Send successful';
   }
 
   public async recoverPassword(data: ChangePasswordDto, session: ExpressSession) {
@@ -193,12 +198,11 @@ export class AuthService {
     const account = await this.userService.getById(otp.uid);
     if (!account) throw new NotFoundException('User not found');
 
-    const hashedPassword = await authLib.hash(data.newPassword, this.saltRounds);
+    const hashedPassword = await Auth.hash(data.newPassword, this.saltRounds);
     const user = await this.userService.updatePassword(account.id, hashedPassword);
     if (!user) throw new InternalServerErrorException('Failed to update password');
 
     Otp.clear(session);
-    return 'Password changed successfully';
   }
 
   public async googleLogin(googleUser: GoogleUser, session: ExpressSession) {
@@ -275,7 +279,6 @@ export class AuthService {
           ...context,
         },
       });
-      return 'Email sent successfully';
     } catch (error) {
       this.logger.error(error.message, {
         location: 'AuthService.sendEmail',
@@ -310,7 +313,7 @@ export class AuthService {
   }
 
   private async createJwtToken(userId: string, expiresIn: string, _jti?: string) {
-    const jti = _jti || authLib.generateId('nanoid', { length: TOKEN_ID_LENGTH });
+    const jti = _jti || Auth.generateId('nanoid', { length: TOKEN_ID_LENGTH });
     const payload = { sub: userId, jti };
     const token = await this.jwtService.signAsync(payload, {
       secret: this.jwtSecret,

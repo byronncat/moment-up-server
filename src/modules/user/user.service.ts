@@ -9,7 +9,7 @@ import {
   BadRequestException,
   ConflictException,
 } from '@nestjs/common';
-import { authLib } from 'src/common/libraries';
+import { Auth } from 'src/common/helpers';
 
 @Injectable()
 export class UserService {
@@ -26,7 +26,7 @@ export class UserService {
     userData: Required<Pick<User, 'email' | 'username' | 'password'>>
   ): Promise<User> {
     const newUser: User = {
-      id: authLib.generateId('uuid'),
+      id: Auth.generateId('uuid'),
       username: userData.username,
       displayName: userData.username,
       email: userData.email,
@@ -97,7 +97,7 @@ export class UserService {
     if (existingFollow) throw new ConflictException('You are already following this user');
 
     const newFollow: Follow = {
-      id: authLib.generateId('uuid'),
+      id: Auth.generateId('uuid'),
       followerId: currentUserId,
       followingId: targetUserId,
       created_at: new Date(),

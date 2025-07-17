@@ -13,7 +13,7 @@ export class SuggestionService {
       location: 'SuggestionService.getUser',
       context: 'Suggestion',
     });
-    return mockSuggestedUsers;
+    return mockSuggestedUsers.slice(0, 5);
   }
 
   public async getTrending() {
@@ -25,6 +25,5 @@ export class SuggestionService {
       location: 'SuggestionService.reportTrendingTopic',
       context: 'Topic Reporting',
     });
-    return 'Report submitted successfully';
   }
 }

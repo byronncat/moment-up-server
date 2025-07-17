@@ -1,5 +1,5 @@
 import type { ExpressSession } from 'express-session';
-import { authLib } from '../libraries';
+import { Auth } from '../helpers';
 
 export interface OtpData {
   code: string;
@@ -14,7 +14,7 @@ export interface OtpConfig {
 }
 
 export function create(userId: string, config: OtpConfig): OtpData {
-  const code = authLib.generateId('otp');
+  const code = Auth.generateId('otp');
   const expiresAt = Date.now() + config.expirationTimeMs;
 
   return {

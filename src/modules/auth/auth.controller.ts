@@ -1,5 +1,5 @@
-import type { Request } from 'express';
-import type { GoogleUser } from 'library';
+import type { Request, Response } from 'express';
+import type { GoogleUser, JwtPayload } from 'library';
 import type { Session as ExpressSession } from 'express-session';
 
 interface AuthRequest extends Request {
@@ -24,7 +24,7 @@ import {
   Res,
   UseGuards,
 } from '@nestjs/common';
-import type { Response } from 'express';
+import { AccessToken } from 'src/common/decorators';
 import { ValidationPipe } from '@nestjs/common/pipes/validation.pipe';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
@@ -41,13 +41,16 @@ export class AuthController {
     private readonly configService: ConfigService
   ) {}
 
-  @Get('authenticate')
+  @Get('refresh')
   @HttpCode(HttpStatus.OK)
-  async authenticate(
-    @Session() session: ExpressSession,
-    @Res({ passthrough: true }) resposne: Response
-  ) {
-    return await this.authService.authenticate(session, resposne);
+  async refresh(@Session() session: ExpressSession) {
+    return await this.authService.refresh(session);
+  }
+
+  @Get('me')
+  @HttpCode(HttpStatus.OK)
+  async me(@Session() session: ExpressSession, @AccessToken() accessToken?: JwtPayload) {
+    return await this.authService.currentUser(session, accessToken);
   }
 
   @Get('verify')
@@ -72,9 +75,9 @@ export class AuthController {
   }
 
   @Post('logout')
-  @HttpCode(HttpStatus.OK)
+  @HttpCode(HttpStatus.NO_CONTENT)
   async logout(@Session() session: ExpressSession) {
-    return await this.authService.logout(session);
+    this.authService.logout(session);
   }
 
   @Get('csrf')
@@ -90,7 +93,10 @@ export class AuthController {
     @Body(ValidationPipe) identityDto: IdentityDto,
     @Session() session: ExpressSession
   ) {
-    return await this.authService.sendOtpEmail(identityDto, session);
+    await this.authService.sendOtpEmail(identityDto, session);
+    return {
+      message: 'OTP sent to your email successfully.',
+    };
   }
 
   @Post('recover-password')
@@ -99,7 +105,10 @@ export class AuthController {
     @Body(ValidationPipe) changePasswordDto: ChangePasswordDto,
     @Session() session: ExpressSession
   ) {
-    return await this.authService.recoverPassword(changePasswordDto, session);
+    await this.authService.recoverPassword(changePasswordDto, session);
+    return {
+      message: 'Password changed successfully.',
+    };
   }
 
   @Get('google')

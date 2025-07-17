@@ -29,8 +29,11 @@ export class SuggestionController {
   }
 
   @Post('trending/report')
-  @HttpCode(HttpStatus.OK) // TODO: Change to HttpStatus.CREATED if creating a report
+  @HttpCode(HttpStatus.CREATED)
   async reportTrendingTopic(@Body(ValidationPipe) reportDto: ReportDto) {
-    return await this.suggestionService.reportTrendingTopic(reportDto);
+    await this.suggestionService.reportTrendingTopic(reportDto);
+    return {
+      message: 'Report submitted successfully',
+    };
   }
 }
