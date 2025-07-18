@@ -30,8 +30,13 @@ export class SuggestionController {
 
   @Post('trending/report')
   @HttpCode(HttpStatus.CREATED)
-  async reportTrendingTopic(@Body(ValidationPipe) reportDto: ReportDto) {
-    await this.suggestionService.reportTrendingTopic(reportDto);
+  @UseGuards(AccessTokenGuard)
+  async reportTrendingTopic(
+    @Body(ValidationPipe) reportDto: ReportDto,
+    @AccessToken() accessToken: JwtPayload
+  ) {
+    const { sub: userId } = accessToken;
+    await this.suggestionService.reportTrendingTopic(reportDto, userId);
     return {
       message: 'Report submitted successfully',
     };

@@ -27,10 +27,10 @@ import { UserService } from '../user/user.service';
 import { TOKEN_ID_LENGTH, URL } from 'src/common/constants';
 
 const DEFAULT_MAX_AGE = 3 * 24 * 60 * 60 * 1000; // 3 days
-const SESSION_MAX_AGE = 365 * 24 * 60 * 60 * 1000; // 1 year
 const OTP_MAX_AGE = 5 * 60 * 1000; // 5 minutes
-const ACCESS_TOKEN_MAX_AGE = '2h';
 const VERIFICATION_TOKEN_MAX_AGE = '30m';
+const REFRESH_TOKEN_MAX_AGE = 365 * 24 * 60 * 60 * 1000; // 1 year
+const ACCESS_TOKEN_MAX_AGE = '2h';
 
 @Injectable()
 export class AuthService {
@@ -85,7 +85,7 @@ export class AuthService {
 
     const accessToken = await this.createJwtToken(account.id, ACCESS_TOKEN_MAX_AGE);
     session.user = { sub: account.id, jti: accessToken.jti };
-    session.cookie.maxAge = SESSION_MAX_AGE;
+    session.cookie.maxAge = REFRESH_TOKEN_MAX_AGE;
 
     return {
       accessToken: accessToken.value,
@@ -226,7 +226,7 @@ export class AuthService {
 
       const accessToken = await this.createJwtToken(account.id, ACCESS_TOKEN_MAX_AGE);
       session.user = { sub: account.id, jti: accessToken.jti };
-      session.cookie.maxAge = SESSION_MAX_AGE;
+      session.cookie.maxAge = REFRESH_TOKEN_MAX_AGE;
 
       return {
         accessToken: accessToken.value,

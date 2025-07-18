@@ -16,5 +16,5 @@ export class SuggestionService {
     return mockTrendingTopics;
   }
 
-  public async reportTrendingTopic(reportDto: ReportDto) {}
+  public async reportTrendingTopic(reportDto: ReportDto, userId: string) {}
 }
