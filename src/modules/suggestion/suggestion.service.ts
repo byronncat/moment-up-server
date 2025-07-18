@@ -9,10 +9,6 @@ export class SuggestionService {
   constructor(@Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger) {}
 
   public async getUser(userId: string) {
-    this.logger.silly(`Fetching user suggestions for userId: ${userId}`, {
-      location: 'SuggestionService.getUser',
-      context: 'Suggestion',
-    });
     return mockSuggestedUsers.slice(0, 5);
   }
 
@@ -20,10 +16,5 @@ export class SuggestionService {
     return mockTrendingTopics;
   }
 
-  public async reportTrendingTopic(reportDto: ReportDto) {
-    this.logger.silly(`Reporting topic ${reportDto.topicId} with type ${reportDto.type}`, {
-      location: 'SuggestionService.reportTrendingTopic',
-      context: 'Topic Reporting',
-    });
-  }
+  public async reportTrendingTopic(reportDto: ReportDto) {}
 }

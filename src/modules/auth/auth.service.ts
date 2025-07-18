@@ -26,7 +26,11 @@ import { LoginDto, IdentityDto, RegisterDto, ChangePasswordDto, VerifyDto } from
 import { UserService } from '../user/user.service';
 import { TOKEN_ID_LENGTH, URL } from 'src/common/constants';
 
-const MAX_AGE = 365 * 24 * 60 * 60 * 1000;
+const DEFAULT_MAX_AGE = 3 * 24 * 60 * 60 * 1000; // 3 days
+const SESSION_MAX_AGE = 365 * 24 * 60 * 60 * 1000; // 1 year
+const OTP_MAX_AGE = 5 * 60 * 1000; // 5 minutes
+const ACCESS_TOKEN_MAX_AGE = '2h';
+const VERIFICATION_TOKEN_MAX_AGE = '30m';
 
 @Injectable()
 export class AuthService {
@@ -49,7 +53,7 @@ export class AuthService {
       const userId = session.user.sub;
       const account = await this.userService.getById(userId);
       if (account) {
-        const newAccessToken = await this.createJwtToken(account.id, '15m');
+        const newAccessToken = await this.createJwtToken(account.id, ACCESS_TOKEN_MAX_AGE);
         session.user.jti = newAccessToken.jti;
         return {
           accessToken: newAccessToken.value,
@@ -79,9 +83,9 @@ export class AuthService {
     if (!account.password || !(await Auth.compare(data.password, account.password)))
       throw new UnauthorizedException('Invalid credentials');
 
-    const accessToken = await this.createJwtToken(account.id, '15m');
+    const accessToken = await this.createJwtToken(account.id, ACCESS_TOKEN_MAX_AGE);
     session.user = { sub: account.id, jti: accessToken.jti };
-    session.cookie.maxAge = MAX_AGE;
+    session.cookie.maxAge = SESSION_MAX_AGE;
 
     return {
       accessToken: accessToken.value,
@@ -105,7 +109,7 @@ export class AuthService {
     });
     if (!newUser) throw new InternalServerErrorException('Failed to create user account');
 
-    const verificationToken = await this.createJwtToken(data.email, '30m');
+    const verificationToken = await this.createJwtToken(data.email, VERIFICATION_TOKEN_MAX_AGE);
     const verifyUrl = `${this.baseUrl}/v1/auth/verify?token=${verificationToken.value}`;
     await this.sendEmail(
       {
@@ -115,11 +119,13 @@ export class AuthService {
       },
       {
         verifyUrl,
-        expirationTime: '24 hours',
+        expirationTime: '30 minutes', // VERIFICATION_TOKEN_MAX_AGE
       }
     );
 
-    return newUser;
+    return {
+      user: newUser,
+    };
   }
 
   public logout(session: ExpressSession) {
@@ -167,14 +173,14 @@ export class AuthService {
     const account = await this.userService.getById(data.identity);
     if (account) {
       const otpConfig = {
-        expirationTimeMs: 5 * 60 * 1000,
+        expirationTimeMs: OTP_MAX_AGE,
         purpose: 'password-reset' as const,
       };
       session.otp = Otp.create(account.id, otpConfig);
 
       const context = {
         otp: session.otp.code,
-        expirationTime: '5 minutes',
+        expirationTime: '5 minutes', // OTP_MAX_AGE
       };
       await this.sendEmail(
         {
@@ -218,9 +224,9 @@ export class AuthService {
         await this.sendWelcomeEmail(account.email, account.username);
       }
 
-      const accessToken = await this.createJwtToken(account.id, '15m');
+      const accessToken = await this.createJwtToken(account.id, ACCESS_TOKEN_MAX_AGE);
       session.user = { sub: account.id, jti: accessToken.jti };
-      session.cookie.maxAge = MAX_AGE;
+      session.cookie.maxAge = SESSION_MAX_AGE;
 
       return {
         accessToken: accessToken.value,
@@ -290,7 +296,7 @@ export class AuthService {
 
   private clearAuthState(session: ExpressSession) {
     session.user = undefined;
-    session.cookie.maxAge = 7 * 24 * 60 * 60 * 1000;
+    session.cookie.maxAge = DEFAULT_MAX_AGE;
   }
 
   /*

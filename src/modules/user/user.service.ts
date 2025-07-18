@@ -85,8 +85,14 @@ export class UserService {
   }
 
   public async follow(currentUserId: User['id'], targetUserId: User['id']) {
-    const currentUser = await this.getById(currentUserId);
-    const targetUser = await this.getById(targetUserId);
+    // const currentUser = await this.getById(currentUserId);
+    // const targetUser = await this.getById(targetUserId);
+    const currentUser = {
+      id: currentUserId,
+    } as User;
+    const targetUser = {
+      id: targetUserId,
+    } as User;
 
     if (!currentUser || !targetUser) throw new NotFoundException('User not found');
     if (currentUserId === targetUserId) throw new BadRequestException('Cannot follow yourself');
@@ -106,8 +112,14 @@ export class UserService {
   }
 
   public async unfollow(currentUserId: User['id'], targetUserId: User['id']) {
-    const currentUser = await this.getById(currentUserId);
-    const targetUser = await this.getById(targetUserId);
+    // const currentUser = await this.getById(currentUserId);
+    // const targetUser = await this.getById(targetUserId);
+    const currentUser = {
+      id: currentUserId,
+    } as User;
+    const targetUser = {
+      id: targetUserId,
+    } as User;
 
     if (!currentUser || !targetUser) throw new NotFoundException('User not found');
     if (currentUserId === targetUserId) throw new BadRequestException('Cannot unfollow yourself');

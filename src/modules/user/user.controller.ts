@@ -14,8 +14,8 @@ export class UserController {
   constructor(private readonly userService: UserService) {}
 
   @Post(':id/follow')
-  @UseGuards(AccessTokenGuard)
   @HttpCode(HttpStatus.CREATED)
+  @UseGuards(AccessTokenGuard)
   async followUser(@AccessToken() accessToken: JwtPayload, @Param('id') targetUserId: string) {
     const currentUserId = accessToken.sub;
     await this.userService.follow(currentUserId, targetUserId);
@@ -23,8 +23,8 @@ export class UserController {
   }
 
   @Delete(':id/unfollow')
-  @UseGuards(AccessTokenGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(AccessTokenGuard)
   async unfollowUser(@AccessToken() accessToken: JwtPayload, @Param('id') targetUserId: string) {
     const currentUserId = accessToken.sub;
     await this.userService.unfollow(currentUserId, targetUserId);
