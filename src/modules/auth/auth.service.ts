@@ -22,7 +22,14 @@ import { MailerService } from '@nestjs-modules/mailer';
 import { Auth } from 'src/common/helpers';
 import { HbsService } from './hbs.service';
 import { Otp } from 'src/common/utilities';
-import { LoginDto, IdentityDto, RegisterDto, ChangePasswordDto, VerifyDto } from './dto';
+import {
+  LoginDto,
+  IdentityDto,
+  RegisterDto,
+  ChangePasswordDto,
+  VerifyDto,
+  SwitchAccountDto,
+} from './dto';
 import { UserService } from '../user/user.service';
 import { TOKEN_ID_LENGTH, URL } from 'src/common/constants';
 
@@ -30,7 +37,7 @@ const DEFAULT_MAX_AGE = 3 * 24 * 60 * 60 * 1000; // 3 days
 const OTP_MAX_AGE = 5 * 60 * 1000; // 5 minutes
 const VERIFICATION_TOKEN_MAX_AGE = '30m';
 const REFRESH_TOKEN_MAX_AGE = 365 * 24 * 60 * 60 * 1000; // 1 year
-const ACCESS_TOKEN_MAX_AGE = '2h';
+const ACCESS_TOKEN_MAX_AGE = '7s';
 
 @Injectable()
 export class AuthService {
@@ -49,6 +56,7 @@ export class AuthService {
   ) {}
 
   public async refresh(session: ExpressSession) {
+    console.log(session.user);
     if (session.user) {
       const userId = session.user.sub;
       const account = await this.userService.getById(userId);
@@ -239,6 +247,21 @@ export class AuthService {
       });
       throw error;
     }
+  }
+
+  public async switchAccount(data: SwitchAccountDto, session: ExpressSession) {
+    const account = await this.userService.getById(data.accountId);
+    if (!account) throw new NotFoundException('Account not found');
+    if (account.blocked) throw new ForbiddenException('Account is blocked');
+
+    const accessToken = await this.createJwtToken(account.id, ACCESS_TOKEN_MAX_AGE);
+    session.user = { sub: account.id, jti: accessToken.jti };
+    session.cookie.maxAge = REFRESH_TOKEN_MAX_AGE;
+
+    return {
+      accessToken: accessToken.value,
+      user: account,
+    };
   }
 
   private async sendWelcomeEmail(to: string, username: User['username']) {

@@ -28,8 +28,16 @@ import { AccessToken } from 'src/common/decorators';
 import { ValidationPipe } from '@nestjs/common/pipes/validation.pipe';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
-import { LoginDto, IdentityDto, RegisterDto, ChangePasswordDto, VerifyDto } from './dto';
+import {
+  LoginDto,
+  IdentityDto,
+  RegisterDto,
+  ChangePasswordDto,
+  VerifyDto,
+  SwitchAccountDto,
+} from './dto';
 import { GoogleOAuthGuard } from './guards';
+import { AccessTokenGuard } from 'src/common/guards';
 
 @Controller({
   path: 'auth',
@@ -68,6 +76,16 @@ export class AuthController {
     return await this.authService.login(loginDto, session);
   }
 
+  @Post('switch-account')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AccessTokenGuard)
+  async switchAccount(
+    @Body(ValidationPipe) switchAccountDto: SwitchAccountDto,
+    @Session() session: ExpressSession
+  ) {
+    return await this.authService.switchAccount(switchAccountDto, session);
+  }
+
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
   async register(@Body(ValidationPipe) registerDto: RegisterDto) {
@@ -76,6 +94,7 @@ export class AuthController {
 
   @Post('logout')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(AccessTokenGuard)
   async logout(@Session() session: ExpressSession) {
     this.authService.logout(session);
   }
@@ -112,16 +131,16 @@ export class AuthController {
   }
 
   @Get('google')
-  @UseGuards(GoogleOAuthGuard)
   @HttpCode(HttpStatus.FOUND)
+  @UseGuards(GoogleOAuthGuard)
   async googleAuth() {
     // This route initiates the Google OAuth flow
     // The actual redirect is handled by the GoogleOAuthGuard
   }
 
   @Get('google/callback')
-  @UseGuards(GoogleOAuthGuard)
   @HttpCode(HttpStatus.FOUND)
+  @UseGuards(GoogleOAuthGuard)
   async googleAuthCallback(
     @Req() req: GoogleAuthRequest,
     @Session() session: ExpressSession,

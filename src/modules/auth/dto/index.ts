@@ -3,3 +3,4 @@ export { RegisterDto } from './register';
 export { IdentityDto } from './forgot-password';
 export { ChangePasswordDto } from './change-password';
 export { VerifyDto } from './verify';
+export { SwitchAccountDto } from './switch-account';
