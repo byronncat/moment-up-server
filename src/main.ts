@@ -1,5 +1,5 @@
 import type { NestExpressApplication } from '@nestjs/platform-express';
-import type { Request, Response } from 'express';
+import type { NextFunction, Request, Response } from 'express';
 
 import { NestFactory } from '@nestjs/core';
 import { VersioningType } from '@nestjs/common';
@@ -19,6 +19,8 @@ import * as path from 'path';
 
 import { WinstonModule } from 'nest-winston';
 import { createWinstonTransports } from './configurations';
+
+const CSRF_ERROR_CODE = 'EBADCSRFTOKEN';
 
 async function bootstrap() {
   let app: NestExpressApplication;
@@ -124,6 +126,11 @@ async function bootstrap() {
     ignoredMethods: ['GET', 'HEAD', 'OPTIONS'],
   });
   app.use(csrfSynchronisedProtection);
+  app.use((error: any, request: Request, response: Response, next: NextFunction) => {
+    if (error.code === CSRF_ERROR_CODE)
+      return response.status(403).json({ message: 'CSRF validation failed.' });
+    next(error);
+  });
 
   await app.listen(port!, () => {
     logger.log(`Server is running on http://localhost:${port}${prefix ? `/${prefix}` : ''}`);

@@ -8,8 +8,8 @@ import {
   Inject,
   HttpStatus,
 } from '@nestjs/common';
-import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 
 @Catch(HttpException)
 export class HttpExceptionFilter implements ExceptionFilter {
@@ -29,6 +29,15 @@ export class HttpExceptionFilter implements ExceptionFilter {
         status,
       }
     );
-    response.status(status).json(exception.getResponse());
+
+    const responsePayload =
+      status === HttpStatus.TOO_MANY_REQUESTS
+        ? {
+            statusCode: HttpStatus.TOO_MANY_REQUESTS,
+            message: 'Too many requests',
+          }
+        : exception.getResponse();
+
+    response.status(status).json(responsePayload);
   }
 }

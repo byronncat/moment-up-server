@@ -6,7 +6,7 @@ import { WinstonModule } from 'nest-winston';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { AuthModule, CoreModule, SuggestionModule, UserModule } from './modules';
 import { RequestLogger } from './common/interceptors';
-import { CsrfExceptionFilter, HttpExceptionFilter } from './common/filters';
+import { HttpExceptionFilter } from './common/filters';
 import { environment, createWinstonTransports } from './configurations';
 
 @Module({
@@ -35,7 +35,6 @@ import { environment, createWinstonTransports } from './configurations';
           limit: 10,
         },
       ],
-      errorMessage: 'Too many requests',
     }),
     JwtModule.registerAsync({
       global: true,
@@ -59,10 +58,6 @@ import { environment, createWinstonTransports } from './configurations';
     {
       provide: APP_INTERCEPTOR,
       useClass: RequestLogger,
-    },
-    {
-      provide: APP_FILTER,
-      useClass: CsrfExceptionFilter,
     },
     {
       provide: APP_FILTER,
