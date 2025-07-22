@@ -36,6 +36,22 @@ const consoleTransport = new winston.transports.Console({
         const url = httpData.url || 'UNKNOWN_URL';
         const status = httpData.status || 'UNKNOWN_STATUS';
 
+        const coloredMethod = (() => {
+          switch (method.toUpperCase()) {
+            case 'GET':
+              return colorizer.colorize('info', method);
+            case 'POST':
+              return colorizer.colorize('warn', method);
+            case 'PUT':
+            case 'PATCH':
+              return colorizer.colorize('debug', method);
+            case 'DELETE':
+              return colorizer.colorize('error', method);
+            default:
+              return colorizer.colorize('verbose', method);
+          }
+        })();
+
         const coloredStatus =
           typeof status === 'number'
             ? status >= 200 && status < 300
@@ -45,7 +61,7 @@ const consoleTransport = new winston.transports.Console({
                 : colorizer.colorize('error', `${status}`)
             : status;
 
-        return `${coloredContext} ${padString(String(timestamp), 22)} ${padString('HTTP', 7, 'right')} [${method}] ${coloredStatus} ${url}`;
+        return `${coloredContext} ${padString(String(timestamp), 22)} ${padString('HTTP', 7, 'right')} [${coloredMethod}] ${coloredStatus} ${url}`;
       }
 
       // === Other Logs ===
