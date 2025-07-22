@@ -19,13 +19,15 @@ export class SuggestionController {
   @UseGuards(AccessTokenGuard)
   async getUserSuggestions(@AccessToken() accessToken: JwtPayload) {
     const { sub: userId } = accessToken;
-    return await this.suggestionService.getUser(userId);
+    return {
+      users: await this.suggestionService.getUser(userId),
+    };
   }
 
   @Get('trending')
   @HttpCode(HttpStatus.OK)
   async getHashtagSuggestions() {
-    return await this.suggestionService.getTrending();
+    return { topics: await this.suggestionService.getTrending() };
   }
 
   @Post('trending/report')

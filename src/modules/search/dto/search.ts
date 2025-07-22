@@ -1,13 +1,33 @@
 import { Type } from 'class-transformer';
-import { IsIn, IsNotEmpty, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsOptional, IsString, Min, Validate } from 'class-validator';
+import { ValidatorConstraint, ValidatorConstraintInterface } from 'class-validator';
+
+@ValidatorConstraint({ name: 'isValidSearchTypes', async: false })
+export class IsValidSearchTypes implements ValidatorConstraintInterface {
+  validate(value: any) {
+    if (typeof value !== 'string') return false;
+
+    const allowedTypes = ['user', 'post', 'hashtag'];
+    const types = value.split('&').map((type) => type.trim());
+
+    const uniqueTypes = [...new Set(types)];
+    return (
+      uniqueTypes.every((type) => allowedTypes.includes(type)) &&
+      uniqueTypes.length === types.length
+    );
+  }
+
+  defaultMessage() {
+    return 'Type must contain only valid values (user, post, hashtag) separated by & with no duplicates';
+  }
+}
 
 export class SearchDto {
   @IsString({ message: 'Query must be a string' })
   @IsNotEmpty({ message: 'Query is required' })
   query: string;
 
-  @IsIn(['user', 'post', 'hashtag'], { message: 'Type must be one of: user, post, hashtag' })
-  @IsString({ message: 'Type must be a string' })
+  @Validate(IsValidSearchTypes)
   @IsOptional()
   type?: string;
 

@@ -1,5 +1,5 @@
 declare module 'api' {
-  import type { User, Moment, CloudinaryFile } from 'schema';
+  import type { User, Moment, CloudinaryFile, Hashtag } from 'schema';
   interface AccountPayload {
     id: User['id'];
     email: User['email'];
@@ -23,7 +23,7 @@ declare module 'api' {
     updatedAt: Moment['updatedAt'];
   }
 
-  interface UserData {
+  interface UserPayload {
     id: User['id'];
     email: User['email'];
     username: User['username'];
@@ -46,14 +46,19 @@ declare module 'api' {
 
   interface MomentPayload {
     id: Moment['id'];
-    user: UserData;
+    user: UserPayload;
     post: MomentData;
+  }
+
+  interface HashtagPayload {
+    id: Hashtag['id'];
+    count: number;
   }
 
   interface PaginationPayload<T> {
     total: number;
     page: number;
     limit: number;
-    data: T[];
+    items: T[];
   }
 }

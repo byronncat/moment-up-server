@@ -21,9 +21,9 @@ export enum ReportType {
   HARMFUL,
 }
 
-export enum SearchType {
+export enum SearchItemType {
   USER,
+  QUERY,
   HASHTAG,
-  SEARCH,
   POST,
 }

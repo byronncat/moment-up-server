@@ -65,9 +65,7 @@ export class AuthService {
       if (account) {
         const newAccessToken = await this.createJwtToken(account.id, ACCESS_TOKEN_MAX_AGE);
         session.user.jti = newAccessToken.jti;
-        return {
-          accessToken: newAccessToken.value,
-        };
+        return newAccessToken.value;
       }
     }
     this.clearAuthState(session);
@@ -79,9 +77,7 @@ export class AuthService {
     const account = await this.userService.getAccountById(userId);
     if (!account) throw new UnauthorizedException('User not authenticated');
 
-    return {
-      user: account,
-    };
+    return account;
   }
 
   public async login(data: LoginDto, session: ExpressSession) {
@@ -133,9 +129,7 @@ export class AuthService {
       }
     );
 
-    return {
-      user: this.userService.parseToAccountPayload(newUser),
-    };
+    return this.userService.parseToAccountPayload(newUser);
   }
 
   public logout(session: ExpressSession) {

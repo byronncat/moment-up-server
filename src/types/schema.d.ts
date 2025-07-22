@@ -43,7 +43,7 @@ declare module 'schema' {
   type SearchHistory = {
     readonly id: string;
     readonly userId: User['id'];
-    readonly type: number; // SearchType enum
+    readonly type: number; // SearchItemType enum
     readonly query: string;
     readonly createdAt: Date | string;
   };

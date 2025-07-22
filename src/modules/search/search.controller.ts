@@ -16,7 +16,9 @@ export class SearchController {
   @HttpCode(HttpStatus.OK)
   @UseGuards(AccessTokenGuard)
   async search(@Query() searchDto: SearchDto) {
-    return this.searchService.search(searchDto);
+    return {
+      items: await this.searchService.search(searchDto),
+    };
   }
 
   @Get('history')
@@ -25,6 +27,8 @@ export class SearchController {
   async getSearchHistory(@AccessToken() accessToken: JwtPayload, @Query() historyDto: HistoryDto) {
     const { sub: userId } = accessToken;
     const { limit } = historyDto;
-    return this.searchService.getSearchHistory(userId, limit);
+    return {
+      history: await this.searchService.getSearchHistory(userId, limit),
+    };
   }
 }

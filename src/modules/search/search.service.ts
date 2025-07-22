@@ -1,30 +1,23 @@
 import { mockSearches } from 'src/__mocks__/search';
 import { mockMoments } from 'src/__mocks__/moment';
-import type { User, Hashtag } from 'schema';
-import type { MomentPayload, PaginationPayload } from 'api';
-import { SearchType } from 'src/common/constants';
+import type { AccountPayload, HashtagPayload, MomentPayload } from 'api';
+import { SearchItemType } from 'src/common/constants';
 
-interface UserSearchData {
-  id: User['id'];
-  type: SearchType.USER;
-  username: User['username'];
-  displayName: User['displayName'];
-  avatar?: User['avatar'];
+export interface UserSearchData extends AccountPayload {
+  type: SearchItemType.USER;
 }
 
-interface QuerySearchData {
+export interface QuerySearchData {
   id: string;
-  type: SearchType.SEARCH;
+  type: SearchItemType.QUERY;
 }
 
-interface HashtagSearchData {
-  id: Hashtag['id'];
-  type: SearchType.HASHTAG;
-  count: number;
+export interface HashtagSearchData extends HashtagPayload {
+  type: SearchItemType.HASHTAG;
 }
 
-interface MomentData extends MomentPayload {
-  type: SearchType.POST;
+export interface MomentData extends MomentPayload {
+  type: SearchItemType.POST;
 }
 
 export type SearchPayload = UserSearchData | QuerySearchData | HashtagSearchData | MomentData;
@@ -42,11 +35,11 @@ interface SearchData {
 
 @Injectable()
 export class SearchService {
-  public async search(searchData: SearchData): Promise<PaginationPayload<SearchPayload>> {
+  public async search(searchData: SearchData) {
     const { query, type, page, limit } = searchData;
 
     const momentData: SearchPayload[] = mockMoments.map((moment) => ({
-      type: SearchType.POST,
+      type: SearchItemType.POST,
       ...moment,
     }));
 
@@ -57,16 +50,16 @@ export class SearchService {
         const searchTerm = query.toLowerCase();
 
         switch (item.type) {
-          case SearchType.USER:
+          case SearchItemType.USER:
             return (
               item.username?.toLowerCase().includes(searchTerm) ||
               item.displayName?.toLowerCase().includes(searchTerm)
             );
-          case SearchType.HASHTAG:
+          case SearchItemType.QUERY:
             return item.id.toLowerCase().includes(searchTerm);
-          case SearchType.SEARCH:
+          case SearchItemType.HASHTAG:
             return item.id.toLowerCase().includes(searchTerm);
-          case SearchType.POST:
+          case SearchItemType.POST:
             return (
               (item as any).user?.username?.toLowerCase().includes(searchTerm) ||
               (item as any).user?.displayName?.toLowerCase().includes(searchTerm) ||
@@ -79,32 +72,32 @@ export class SearchService {
     }
 
     if (type) {
-      const searchType = parseInt(type) as SearchType;
-      allData = allData.filter((item) => item.type === searchType);
+      const typeMapping: Record<string, SearchItemType> = {
+        user: SearchItemType.USER,
+        post: SearchItemType.POST,
+        hashtag: SearchItemType.HASHTAG,
+      };
+
+      const allowedTypes = type.split('&').map((t) => t.trim());
+      const searchItemTypes = allowedTypes
+        .map((t) => typeMapping[t])
+        .filter((t) => t !== undefined);
+
+      if (searchItemTypes.length > 0) {
+        allData = allData.filter((item) => searchItemTypes.includes(item.type));
+      }
     }
 
     const startIndex = (page - 1) * limit;
     const endIndex = startIndex + limit;
     const paginatedData = allData.slice(startIndex, endIndex);
 
-    return {
-      total: allData.length,
-      page,
-      limit,
-      data: paginatedData,
-    };
+    return paginatedData;
   }
 
-  public async getSearchHistory(
-    userId: string,
-    limit: number
-  ): Promise<{
-    history: SearchPayload[];
-  }> {
+  public async getSearchHistory(userId: string, limit: number) {
     console.log(userId, limit);
-    const limitedData = mockSearches.slice(0, limit) as SearchPayload[];
-    return {
-      history: limitedData,
-    };
+    const limitedData: Exclude<SearchPayload, MomentData>[] = mockSearches.slice(0, limit);
+    return limitedData;
   }
 }

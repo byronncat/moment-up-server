@@ -52,13 +52,15 @@ export class AuthController {
   @Get('refresh')
   @HttpCode(HttpStatus.OK)
   async refresh(@Session() session: ExpressSession) {
-    return await this.authService.refresh(session);
+    return {
+      accessToken: await this.authService.refresh(session),
+    };
   }
 
   @Get('me')
   @HttpCode(HttpStatus.OK)
   async me(@Session() session: ExpressSession, @AccessToken() accessToken?: JwtPayload) {
-    return await this.authService.currentUser(session, accessToken);
+    return { user: await this.authService.currentUser(session, accessToken) };
   }
 
   @Get('verify')
@@ -89,7 +91,7 @@ export class AuthController {
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
   async register(@Body(ValidationPipe) registerDto: RegisterDto) {
-    return await this.authService.register(registerDto);
+    return { user: await this.authService.register(registerDto) };
   }
 
   @Post('logout')

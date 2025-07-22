@@ -1,39 +1,10 @@
-import type { Hashtag, User } from 'schema';
+import type { UserPayload, HashtagPayload } from 'api';
 import { getRandomFile } from './file';
 
-interface AccountInfo {
-  id: User['id'];
-  username: User['username'];
-  displayName: User['displayName'];
-  avatar?: User['avatar'];
-}
-
-interface UserInfo extends AccountInfo {
-  bio?: User['bio'];
-  backgroundImage?: User['backgroundImage'];
-  followers: number;
-  following: number;
-  hasFeed: boolean;
-}
-
-interface UserProfileInfo extends UserInfo {
-  isFollowing?: boolean;
-}
-
-export interface UserCardDisplayInfo extends Omit<UserProfileInfo, 'backgroundImage'> {
-  followedBy?: {
-    count: number;
-    displayItems: {
-      id: string;
-      displayName: string;
-      avatar?: string;
-    }[];
-  };
-}
-
-export const mockSuggestedUsers: UserCardDisplayInfo[] = [
+export const mockSuggestedUsers: UserPayload[] = [
   {
     id: '057b50c5-4646-42bf-98ea-933c108f2671',
+    email: 'werner.bale@example.com',
     username: 'wbale0',
     displayName: 'Werner Bale',
     bio: 'Travel photographer | Adventure seeker | Coffee enthusiast',
@@ -54,6 +25,7 @@ export const mockSuggestedUsers: UserCardDisplayInfo[] = [
   },
   {
     id: 'ca0f9eb5-c789-4e50-9f8c-457ff3b9f964',
+    email: 'jason.chen@example.com',
     username: 'tech_jason',
     displayName: 'Jason Chen',
     avatar: getRandomFile('ca0f9eb5-c789-4e50-9f8c-457ff3b9f964'),
@@ -64,6 +36,7 @@ export const mockSuggestedUsers: UserCardDisplayInfo[] = [
   },
   {
     id: '90946704-51dc-4a73-9f56-99531bc3db7b',
+    email: 'sophie.rodriguez@example.com',
     username: 'foodie_sophie',
     displayName: 'Sophie Rodriguez',
     avatar: getRandomFile('90946704-51dc-4a73-9f56-99531bc3db7b'),
@@ -90,6 +63,7 @@ export const mockSuggestedUsers: UserCardDisplayInfo[] = [
   },
   {
     id: '92a1e004-8ddf-46ab-8811-28a6e1bb7a60',
+    email: 'marcus.johnson@example.com',
     username: 'fitness_marcus',
     displayName: 'Marcus Johnson',
     avatar: getRandomFile('92a1e004-8ddf-46ab-8811-28a6e1bb7a60'),
@@ -101,6 +75,7 @@ export const mockSuggestedUsers: UserCardDisplayInfo[] = [
   },
   {
     id: 'e879fbc3-4438-47c0-a68e-87c6a9e2fa59',
+    email: 'maya.patel@example.com',
     username: 'artist_maya',
     displayName: 'Maya Patel',
     avatar: getRandomFile('e879fbc3-4438-47c0-a68e-87c6a9e2fa59'),
@@ -132,6 +107,7 @@ export const mockSuggestedUsers: UserCardDisplayInfo[] = [
   },
   {
     id: '6a5d499b-073e-4253-890b-2f739b1de380',
+    email: 'noah.garcia@example.com',
     username: 'music_noah',
     displayName: 'Noah Garcia',
     avatar: getRandomFile('6a5d499b-073e-4253-890b-2f739b1de380'),
@@ -158,6 +134,7 @@ export const mockSuggestedUsers: UserCardDisplayInfo[] = [
   },
   {
     id: '6a635b66-9923-4539-8a9c-5a12a14f879b',
+    email: 'olivia.thompson@example.com',
     username: 'writer_olivia',
     displayName: 'Olivia Thompson',
     avatar: getRandomFile('6a635b66-9923-4539-8a9c-5a12a14f879b'),
@@ -178,6 +155,7 @@ export const mockSuggestedUsers: UserCardDisplayInfo[] = [
   },
   {
     id: 'ffaeecbd-58a5-4235-95f5-f51c2471a842',
+    email: 'huhi.fevercell@example.com',
     username: 'huhi_1211',
     displayName: 'huhi | fevercell',
     avatar: getRandomFile('ffaeecbd-58a5-4235-95f5-f51c2471a842'),
@@ -199,34 +177,25 @@ export const mockSuggestedUsers: UserCardDisplayInfo[] = [
   },
 ];
 
-export interface HashtagItem extends Hashtag {
-  count: number;
-}
-
-export const mockTrendingTopics: HashtagItem[] = [
+export const mockTrendingTopics: HashtagPayload[] = [
   {
     id: 'ChatGPT',
     count: Math.floor(Math.random() * 1000000) + 1000000,
-    createdAt: new Date(),
   },
   {
     id: '2025',
     count: Math.floor(Math.random() * 1000000) + 1000000,
-    createdAt: new Date(),
   },
   {
     id: 'javascript',
     count: Math.floor(Math.random() * 1000000) + 1000000,
-    createdAt: new Date(),
   },
   {
     id: 'play',
     count: Math.floor(Math.random() * 1000000) + 1000000,
-    createdAt: new Date(),
   },
   {
     id: 'beauty',
     count: Math.floor(Math.random() * 1000000) + 1000000,
-    createdAt: new Date(),
   },
 ];
