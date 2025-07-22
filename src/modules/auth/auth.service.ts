@@ -58,7 +58,6 @@ export class AuthService {
   ) {}
 
   public async refresh(session: ExpressSession) {
-    console.log(session.user);
     if (session.user) {
       const userId = session.user.sub;
       const account = await this.userService.getAccountById(userId);

@@ -1,2 +1,3 @@
 export { SearchDto } from './search';
-export { HistoryDto } from './history';
+export { GetHistoryDto } from './history-get';
+export { DeleteHistoryDto } from './history-delete';

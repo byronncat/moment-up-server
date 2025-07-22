@@ -1,7 +1,17 @@
 import type { JwtPayload } from 'library';
-import { Controller, Get, HttpCode, HttpStatus, Query, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Query,
+  UseGuards,
+  ValidationPipe,
+} from '@nestjs/common';
 import { SearchService } from './search.service';
-import { HistoryDto, SearchDto } from './dto';
+import { DeleteHistoryDto, GetHistoryDto, SearchDto } from './dto';
 import { AccessTokenGuard } from 'src/common/guards';
 import { AccessToken } from 'src/common/decorators';
 
@@ -24,11 +34,29 @@ export class SearchController {
   @Get('history')
   @HttpCode(HttpStatus.OK)
   @UseGuards(AccessTokenGuard)
-  async getSearchHistory(@AccessToken() accessToken: JwtPayload, @Query() historyDto: HistoryDto) {
+  async getHistory(@AccessToken() accessToken: JwtPayload, @Query() getHistoryDto: GetHistoryDto) {
     const { sub: userId } = accessToken;
-    const { limit } = historyDto;
     return {
-      history: await this.searchService.getSearchHistory(userId, limit),
+      history: await this.searchService.getSearchHistory(userId, getHistoryDto.limit),
     };
+  }
+
+  @Delete('history/clear')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(AccessTokenGuard)
+  async clearHistory(@AccessToken() accessToken: JwtPayload) {
+    const { sub: userId } = accessToken;
+    await this.searchService.clearSearchHistory(userId);
+  }
+
+  @Delete('history/:itemId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(AccessTokenGuard)
+  async removeHistoryItem(
+    @AccessToken() accessToken: JwtPayload,
+    @Param(ValidationPipe) deleteHistoryDto: DeleteHistoryDto
+  ) {
+    const { sub: userId } = accessToken;
+    await this.searchService.removeSearchHistoryItem(userId, deleteHistoryDto.itemId);
   }
 }

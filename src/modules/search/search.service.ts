@@ -96,8 +96,19 @@ export class SearchService {
   }
 
   public async getSearchHistory(userId: string, limit: number) {
-    console.log(userId, limit);
     const limitedData: Exclude<SearchPayload, MomentData>[] = mockSearches.slice(0, limit);
     return limitedData;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  public async clearSearchHistory(userId: string) {
+    // In a real application, this would clear the search history from the database.
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  public async removeSearchHistoryItem(userId: string, itemId: string) {
+    // In a real application, this would remove the specific item from the user's search history.
+    await new Promise((resolve) => setTimeout(resolve, 3000));
   }
 }
