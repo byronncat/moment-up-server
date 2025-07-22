@@ -18,8 +18,7 @@ export class UserController {
   @UseGuards(AccessTokenGuard)
   async followUser(@AccessToken() accessToken: JwtPayload, @Param('id') targetUserId: string) {
     const currentUserId = accessToken.sub;
-    await this.userService.follow(currentUserId, targetUserId);
-    return;
+    return await this.userService.follow(currentUserId, targetUserId);
   }
 
   @Delete(':id/unfollow')
@@ -28,6 +27,5 @@ export class UserController {
   async unfollowUser(@AccessToken() accessToken: JwtPayload, @Param('id') targetUserId: string) {
     const currentUserId = accessToken.sub;
     await this.userService.unfollow(currentUserId, targetUserId);
-    return;
   }
 }

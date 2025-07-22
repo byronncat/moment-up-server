@@ -1,7 +1,10 @@
 import { accounts } from '../../__mocks__/auth';
 import { follows } from '../../__mocks__/follow';
 import type { User, Follow } from 'schema';
+import type { AccountPayload } from 'api';
 import type { GoogleUser } from 'library';
+
+type UniqueUserId = User['id'] | User['email'] | User['username'];
 
 import {
   Injectable,
@@ -16,15 +19,37 @@ export class UserService {
   private readonly accounts = accounts;
   private readonly follows = follows;
 
-  public async getById(sub: string | undefined): Promise<User | undefined> {
-    return this.accounts.find(
-      (account) => account.id === sub || account.username === sub || account.email === sub
-    ) as User | undefined;
+  public parseToAccountPayload(user: User) {
+    const result: AccountPayload = {
+      id: user.id,
+      email: user.email,
+      username: user.username,
+      displayName: user.displayName,
+      avatar: user.avatar,
+    };
+    return result;
+  }
+
+  public async getById(id: UniqueUserId | undefined) {
+    const user: User | undefined = this.accounts.find(
+      (account) => account.id === id || account.username === id || account.email === id
+    );
+    if (!user) return null;
+    return user;
+  }
+
+  public async getAccountById(id: UniqueUserId | undefined) {
+    const user: User | undefined = this.accounts.find(
+      (acc) => acc.id === id || acc.email === id || acc.username === id
+    );
+    if (!user) return null;
+    const account: AccountPayload = this.parseToAccountPayload(user);
+    return account;
   }
 
   public async addCredentialUser(
     userData: Required<Pick<User, 'email' | 'username' | 'password'>>
-  ): Promise<User> {
+  ) {
     const newUser: User = {
       id: Auth.generateId('uuid'),
       username: userData.username,
@@ -33,11 +58,11 @@ export class UserService {
       password: userData.password,
       blocked: false,
       verified: false,
-      hasFeed: false,
       avatar: null,
       backgroundImage: null,
       bio: null,
-      created_at: new Date(),
+      updatedAt: new Date(),
+      createdAt: new Date(),
     };
 
     this.accounts.push(newUser);
@@ -57,19 +82,19 @@ export class UserService {
       email: googleData.email,
       blocked: false,
       verified: true,
-      hasFeed: false,
       password: null,
       avatar: googleData.picture || null,
       backgroundImage: null,
       bio: null,
-      created_at: new Date(),
+      updatedAt: new Date(),
+      createdAt: new Date(),
     };
 
     this.accounts.push(newUser);
     return newUser;
   }
 
-  public async updatePassword(userId: string, hashedPassword: string): Promise<User | null> {
+  public async updatePassword(userId: User['id'], hashedPassword: User['password']) {
     const userIndex = this.accounts.findIndex((account) => account.id === userId);
     if (userIndex === -1) return null;
 
@@ -77,7 +102,7 @@ export class UserService {
     return this.accounts[userIndex] as User;
   }
 
-  public async verifyEmail(userId: string): Promise<User | null> {
+  public async verifyEmail(userId: User['id']) {
     const userIndex = this.accounts.findIndex((account) => account.id === userId);
     if (userIndex === -1) return null;
     this.accounts[userIndex].verified = true;
@@ -106,9 +131,12 @@ export class UserService {
       id: Auth.generateId('uuid'),
       followerId: currentUserId,
       followingId: targetUserId,
-      created_at: new Date(),
+      createdAt: new Date(),
     };
     this.follows.push(newFollow);
+    return {
+      follow: newFollow,
+    };
   }
 
   public async unfollow(currentUserId: User['id'], targetUserId: User['id']) {

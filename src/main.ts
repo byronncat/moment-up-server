@@ -2,7 +2,7 @@ import type { NestExpressApplication } from '@nestjs/platform-express';
 import type { NextFunction, Request, Response } from 'express';
 
 import { NestFactory } from '@nestjs/core';
-import { VersioningType } from '@nestjs/common';
+import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
 import { COOKIE_NAME } from './common/constants';
@@ -40,6 +40,15 @@ async function bootstrap() {
     });
   } else app = await NestFactory.create(AppModule);
   app.set('trust proxy', 1);
+
+  // === Global Pipes ===
+  app.useGlobalPipes(
+    new ValidationPipe({
+      transform: true,
+      whitelist: true,
+      forbidNonWhitelisted: true,
+    })
+  );
 
   // === Configurations ===
   const configService = app.get(ConfigService);

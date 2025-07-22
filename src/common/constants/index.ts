@@ -13,10 +13,17 @@ export const URL = {
 };
 
 export enum ReportType {
-  NOT_RELEVANT = 0,
-  SPAM = 1,
-  ABUSIVE = 2,
-  NOT_INTERESTED = 3,
-  DUPLICATE = 4,
-  HARMFUL = 5,
+  NOT_RELEVANT,
+  SPAM,
+  ABUSIVE,
+  NOT_INTERESTED,
+  DUPLICATE,
+  HARMFUL,
+}
+
+export enum SearchType {
+  USER,
+  HASHTAG,
+  SEARCH,
+  POST,
 }

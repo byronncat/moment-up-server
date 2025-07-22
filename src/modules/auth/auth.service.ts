@@ -4,6 +4,8 @@ import type { User } from 'schema';
 
 type EmailTemplate = 'otp' | 'verify' | 'welcome';
 
+// === Service ===
+
 import {
   ForbiddenException,
   Injectable,
@@ -37,7 +39,7 @@ const DEFAULT_MAX_AGE = 3 * 24 * 60 * 60 * 1000; // 3 days
 const OTP_MAX_AGE = 5 * 60 * 1000; // 5 minutes
 const VERIFICATION_TOKEN_MAX_AGE = '30m';
 const REFRESH_TOKEN_MAX_AGE = 365 * 24 * 60 * 60 * 1000; // 1 year
-const ACCESS_TOKEN_MAX_AGE = '7s';
+const ACCESS_TOKEN_MAX_AGE = '2h';
 
 @Injectable()
 export class AuthService {
@@ -59,7 +61,7 @@ export class AuthService {
     console.log(session.user);
     if (session.user) {
       const userId = session.user.sub;
-      const account = await this.userService.getById(userId);
+      const account = await this.userService.getAccountById(userId);
       if (account) {
         const newAccessToken = await this.createJwtToken(account.id, ACCESS_TOKEN_MAX_AGE);
         session.user.jti = newAccessToken.jti;
@@ -74,7 +76,7 @@ export class AuthService {
 
   public async currentUser(session: ExpressSession, accessToken?: JwtPayload) {
     const userId = accessToken?.sub || session.user?.sub;
-    const account = await this.userService.getById(userId);
+    const account = await this.userService.getAccountById(userId);
     if (!account) throw new UnauthorizedException('User not authenticated');
 
     return {
@@ -97,15 +99,15 @@ export class AuthService {
 
     return {
       accessToken: accessToken.value,
-      user: account,
+      user: this.userService.parseToAccountPayload(account),
     };
   }
 
   public async register(data: RegisterDto) {
-    const existingUser = await this.userService.getById(data.email);
+    const existingUser = await this.userService.getAccountById(data.email);
     if (existingUser) throw new ConflictException('User with this email already exists');
 
-    const existingUsername = await this.userService.getById(data.username);
+    const existingUsername = await this.userService.getAccountById(data.username);
     if (existingUsername) throw new ConflictException('Username already taken');
 
     const hashedPassword = await Auth.hash(data.password, this.saltRounds);
@@ -132,7 +134,7 @@ export class AuthService {
     );
 
     return {
-      user: newUser,
+      user: this.userService.parseToAccountPayload(newUser),
     };
   }
 
@@ -157,7 +159,7 @@ export class AuthService {
       });
     }
 
-    const account = await this.userService.getById(payload.sub);
+    const account = await this.userService.getAccountById(payload.sub);
     if (!account) {
       return this.hbsService.renderSuccessTemplate('failure', {
         ...baseContext,
@@ -178,7 +180,7 @@ export class AuthService {
   }
 
   public async sendOtpEmail(data: IdentityDto, session: ExpressSession) {
-    const account = await this.userService.getById(data.identity);
+    const account = await this.userService.getAccountById(data.identity);
     if (account) {
       const otpConfig = {
         expirationTimeMs: OTP_MAX_AGE,
@@ -209,7 +211,7 @@ export class AuthService {
     if (!otp || !Otp.verify(session, data.otp, 'password-reset'))
       throw new UnauthorizedException('OTP expired. Please request a new one.');
 
-    const account = await this.userService.getById(otp.uid);
+    const account = await this.userService.getAccountById(otp.uid);
     if (!account) throw new NotFoundException('User not found');
 
     const hashedPassword = await Auth.hash(data.newPassword, this.saltRounds);
@@ -238,7 +240,7 @@ export class AuthService {
 
       return {
         accessToken: accessToken.value,
-        user: account,
+        user: this.userService.parseToAccountPayload(account),
       };
     } catch (error) {
       this.logger.error(`Google login failed: ${error.message}`, {
@@ -260,7 +262,7 @@ export class AuthService {
 
     return {
       accessToken: accessToken.value,
-      user: account,
+      user: this.userService.parseToAccountPayload(account),
     };
   }
 
@@ -326,9 +328,9 @@ export class AuthService {
    * Using sync version of verifyJwtToken to avoid blocking the event loop.
    */
 
-  private async verifyJwtToken(token: string): Promise<JwtPayload | null> {
+  private async verifyJwtToken(token: string) {
     try {
-      const payload = await this.jwtService.verifyAsync(token, {
+      const payload: JwtPayload = await this.jwtService.verifyAsync(token, {
         secret: this.jwtSecret,
       });
       return payload;

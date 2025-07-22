@@ -13,7 +13,7 @@ interface UserInfo extends AccountInfo {
   backgroundImage?: User['backgroundImage'];
   followers: number;
   following: number;
-  hasFeed: User['hasFeed'];
+  hasFeed: boolean;
 }
 
 interface UserProfileInfo extends UserInfo {
@@ -207,21 +207,26 @@ export const mockTrendingTopics: HashtagItem[] = [
   {
     id: 'ChatGPT',
     count: Math.floor(Math.random() * 1000000) + 1000000,
+    createdAt: new Date(),
   },
   {
     id: '2025',
     count: Math.floor(Math.random() * 1000000) + 1000000,
+    createdAt: new Date(),
   },
   {
     id: 'javascript',
     count: Math.floor(Math.random() * 1000000) + 1000000,
+    createdAt: new Date(),
   },
   {
     id: 'play',
     count: Math.floor(Math.random() * 1000000) + 1000000,
+    createdAt: new Date(),
   },
   {
     id: 'beauty',
     count: Math.floor(Math.random() * 1000000) + 1000000,
+    createdAt: new Date(),
   },
 ];

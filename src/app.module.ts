@@ -4,7 +4,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { APP_INTERCEPTOR, APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { WinstonModule } from 'nest-winston';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
-import { AuthModule, CoreModule, SuggestionModule, UserModule } from './modules';
+import { AuthModule, CoreModule, SearchModule, SuggestionModule, UserModule } from './modules';
 import { RequestLogger } from './common/interceptors';
 import { HttpExceptionFilter } from './common/filters';
 import { environment, createWinstonTransports } from './configurations';
@@ -48,6 +48,7 @@ import { environment, createWinstonTransports } from './configurations';
     AuthModule,
     CoreModule,
     SuggestionModule,
+    SearchModule,
     UserModule,
   ],
   providers: [
