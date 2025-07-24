@@ -1,9 +1,11 @@
 import { Module } from '@nestjs/common';
 import { CoreController } from './core.controller';
-import { CoreService } from './core.service';
+import { MomentService } from './moment.service';
+import { FeedService } from './feed.service';
+import { UserService } from '../user/user.service';
 
 @Module({
   controllers: [CoreController],
-  providers: [CoreService],
+  providers: [MomentService, FeedService, UserService],
 })
 export class CoreModule {}

@@ -1,6 +1,7 @@
 import { Type } from 'class-transformer';
 import { IsNotEmpty, IsNumber, IsOptional, IsString, Min, Validate } from 'class-validator';
 import { ValidatorConstraint, ValidatorConstraintInterface } from 'class-validator';
+import { INITIAL_PAGE } from 'src/common/constants';
 
 @ValidatorConstraint({ name: 'isValidSearchTypes', async: false })
 export class IsValidSearchTypes implements ValidatorConstraintInterface {
@@ -35,7 +36,7 @@ export class SearchDto {
   @Min(1, { message: 'Page must be greater than 0' })
   @IsNumber({ allowNaN: false, allowInfinity: false }, { message: 'Page must be a number' })
   @IsOptional()
-  page: number = 1;
+  page: number = INITIAL_PAGE;
 
   @Type(() => Number)
   @Min(1, { message: 'Limit must be greater than 0' })

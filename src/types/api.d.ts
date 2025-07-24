@@ -1,5 +1,5 @@
 declare module 'api' {
-  import type { User, Moment, CloudinaryFile, Hashtag } from 'schema';
+  import type { User, Moment, CloudinaryFile, Hashtag, Feed } from 'schema';
   interface AccountPayload {
     id: User['id'];
     email: User['email'];
@@ -8,7 +8,7 @@ declare module 'api' {
     avatar?: User['avatar'];
   }
 
-  interface MomentData {
+  interface PostPayload {
     text?: Moment['text'];
     files?: {
       id: string;
@@ -47,7 +47,7 @@ declare module 'api' {
   interface MomentPayload {
     id: Moment['id'];
     user: UserPayload;
-    post: MomentData;
+    post: PostPayload;
   }
 
   interface HashtagPayload {
@@ -55,10 +55,19 @@ declare module 'api' {
     count: number;
   }
 
+  interface FeedNotificationPayload {
+    id: Feed['id'];
+    userId: User['id'];
+    displayName: User['displayName'];
+    avatar?: User['avatar'];
+    viewed: boolean;
+  }
+
   interface PaginationPayload<T> {
     total: number;
     page: number;
     limit: number;
+    hasNextPage: boolean;
     items: T[];
   }
 }

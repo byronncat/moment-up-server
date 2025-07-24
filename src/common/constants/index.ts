@@ -12,6 +12,8 @@ export const URL = {
   FACEBOOK: 'https://www.facebook.com/profile.php?id=100085017111681',
 };
 
+export const INITIAL_PAGE = 1;
+
 export enum ReportType {
   NOT_RELEVANT,
   SPAM,

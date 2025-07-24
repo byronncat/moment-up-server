@@ -76,6 +76,13 @@ declare module 'schema' {
     readonly createdAt: Date | string;
   };
 
+  type FeedView = {
+    readonly id: string;
+    readonly userId: User['id'];
+    readonly feedId: Feed['id'];
+    readonly createdAt: Date | string;
+  };
+
   // === MongoDB ===
   type CloudinaryFile = {
     readonly id: string; // Public ID
