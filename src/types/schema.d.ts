@@ -1,16 +1,19 @@
 declare module 'schema' {
+  import { ProfileVisibility } from 'common/constants';
+
   // === SQL ===
   type User = {
     readonly id: string;
     readonly username: string;
     displayName: string;
     email: string;
-    blocked: boolean;
-    verified: boolean;
     password: string | null;
     avatar: string | null;
     backgroundImage: string | null;
     bio: string | null;
+    blocked: boolean;
+    verified: boolean;
+    profileVisibility: ProfileVisibility;
     updatedAt: Date | string;
     readonly createdAt: Date | string;
   };
@@ -54,6 +57,12 @@ declare module 'schema' {
   };
 
   // === Relationships ===
+  type Block = {
+    readonly id: string;
+    readonly userId: User['id'];
+    readonly blockedUserId: User['id'];
+    readonly createdAt: Date | string;
+  };
 
   type Follow = {
     readonly id: string;
@@ -73,6 +82,15 @@ declare module 'schema' {
     readonly id: string;
     readonly userId: User['id'];
     readonly momentId: Moment['id'];
+    readonly createdAt: Date | string;
+  };
+
+  type Repost = {
+    readonly id: string;
+    readonly userId: User['id'];
+    readonly momentId: Moment['id'];
+    comment: string | null;
+    audience: number; // Audience enum
     readonly createdAt: Date | string;
   };
 

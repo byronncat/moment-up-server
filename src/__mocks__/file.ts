@@ -1,7 +1,5 @@
 export const sound1 = './1.mp3';
 export const sound2 = './2.mp3';
-export const video1 = './car-riding.mp4';
-export const video2 = './and.mp4';
 
 const avatarFiles = [
   'https://pbs.twimg.com/media/GgHsZ5vakAAz5jI?format=jpg&name=large',

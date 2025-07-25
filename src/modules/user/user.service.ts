@@ -1,7 +1,10 @@
 import { accounts } from '../../__mocks__/auth';
 import { follows } from '../../__mocks__/follow';
+import { getRandomFile } from 'src/__mocks__/file';
+import { faker } from '@faker-js/faker';
+
 import type { User, Follow } from 'schema';
-import type { AccountPayload } from 'api';
+import type { AccountPayload, ProfilePayload } from 'api';
 import type { GoogleUser } from 'library';
 
 type UniqueUserId = User['id'] | User['email'] | User['username'];
@@ -13,6 +16,7 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { Auth } from 'src/common/helpers';
+import { ProfileVisibility } from 'src/common/constants';
 
 @Injectable()
 export class UserService {
@@ -47,6 +51,23 @@ export class UserService {
     return account;
   }
 
+  public async getProfileByUsername(username: User['username']) {
+    const user = this.accounts.find((acc) => acc.username === username);
+    // if (!user) return null;
+    const profile: ProfilePayload = {
+      id: user?.id || faker.string.uuid(),
+      email: user?.email || faker.internet.email(),
+      username: user?.username || username,
+      displayName: user?.displayName || faker.person.fullName(),
+      avatar: user?.avatar || getRandomFile(username),
+      bio: user?.bio || !user ? faker.lorem.paragraph() : null,
+      followers: faker.number.int({ min: 0, max: 1000 }),
+      following: faker.number.int({ min: 0, max: 1000 }),
+      hasFeed: true,
+    };
+    return profile;
+  }
+
   public async addCredentialUser(
     userData: Required<Pick<User, 'email' | 'username' | 'password'>>
   ) {
@@ -56,11 +77,12 @@ export class UserService {
       displayName: userData.username,
       email: userData.email,
       password: userData.password,
-      blocked: false,
-      verified: false,
       avatar: null,
       backgroundImage: null,
       bio: null,
+      blocked: false,
+      verified: false,
+      profileVisibility: ProfileVisibility.PUBLIC,
       updatedAt: new Date(),
       createdAt: new Date(),
     };
@@ -86,6 +108,7 @@ export class UserService {
       avatar: googleData.picture || null,
       backgroundImage: null,
       bio: null,
+      profileVisibility: ProfileVisibility.PUBLIC,
       updatedAt: new Date(),
       createdAt: new Date(),
     };

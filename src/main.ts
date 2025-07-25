@@ -2,7 +2,7 @@ import type { NestExpressApplication } from '@nestjs/platform-express';
 import type { NextFunction, Request, Response } from 'express';
 
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe, VersioningType } from '@nestjs/common';
+import { HttpStatus, ValidationPipe, VersioningType } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
 import { COOKIE_NAME } from './common/constants';
@@ -17,14 +17,14 @@ import * as session from 'express-session';
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { WinstonModule } from 'nest-winston';
+import * as winston from 'winston';
 import { createWinstonTransports } from './configurations';
 
 const CSRF_ERROR_CODE = 'EBADCSRFTOKEN';
 
 async function bootstrap() {
   let app: NestExpressApplication;
-  const logger = WinstonModule.createLogger({
+  const logger = winston.createLogger({
     transports: createWinstonTransports(false),
   });
 
@@ -36,7 +36,6 @@ async function bootstrap() {
 
     app = await NestFactory.create(AppModule, {
       httpsOptions,
-      logger,
     });
   } else app = await NestFactory.create(AppModule);
   app.set('trust proxy', 1);
@@ -136,13 +135,19 @@ async function bootstrap() {
   });
   app.use(csrfSynchronisedProtection);
   app.use((error: any, request: Request, response: Response, next: NextFunction) => {
-    if (error.code === CSRF_ERROR_CODE)
-      return response.status(403).json({ message: 'CSRF validation failed.' });
+    if (error.code === CSRF_ERROR_CODE) {
+      logger.http(error.message, {
+        method: request.method,
+        url: request.originalUrl,
+        status: HttpStatus.FORBIDDEN,
+      });
+      return response.status(HttpStatus.FORBIDDEN).json({ message: 'CSRF validation failed.' });
+    }
     next(error);
   });
 
   await app.listen(port!, () => {
-    logger.log(`Server is running on http://localhost:${port}${prefix ? `/${prefix}` : ''}`);
+    logger.info(`Server is running on http://localhost:${port}${prefix ? `/${prefix}` : ''}`);
   });
 }
 bootstrap();

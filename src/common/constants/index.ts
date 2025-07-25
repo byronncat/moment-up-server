@@ -14,6 +14,19 @@ export const URL = {
 
 export const INITIAL_PAGE = 1;
 
+export enum ProfileVisibility {
+  PUBLIC,
+  PRIVATE,
+}
+
+export enum Audience {
+  PUBLIC,
+  FOLLOWERS,
+  FRIENDS,
+  VERIFIED,
+  ONLY_ME,
+}
+
 export enum ReportType {
   NOT_RELEVANT,
   SPAM,

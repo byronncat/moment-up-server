@@ -8,6 +8,14 @@ declare module 'api' {
     avatar?: User['avatar'];
   }
 
+  interface ProfilePayload extends AccountPayload {
+    bio?: User['bio'];
+    followers: number;
+    following: number;
+    hasFeed: boolean;
+    isFollowing?: boolean;
+  }
+
   interface PostPayload {
     text?: Moment['text'];
     files?: {
@@ -18,22 +26,13 @@ declare module 'api' {
     }[];
     likes: number;
     comments: number;
+    reposts: number;
     isLiked: boolean;
     isBookmarked: boolean;
     updatedAt: Moment['updatedAt'];
   }
 
-  interface UserPayload {
-    id: User['id'];
-    email: User['email'];
-    username: User['username'];
-    displayName: User['displayName'];
-    avatar?: User['avatar'];
-    bio?: User['bio'];
-    followers: number;
-    following: number;
-    hasFeed: boolean;
-    isFollowing?: boolean;
+  interface UserPayload extends AccountPayload, ProfilePayload {
     followedBy?: {
       count: number;
       displayItems: {
