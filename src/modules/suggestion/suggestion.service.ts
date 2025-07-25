@@ -10,7 +10,7 @@ export class SuggestionService {
 
   public async getUser(userId: string) {
     this.logger.silly(userId);
-    return mockSuggestedUsers.slice(0, 5);
+    return mockSuggestedUsers;
   }
 
   public async getTrending() {

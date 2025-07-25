@@ -1,178 +1,54 @@
 import { getRandomFile } from './file';
 import { SearchItemType } from '../common/constants';
+import { faker } from '@faker-js/faker';
 
 export const mockSearches = [
-  {
-    id: '45d49f7d-d07f-4eae-abcf-2f61ced287a2',
+  // Users with faker-generated data
+  ...Array.from({ length: 5 }, () => ({
+    id: faker.string.uuid(),
     type: SearchItemType.USER as const,
-    email: 'mbontoft0@example.com',
-    username: 'mbontoft0',
-    displayName: 'Mac Bontoft',
-    avatar: getRandomFile('45d49f7d-d07f-4eae-abcf-2f61ced287a2'),
-  },
-  {
-    id: 'hello',
+    email: faker.internet.email(),
+    username: faker.internet.username(),
+    displayName: faker.person.fullName(),
+    avatar: getRandomFile(faker.string.uuid()),
+  })),
+
+  // Hashtags using various faker categories as IDs
+  ...Array.from({ length: 12 }, () => ({
+    id: faker.helpers.arrayElement([
+      faker.food.meat(),
+      faker.music.genre(),
+      faker.food.fruit(),
+      faker.animal.type(),
+      faker.color.human(),
+      faker.vehicle.type(),
+      faker.food.dish(),
+      faker.science.chemicalElement().name.toLowerCase(),
+      faker.commerce.department(),
+      faker.hacker.noun(),
+      faker.food.vegetable(),
+      faker.food.spice(),
+    ]),
     type: SearchItemType.HASHTAG as const,
-    count: 100,
-  },
-  {
+    count: faker.number.int({ min: 10000, max: 1000000 }),
+  })),
+
+  // Query searches using meaningful search terms
+  ...Array.from({ length: 10 }, () => ({
     type: SearchItemType.QUERY as const,
-    id: 'general',
-  },
-  {
-    id: '7b0bf82a-0407-4fa4-9fdf-106a681a626c',
-    type: SearchItemType.USER as const,
-    email: 'ssauven1@example.com',
-    username: 'ssauven1',
-    displayName: 'Stanislaw Sauven',
-    avatar: getRandomFile('7b0bf82a-0407-4fa4-9fdf-106a681a626c'),
-  },
-  {
-    id: 'e0e16793-c56f-4456-80d9-9767d5e3c3da',
-    type: SearchItemType.USER as const,
-    email: 'ahaccleton2@example.com',
-    username: 'ahaccleton2',
-    displayName: 'Aurie Haccleton',
-    avatar: getRandomFile('e0e16793-c56f-4456-80d9-9767d5e3c3da'),
-  },
-  {
-    id: 'software',
-    type: SearchItemType.QUERY as const,
-  },
-  {
-    id: '261c65cb-4646-47ba-a65a-262d7242ee9f',
-    type: SearchItemType.USER as const,
-    email: 'droderham3@example.com',
-    username: 'droderham3',
-    displayName: 'Dannie Roderham',
-    avatar: getRandomFile('261c65cb-4646-47ba-a65a-262d7242ee9f'),
-  },
-  {
-    id: '4bef2e89-8dc0-4dd4-8b82-219b13d4ae0d',
-    type: SearchItemType.USER as const,
-    email: 'tronald4@example.com',
-    username: 'tronald4',
-    displayName: 'Timmie Ronald',
-    avatar: getRandomFile('4bef2e89-8dc0-4dd4-8b82-219b13d4ae0d'),
-  },
-  {
-    id: 'education',
-    type: SearchItemType.QUERY as const,
-  },
-  {
-    id: '60edd744-11e7-497f-9077-491a49369b18',
-    type: SearchItemType.USER as const,
-    email: 'hhartley5@example.com',
-    username: 'hhartley5',
-    displayName: 'Hyacinthe Hartley',
-    avatar: getRandomFile('60edd744-11e7-497f-9077-491a49369b18'),
-  },
-  {
-    type: SearchItemType.HASHTAG as const,
-    id: 'faucibus',
-    count: 967001,
-  },
-  {
-    type: SearchItemType.HASHTAG as const,
-    id: 'maecenas',
-    count: 773000,
-  },
-  {
-    id: '382d48f6-a932-410b-8309-ff0b9b6024e4',
-    type: SearchItemType.USER as const,
-    email: 'vblacklock6@example.com',
-    username: 'vblacklock6',
-    displayName: 'Virginie Blacklock',
-    avatar: getRandomFile('382d48f6-a932-410b-8309-ff0b9b6024e4'),
-  },
-  {
-    id: '766e49e6-46b7-4104-bfa1-aed763262d57',
-    type: SearchItemType.USER as const,
-    email: 'jsevern7@example.com',
-    username: 'jsevern7',
-    displayName: 'Justin Severn',
-    avatar: getRandomFile('766e49e6-46b7-4104-bfa1-aed763262d57'),
-  },
-  {
-    id: '41e5323f-0ce9-4d37-a8db-46d4ca0a8809',
-    type: SearchItemType.USER as const,
-    email: 'bakers8@example.com',
-    username: 'bakers8',
-    displayName: 'Berry Akers',
-    avatar: getRandomFile('41e5323f-0ce9-4d37-a8db-46d4ca0a8809'),
-  },
-  {
-    id: 'a2f41718-2ddb-4c03-bdda-f80c5373cd96',
-    type: SearchItemType.USER as const,
-    email: 'smcwilliam9@example.com',
-    username: 'smcwilliam9',
-    displayName: 'Spense McWilliam',
-    avatar: getRandomFile('a2f41718-2ddb-4c03-bdda-f80c5373cd96'),
-  },
-  {
-    type: SearchItemType.HASHTAG as const,
-    id: 'purus',
-    count: 502053,
-  },
-  {
-    type: SearchItemType.HASHTAG as const,
-    id: 'bibendum',
-    count: 999040,
-  },
-  {
-    type: SearchItemType.HASHTAG as const,
-    id: 'morbi',
-    count: 580656,
-  },
-  {
-    id: '6934603c-5bd1-40c5-a298-3d0cde2de578',
-    type: SearchItemType.USER as const,
-    email: 'bsantea@example.com',
-    username: 'bsantea',
-    displayName: 'Bernetta Sante',
-    avatar: getRandomFile('6934603c-5bd1-40c5-a298-3d0cde2de578'),
-  },
-  {
-    id: 'c6ad53bf-1252-4911-bef7-a9bb13f26aed',
-    type: SearchItemType.USER as const,
-    email: 'mpackingtonb@example.com',
-    username: 'mpackingtonb',
-    displayName: 'Morse Packington',
-    avatar: getRandomFile('c6ad53bf-1252-4911-bef7-a9bb13f26aed'),
-  },
-  {
-    type: SearchItemType.HASHTAG as const,
-    id: 'diam',
-    count: 785210,
-  },
-  {
-    type: SearchItemType.HASHTAG as const,
-    id: 'nascetur',
-    count: 771306,
-  },
-  {
-    type: SearchItemType.HASHTAG as const,
-    id: 'vestibulum',
-    count: 560842,
-  },
-  {
-    type: SearchItemType.HASHTAG as const,
-    id: 'amet',
-    count: 262813,
-  },
-  {
-    type: SearchItemType.HASHTAG as const,
-    id: 'nec',
-    count: 576860,
-  },
-  {
-    type: SearchItemType.HASHTAG as const,
-    id: 'ultrices',
-    count: 698670,
-  },
-  {
-    type: SearchItemType.HASHTAG as const,
-    id: 'vel',
-    count: 797545,
-  },
+    id: faker.helpers
+      .arrayElement([
+        faker.music.genre(),
+        faker.food.meat(),
+        faker.science.chemicalElement().name,
+        faker.commerce.productName(),
+        faker.animal.type(),
+        faker.food.fruit(),
+        faker.vehicle.manufacturer(),
+        faker.color.human(),
+        faker.hacker.noun(),
+        faker.food.dish(),
+      ])
+      .toLowerCase(),
+  })),
 ];

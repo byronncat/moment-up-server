@@ -1,201 +1,69 @@
 import type { UserPayload, HashtagPayload } from 'api';
 import { getRandomFile } from './file';
+import { faker } from '@faker-js/faker';
 
-export const mockSuggestedUsers: UserPayload[] = [
-  {
-    id: '057b50c5-4646-42bf-98ea-933c108f2671',
-    email: 'werner.bale@example.com',
-    username: 'wbale0',
-    displayName: 'Werner Bale',
-    bio: 'Travel photographer | Adventure seeker | Coffee enthusiast',
-    followers: 80266,
-    following: 93824,
-    isFollowing: false,
-    hasFeed: true,
-    followedBy: {
-      displayItems: [
-        {
-          id: '8b7c2c17-a3be-47db-b2c6-3070d6b93c96',
-          displayName: 'Cesar Sloan',
-          avatar: getRandomFile('8b7c2c17-a3be-47db-b2c6-3070d6b93c96'),
-        },
-      ],
-      count: 12,
-    },
-  },
-  {
-    id: 'ca0f9eb5-c789-4e50-9f8c-457ff3b9f964',
-    email: 'jason.chen@example.com',
-    username: 'tech_jason',
-    displayName: 'Jason Chen',
-    avatar: getRandomFile('ca0f9eb5-c789-4e50-9f8c-457ff3b9f964'),
-    followers: 93824,
-    following: 142499,
-    isFollowing: false,
-    hasFeed: true,
-  },
-  {
-    id: '90946704-51dc-4a73-9f56-99531bc3db7b',
-    email: 'sophie.rodriguez@example.com',
-    username: 'foodie_sophie',
-    displayName: 'Sophie Rodriguez',
-    avatar: getRandomFile('90946704-51dc-4a73-9f56-99531bc3db7b'),
-    bio: 'Food blogger | Recipe developer | Always hungry',
-    followers: 165155,
-    following: 104368,
-    isFollowing: false,
-    hasFeed: false,
-    followedBy: {
-      displayItems: [
-        {
-          id: '7b41edc6-3590-46a9-9eee-88d3f603be0c',
-          displayName: 'Mike Brown',
-          avatar: getRandomFile('7b41edc6-3590-46a9-9eee-88d3f603be0c'),
-        },
-        {
-          id: '2a204883-b417-4d6b-b5df-c3c6184f4de6',
-          displayName: 'Alex Smith',
-          avatar: getRandomFile('2a204883-b417-4d6b-b5df-c3c6184f4de6'),
-        },
-      ],
-      count: 2,
-    },
-  },
-  {
-    id: '92a1e004-8ddf-46ab-8811-28a6e1bb7a60',
-    email: 'marcus.johnson@example.com',
-    username: 'fitness_marcus',
-    displayName: 'Marcus Johnson',
-    avatar: getRandomFile('92a1e004-8ddf-46ab-8811-28a6e1bb7a60'),
-    bio: 'Personal trainer | Nutrition coach | Wellness advocate',
-    followers: 106734,
-    following: 193847,
-    isFollowing: false,
-    hasFeed: false,
-  },
-  {
-    id: 'e879fbc3-4438-47c0-a68e-87c6a9e2fa59',
-    email: 'maya.patel@example.com',
-    username: 'artist_maya',
-    displayName: 'Maya Patel',
-    avatar: getRandomFile('e879fbc3-4438-47c0-a68e-87c6a9e2fa59'),
-    bio: 'Digital artist | Illustrator | Dreamer',
-    followers: 13871,
-    following: 5475,
-    isFollowing: false,
-    hasFeed: true,
-    followedBy: {
-      displayItems: [
-        {
-          id: 'b154dc99-9ecf-427f-9e81-faca1bcd3603',
-          displayName: 'Sarah Jones',
-          avatar: getRandomFile('b154dc99-9ecf-427f-9e81-faca1bcd3603'),
-        },
-        {
-          id: '66258213-11b2-4646-b7d6-20bf47379881',
-          displayName: 'Wynn Tumility',
-          avatar: getRandomFile('66258213-11b2-4646-b7d6-20bf47379881'),
-        },
-        {
-          id: '19a73186-4d88-41d8-8565-60bb19433b18',
-          displayName: 'Helyn Vooght',
-          avatar: getRandomFile('19a73186-4d88-41d8-8565-60bb19433b18'),
-        },
-      ],
-      count: 67,
-    },
-  },
-  {
-    id: '6a5d499b-073e-4253-890b-2f739b1de380',
-    email: 'noah.garcia@example.com',
-    username: 'music_noah',
-    displayName: 'Noah Garcia',
-    avatar: getRandomFile('6a5d499b-073e-4253-890b-2f739b1de380'),
-    bio: 'Music producer | DJ | Creating vibes',
-    followers: 176096,
-    following: 758,
-    isFollowing: false,
-    hasFeed: true,
-    followedBy: {
-      displayItems: [
-        {
-          id: '1524663d-ae03-43bc-80f3-488594f466fd',
-          displayName: 'Rosalie Rizon',
-          avatar: getRandomFile('1524663d-ae03-43bc-80f3-488594f466fd'),
-        },
-        {
-          id: '7911e7fa-2371-4914-9f1f-c7b266951dbe',
-          displayName: 'Karoly Faragher',
-          avatar: getRandomFile('7911e7fa-2371-4914-9f1f-c7b266951dbe'),
-        },
-      ],
-      count: 15,
-    },
-  },
-  {
-    id: '6a635b66-9923-4539-8a9c-5a12a14f879b',
-    email: 'olivia.thompson@example.com',
-    username: 'writer_olivia',
-    displayName: 'Olivia Thompson',
-    avatar: getRandomFile('6a635b66-9923-4539-8a9c-5a12a14f879b'),
-    followers: 17382,
-    following: 623,
-    isFollowing: false,
-    hasFeed: false,
-    followedBy: {
-      displayItems: [
-        {
-          id: '19a73186-4d88-41d8-8565-60bb19433b18',
-          displayName: 'Alex Smith',
-          avatar: getRandomFile('19a73186-4d88-41d8-8565-60bb19433b18'),
-        },
-      ],
-      count: 1,
-    },
-  },
-  {
-    id: 'ffaeecbd-58a5-4235-95f5-f51c2471a842',
-    email: 'huhi.fevercell@example.com',
-    username: 'huhi_1211',
-    displayName: 'huhi | fevercell',
-    avatar: getRandomFile('ffaeecbd-58a5-4235-95f5-f51c2471a842'),
-    bio: 'Novelist | Poet | Storyteller',
-    followers: 17382,
-    following: 623,
-    isFollowing: false,
-    hasFeed: false,
-    followedBy: {
-      displayItems: [
-        {
-          id: 'ffaeecbd-58a5-4235-95f5-f51c2471a842',
-          displayName: 'Alex Smith',
-          avatar: getRandomFile('ffaeecbd-58a5-4235-95f5-f51c2471a842'),
-        },
-      ],
-      count: 1,
-    },
-  },
-];
+export const mockSuggestedUsers: UserPayload[] = Array.from({ length: 5 }, () => {
+  const hasFollowedBy = faker.datatype.boolean();
+  const followedByCount = faker.number.int({ min: 1, max: 150 });
 
-export const mockTrendingTopics: HashtagPayload[] = [
-  {
-    id: 'ChatGPT',
-    count: Math.floor(Math.random() * 1000000) + 1000000,
-  },
-  {
-    id: '2025',
-    count: Math.floor(Math.random() * 1000000) + 1000000,
-  },
-  {
-    id: 'javascript',
-    count: Math.floor(Math.random() * 1000000) + 1000000,
-  },
-  {
-    id: 'play',
-    count: Math.floor(Math.random() * 1000000) + 1000000,
-  },
-  {
-    id: 'beauty',
-    count: Math.floor(Math.random() * 1000000) + 1000000,
-  },
-];
+  return {
+    id: faker.string.uuid(),
+    email: faker.internet.email(),
+    username: faker.helpers.arrayElement([
+      faker.internet.username(),
+      `${faker.food.meat().toLowerCase().replace(' ', '_')}_${faker.person.firstName().toLowerCase()}`,
+      `${faker.color.human().toLowerCase()}_${faker.vehicle.type().toLowerCase().replace(' ', '_')}`,
+      `${faker.food.spice().toLowerCase().replace(' ', '_')}_${faker.hacker.noun()}`,
+      `${faker.music.genre().toLowerCase().replace(' ', '_')}_${faker.person.firstName().toLowerCase()}`,
+      `${faker.animal.type().toLowerCase().replace(' ', '_')}_${faker.person.firstName().toLowerCase()}`,
+      `${faker.hacker.noun()}_${faker.person.firstName().toLowerCase()}`,
+      `${faker.food.fruit().toLowerCase()}_${faker.number.int({ min: 1000, max: 9999 })}`,
+    ]),
+    displayName: faker.helpers.arrayElement([
+      faker.person.fullName(),
+      `${faker.person.firstName()} | ${faker.food.dish()}`,
+    ]),
+    avatar: getRandomFile(faker.string.uuid()),
+    bio: faker.helpers.maybe(
+      () =>
+        faker.helpers.arrayElement([
+          `${faker.person.jobTitle()} | ${faker.company.buzzPhrase()} | ${faker.hacker.phrase()}`,
+          `${faker.music.genre()} enthusiast | ${faker.food.dish()} lover | ${faker.animal.type()} whisperer`,
+          `${faker.commerce.department()} specialist | ${faker.food.fruit()} addict | Always ${faker.hacker.ingverb()}`,
+          `${faker.person.jobTitle()} | ${faker.food.vegetable()} coach | ${faker.science.unit().name} advocate`,
+          `Digital ${faker.commerce.productAdjective()} | ${faker.food.dish()} creator | ${faker.hacker.adjective()}`,
+          `${faker.music.genre()} producer | ${faker.food.meat()} specialist | Creating ${faker.color.human().toLowerCase()} vibes`,
+          `${faker.person.jobTitle()} | ${faker.food.spice()} enthusiast | ${faker.hacker.phrase()}`,
+        ]),
+      { probability: 0.8 }
+    ),
+    followers: faker.number.int({ min: 10000, max: 300000 }),
+    following: faker.number.int({ min: 500, max: 150000 }),
+    isFollowing: faker.datatype.boolean(),
+    hasFeed: faker.datatype.boolean(),
+    ...(hasFollowedBy && {
+      followedBy: {
+        displayItems: Array.from({ length: faker.number.int({ min: 1, max: 3 }) }, () => ({
+          id: faker.string.uuid(),
+          displayName: faker.person.fullName(),
+          avatar: getRandomFile(faker.string.uuid()),
+        })),
+        count: followedByCount,
+      },
+    }),
+  };
+});
+
+export const mockTrendingTopics: HashtagPayload[] = Array.from({ length: 5 }, () => ({
+  id: faker.helpers.arrayElement([
+    faker.food.meat(),
+    faker.music.genre(),
+    faker.hacker.noun(),
+    faker.food.fruit(),
+    faker.color.human(),
+    faker.vehicle.type(),
+    faker.science.chemicalElement().name.toLowerCase(),
+    faker.food.dish(),
+  ]),
+  count: faker.number.int({ min: 500000, max: 2000000 }),
+}));
