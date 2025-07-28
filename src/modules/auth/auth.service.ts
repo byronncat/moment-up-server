@@ -292,7 +292,7 @@ export class AuthService {
         context: {
           title: 'MomentUp',
           brandName: 'MomentUp',
-          logoUrl: `${this.baseUrl}/static/logo.svg`,
+          logoUrl: URL.ICON,
           url: {
             contact: URL.CONTACT,
             github: URL.GITHUB,
