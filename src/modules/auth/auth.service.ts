@@ -33,9 +33,8 @@ import {
   SwitchAccountDto,
 } from './dto';
 import { UserService } from '../user/user.service';
-import { TOKEN_ID_LENGTH, URL } from 'src/common/constants';
+import { TOKEN_ID_LENGTH, Url, Cookie } from 'src/common/constants';
 
-const DEFAULT_MAX_AGE = 3 * 24 * 60 * 60 * 1000; // 3 days
 const OTP_MAX_AGE = 5 * 60 * 1000; // 5 minutes
 const VERIFICATION_TOKEN_MAX_AGE = '30m';
 const REFRESH_TOKEN_MAX_AGE = 365 * 24 * 60 * 60 * 1000; // 1 year
@@ -83,8 +82,13 @@ export class AuthService {
     const account = await this.userService.getById(data.identity);
 
     if (!account) throw new UnauthorizedException('Invalid credentials');
-    if (!account.verified) throw new UnauthorizedException('Email not verified');
     if (account.blocked) throw new ForbiddenException('Account is blocked');
+    if (!account.verified) {
+      await this.sendVerificationEmail(account.email);
+      throw new UnauthorizedException(
+        'Email not verified. A new verification email has been sent.'
+      );
+    }
     if (!account.password || !(await Auth.compare(data.password, account.password)))
       throw new UnauthorizedException('Invalid credentials');
 
@@ -114,19 +118,7 @@ export class AuthService {
     });
     if (!newUser) throw new InternalServerErrorException('Failed to create user account');
 
-    const verificationToken = await this.createJwtToken(data.email, VERIFICATION_TOKEN_MAX_AGE);
-    const verifyUrl = `${this.baseUrl}/v1/auth/verify?token=${verificationToken.value}`;
-    await this.sendEmail(
-      {
-        to: data.email,
-        subject: 'Verify your email | MomentUp',
-        templateName: 'verify',
-      },
-      {
-        verifyUrl,
-        expirationTime: '30 minutes', // VERIFICATION_TOKEN_MAX_AGE
-      }
-    );
+    await this.sendVerificationEmail(data.email);
 
     return this.userService.parseToAccountPayload(newUser);
   }
@@ -141,7 +133,7 @@ export class AuthService {
       brandName: 'MomentUp',
       logoUrl: `/static/logo.svg`,
       clientHostUrl: this.clientUrl,
-      contactUrl: URL.CONTACT,
+      contactUrl: Url.CONTACT,
     };
 
     const payload = await this.verifyJwtToken(data.token);
@@ -259,6 +251,30 @@ export class AuthService {
     };
   }
 
+  private async sendVerificationEmail(email: string) {
+    try {
+      const verificationToken = await this.createJwtToken(email, VERIFICATION_TOKEN_MAX_AGE);
+      const verifyUrl = `${this.baseUrl}/v1/auth/verify?token=${verificationToken.value}`;
+      await this.sendEmail(
+        {
+          to: email,
+          subject: 'Verify your email | MomentUp',
+          templateName: 'verify',
+        },
+        {
+          verifyUrl,
+          expirationTime: '30 minutes', // VERIFICATION_TOKEN_MAX_AGE
+        }
+      );
+    } catch (error) {
+      this.logger.error(error, {
+        location: 'AuthService.sendVerificationEmail',
+        context: 'Email',
+      });
+      throw new InternalServerErrorException('Failed to send verification email');
+    }
+  }
+
   private async sendWelcomeEmail(to: string, username: User['username']) {
     try {
       await this.sendEmail(
@@ -292,12 +308,12 @@ export class AuthService {
         context: {
           title: 'MomentUp',
           brandName: 'MomentUp',
-          logoUrl: URL.ICON,
+          logoUrl: Url.ICON,
           url: {
-            contact: URL.CONTACT,
-            github: URL.GITHUB,
-            linkedin: URL.LINKEDIN,
-            facebook: URL.FACEBOOK,
+            contact: Url.CONTACT,
+            github: Url.GITHUB,
+            linkedin: Url.LINKEDIN,
+            facebook: Url.FACEBOOK,
           },
           templateName,
           ...context,
@@ -314,7 +330,7 @@ export class AuthService {
 
   private clearAuthState(session: ExpressSession) {
     session.user = undefined;
-    session.cookie.maxAge = DEFAULT_MAX_AGE;
+    session.cookie.maxAge = Cookie.MaxAge.DEFAULT;
   }
 
   /*

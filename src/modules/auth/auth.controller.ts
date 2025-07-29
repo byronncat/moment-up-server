@@ -27,6 +27,7 @@ import {
 import { AccessToken } from 'src/common/decorators';
 import { ValidationPipe } from '@nestjs/common/pipes/validation.pipe';
 import { ConfigService } from '@nestjs/config';
+import { Cookie } from 'src/common/constants';
 import { AuthService } from './auth.service';
 import {
   LoginDto,
@@ -103,7 +104,8 @@ export class AuthController {
 
   @Get('csrf')
   @HttpCode(HttpStatus.OK)
-  getCsrfToken(@Req() request: AuthRequest) {
+  getCsrfToken(@Req() request: AuthRequest, @Session() session: ExpressSession) {
+    session.cookie.maxAge = Cookie.MaxAge.DEFAULT;
     const csrfToken = request.csrfToken();
     return { csrfToken };
   }

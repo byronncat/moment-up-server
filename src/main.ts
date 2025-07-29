@@ -5,7 +5,7 @@ import { NestFactory } from '@nestjs/core';
 import { HttpStatus, ValidationPipe, VersioningType } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
-import { COOKIE_NAME } from './common/constants';
+import { Cookie } from './common/constants';
 
 import helmet from 'helmet';
 import { csrfSync } from 'csrf-sync';
@@ -88,7 +88,7 @@ async function bootstrap() {
     session({
       store: redisStore,
       secret: sessionSecret!,
-      name: COOKIE_NAME.SESSION,
+      name: Cookie.Name.SESSION,
       resave: false,
       saveUninitialized: false,
       cookie: {

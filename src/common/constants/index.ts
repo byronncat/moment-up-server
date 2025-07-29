@@ -1,11 +1,16 @@
-export const COOKIE_NAME = {
-  SESSION: 'connect.sid',
-  ACCESS_TOKEN: 'access-token',
+export const Cookie = {
+  Name: {
+    SESSION: 'connect.sid',
+    ACCESS_TOKEN: 'access-token',
+  },
+  MaxAge: {
+    DEFAULT: 3 * 24 * 60 * 60 * 1000, // 3 days
+  },
 };
 
 export const TOKEN_ID_LENGTH = 10;
 
-export const URL = {
+export const Url = {
   CONTACT: 'https://docs.google.com/forms/d/1oUM87A2Kkv7ME9OhRtNDZ_HyMsoKzJR_lOCwna4T_rU/',
   GITHUB: 'https://github.com/byronncat',
   LINKEDIN: 'https://www.linkedin.com/in/thinh-ngo-byron/',

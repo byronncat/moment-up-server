@@ -60,15 +60,15 @@ const images = [
   },
   {
     url: 'https://pbs.twimg.com/media/GDxlKAwbkAAEEH4?format=jpg&name=4096x4096',
-    aspectRatio: '1:1' as const,
+    aspectRatio: '4:5' as const,
   },
   {
     url: 'https://pbs.twimg.com/media/FbT-hSnaMAITR81?format=jpg&name=4096x4096',
-    aspectRatio: '1:1' as const,
+    aspectRatio: '4:5' as const,
   },
   {
     url: 'https://pbs.twimg.com/media/Fsh9DaOakAEL7B1?format=jpg&name=4096x4096',
-    aspectRatio: '1:1' as const,
+    aspectRatio: '4:5' as const,
   },
   {
     url: 'https://pbs.twimg.com/media/GgHsVFvbYAU2ZpA?format=jpg&name=large',
@@ -115,18 +115,13 @@ const images = [
     aspectRatio: '1.91:1' as const,
   },
   {
-    url: 'https://pbs.twimg.com/media/GCsUDkvaQAASmNU?format=jpg&name=4096x4096',
-    aspectRatio: '1:1' as const,
-  },
-  {
     url: 'https://pbs.twimg.com/media/GllqHMLa4AATGzZ?format=jpg&name=4096x4096',
-    aspectRatio: '1:1' as const,
+    aspectRatio: '4:5' as const,
   },
   {
     url: 'https://pbs.twimg.com/media/GlLNYbPbIAANJjZ?format=jpg&name=4096x4096',
-    aspectRatio: '1:1' as const,
+    aspectRatio: '4:5' as const,
   },
-  // From additionalImages
   {
     url: 'https://pbs.twimg.com/media/Gdm5F3mboAgSG_x?format=jpg&name=large',
     aspectRatio: '4:5' as const,
@@ -149,15 +144,15 @@ const images = [
   },
   {
     url: 'https://pbs.twimg.com/media/GmkyyAnaEAA3K9v?format=jpg&name=4096x4096',
-    aspectRatio: '1:1' as const,
+    aspectRatio: '4:5' as const,
   },
   {
     url: 'https://pbs.twimg.com/media/Gj_e2lNbEAAWF9u?format=jpg&name=4096x4096',
-    aspectRatio: '1:1' as const,
+    aspectRatio: '4:5' as const,
   },
   {
     url: 'https://pbs.twimg.com/media/GjMsVS9a0AA66Tb?format=jpg&name=4096x4096',
-    aspectRatio: '1:1' as const,
+    aspectRatio: '4:5' as const,
   },
   {
     url: 'https://pbs.twimg.com/media/GgLvSHibYAMCR1k?format=jpg&name=large',
@@ -177,15 +172,15 @@ const images = [
   },
   {
     url: 'https://pbs.twimg.com/media/GicHHmPaYAAfESg?format=jpg&name=4096x4096',
-    aspectRatio: '1:1' as const,
+    aspectRatio: '4:5' as const,
   },
   {
     url: 'https://pbs.twimg.com/media/FkXOfZCaEAAR2pX?format=jpg&name=4096x4096',
-    aspectRatio: '1:1' as const,
+    aspectRatio: '4:5' as const,
   },
   {
     url: 'https://pbs.twimg.com/media/FWHk8VgUIAANFcX?format=jpg&name=4096x4096',
-    aspectRatio: '1:1' as const,
+    aspectRatio: '4:5' as const,
   },
   {
     url: 'https://pbs.twimg.com/media/FgzKZewagAAtE2G?format=jpg&name=large',
@@ -197,7 +192,7 @@ const images = [
   },
   {
     url: 'https://pbs.twimg.com/media/GsxybX8bQAEQ8sW?format=jpg&name=4096x4096',
-    aspectRatio: '1:1' as const,
+    aspectRatio: '4:5' as const,
   },
   {
     url: 'https://pbs.twimg.com/media/GjPNWTNb0AAZvar?format=jpg&name=large',
@@ -205,7 +200,7 @@ const images = [
   },
   {
     url: 'https://pbs.twimg.com/media/GgwpklCa0AA8MkD?format=jpg&name=4096x4096',
-    aspectRatio: '1:1' as const,
+    aspectRatio: '4:5' as const,
   },
 ];
 
@@ -266,7 +261,7 @@ function createRandomPost(
     id: string;
     type: 'image' | 'video';
     url: string;
-    aspectRatio: '4:5' | '1.91:1' | '1:1' | '9:16';
+    aspectRatio: '4:5' | '1.91:1' | '4:5' | '9:16';
   }> = []
 ) {
   const hasText = faker.datatype.boolean({ probability: 0.7 });

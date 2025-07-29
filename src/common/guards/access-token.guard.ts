@@ -1,4 +1,5 @@
 import type { AuthRequest } from 'library';
+import type { ExpressSession } from 'express-session';
 
 import {
   Injectable,
@@ -22,16 +23,11 @@ export class AccessTokenGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<AuthRequest>();
     const token = request.accessToken;
-
-    if (!token) {
-      this.logger.warn('Access token not found', {
-        context: 'Auth',
-        location: 'AccessTokenGuard',
-      });
-      throw new UnauthorizedException('Access token is required');
-    }
+    const session: ExpressSession = request.session;
 
     try {
+      if (!token) throw new UnauthorizedException('Access token is required');
+
       const user = await this.userService.getById(token.sub);
       if (!user) throw new UnauthorizedException('User not found');
       if (!user.verified) throw new ForbiddenException('Email not verified');
@@ -39,13 +35,22 @@ export class AccessTokenGuard implements CanActivate {
 
       return true;
     } catch (error) {
-      this.logger.error('Access token verification failed', {
+      this.clearAuthState(session);
+      this.logger.error(error.message, {
         context: 'Auth',
         location: 'AccessTokenGuard',
       });
+
       if (error instanceof UnauthorizedException || error instanceof ForbiddenException)
         throw error;
       throw new UnauthorizedException('Invalid access token');
+    }
+  }
+
+  private clearAuthState(session: ExpressSession) {
+    if (session?.user) {
+      session.user = undefined;
+      session.cookie.maxAge = 3 * 24 * 60 * 60 * 1000; // 3 days default
     }
   }
 }
