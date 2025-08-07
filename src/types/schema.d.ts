@@ -30,7 +30,6 @@ declare module 'schema' {
     readonly id: string;
     readonly userId: User['id'];
     text: string | null;
-    updatedAt: Date | string;
     readonly createdAt: Date | string;
   };
 

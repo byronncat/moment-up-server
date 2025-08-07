@@ -61,6 +61,7 @@ declare module 'api' {
     displayName: User['displayName'];
     avatar?: User['avatar'];
     viewed: boolean;
+    total: number;
     createdAt: Feed['createdAt'];
   }
 

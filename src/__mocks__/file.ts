@@ -313,8 +313,10 @@ export const soundUrl = [
   'https://res.cloudinary.com/dq02xgn2g/video/upload/v1754136062/_mock_/so-what.mp4',
 ];
 
-export function getRandomFile(text: string, aspectRatio?: "4:5" | "9:16") {
+export function getRandomFile(text: string, aspectRatio?: '4:5' | '9:16') {
   const seed = text ? text.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) : 0;
-  const filteredImages = aspectRatio ? imageUrls.filter(img => img.aspectRatio === aspectRatio) : imageUrls;
+  const filteredImages = aspectRatio
+    ? imageUrls.filter((img) => img.aspectRatio === aspectRatio)
+    : imageUrls;
   return filteredImages[seed % filteredImages.length].url;
 }

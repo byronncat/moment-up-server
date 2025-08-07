@@ -9,11 +9,12 @@ export const mockFeedNotifications: FeedNotificationPayload[] = Array.from({ len
   displayName: faker.person.fullName(),
   avatar: getRandomFile(faker.string.uuid()),
   viewed: faker.datatype.boolean(),
+  total: faker.number.int({ min: 1, max: 5 }),
   createdAt: faker.date.recent().toISOString(),
 }));
 
 // Create individual mock feeds for each notification
-export const mockFeeds: FeedPayload[] = mockFeedNotifications.map((notification, index) => {
+export const mockFeeds: FeedPayload[] = mockFeedNotifications.map((notification) => {
   // Use index as seed for consistent distribution
   const seedRandom = (seed: number, max: number) => {
     const x = Math.sin(seed) * 10000;
@@ -62,8 +63,7 @@ export const mockFeeds: FeedPayload[] = mockFeedNotifications.map((notification,
     };
   };
 
-  // Random number of feeds (1-3)
-  const feedCount = seedRandom(index + 3000, 3) + 1;
+  const feedCount = notification.total;
   const feeds = [generateFeed(notification.id)];
   for (let i = 1; i < feedCount; i++) {
     feeds.push(generateFeed());
