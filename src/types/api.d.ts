@@ -57,9 +57,30 @@ declare module 'api' {
   interface FeedNotificationPayload {
     id: Feed['id'];
     userId: User['id'];
+    username: User['username'];
     displayName: User['displayName'];
     avatar?: User['avatar'];
     viewed: boolean;
+    createdAt: Feed['createdAt'];
+  }
+
+  type FeedMediaContent = {
+    id: CloudinaryFile['id'];
+    type: CloudinaryFile['type'];
+    url: CloudinaryFile['url'];
+    aspectRatio: '9:16';
+  };
+
+  type FeedContent = Exclude<Feed['text'], null> | FeedMediaContent;
+
+  interface FeedPayload {
+    user: AccountPayload;
+    feeds: {
+      id: Feed['id'];
+      content: FeedContent;
+      sound?: CloudinaryFile['url'];
+      createdAt: Feed['createdAt'];
+    }[];
   }
 
   interface PaginationPayload<T> {

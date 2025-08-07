@@ -60,7 +60,12 @@ export class UserService {
       username: user?.username || username,
       displayName: user?.displayName || faker.person.fullName(),
       avatar: user?.avatar || getRandomFile(username),
-      bio: user?.bio || !user ? faker.lorem.paragraph() : null,
+      bio:
+        user?.bio || !user
+          ? faker.datatype.boolean({ probability: 0.5 })
+            ? faker.lorem.paragraph()
+            : null
+          : null,
       followers: faker.number.int({ min: 0, max: 1000 }),
       following: faker.number.int({ min: 0, max: 1000 }),
       hasFeed: true,
@@ -98,7 +103,7 @@ export class UserService {
         : googleData.email.split('@')[0];
 
     const newUser: User = {
-      id: googleData.googleId,
+      id: Auth.generateId('uuid'),
       username: googleData.email.split('@')[0],
       displayName,
       email: googleData.email,

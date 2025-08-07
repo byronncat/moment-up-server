@@ -54,16 +54,24 @@ export const mockSuggestedUsers: UserPayload[] = Array.from({ length: 5 }, () =>
   };
 });
 
-export const mockTrendingTopics: HashtagPayload[] = Array.from({ length: 5 }, () => ({
-  id: faker.helpers.arrayElement([
-    faker.food.meat(),
-    faker.music.genre(),
-    faker.hacker.noun(),
-    faker.food.fruit(),
-    faker.color.human(),
-    faker.vehicle.type(),
-    faker.science.chemicalElement().name.toLowerCase(),
-    faker.food.dish(),
-  ]),
-  count: faker.number.int({ min: 500000, max: 2000000 }),
-}));
+export const mockTrendingTopics: HashtagPayload[] = Array.from(
+  new Set(
+    Array.from({ length: 10 }, () =>
+      faker.helpers.arrayElement([
+        faker.food.meat(),
+        faker.music.genre(),
+        faker.hacker.noun(),
+        faker.food.fruit(),
+        faker.color.human(),
+        faker.vehicle.type(),
+        faker.science.chemicalElement().name.toLowerCase(),
+        faker.food.dish(),
+      ])
+    )
+  )
+)
+  .slice(0, 5)
+  .map((id) => ({
+    id,
+    count: faker.number.int({ min: 500000, max: 2000000 }),
+  }));

@@ -2,7 +2,7 @@ import { mockMoments } from 'src/__mocks__/moment';
 import type { PaginationPayload, MomentPayload } from 'api';
 import type { Bookmark, Like, Moment, Repost, User } from 'schema';
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { PaginationDto, RepostDto, ExploreDto, ProfileMomentDto } from './dto/intdex';
+import { PaginationDto, RepostDto, ExploreDto, ProfileMomentDto } from './dto';
 import { Auth } from 'src/common/helpers';
 
 @Injectable()
