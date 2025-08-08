@@ -26,7 +26,7 @@ declare module 'schema' {
     readonly createdAt: Date | string;
   };
 
-  type Feed = {
+  type Story = {
     readonly id: string;
     readonly userId: User['id'];
     text: string | null;
@@ -93,17 +93,17 @@ declare module 'schema' {
     readonly createdAt: Date | string;
   };
 
-  type FeedView = {
+  type View = {
     readonly id: string;
     readonly userId: User['id'];
-    readonly feedId: Feed['id'];
+    readonly storyId: Story['id'];
     readonly createdAt: Date | string;
   };
 
   // === MongoDB ===
   type CloudinaryFile = {
     readonly id: string; // Public ID
-    readonly postId: Moment['id'] | Feed['id'];
+    readonly postId: Moment['id'] | Story['id'];
     readonly url: string; // Secure URL
     readonly type: 'image' | 'video' | 'audio';
     readonly format: string;

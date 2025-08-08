@@ -1,28 +1,41 @@
-import type { FeedNotificationPayload, FeedPayload } from 'api';
+import type { StoryNotificationPayload, StoryPayload } from 'api';
 import { getRandomFile, soundUrl } from './file';
 import { faker } from '@faker-js/faker';
+import { accounts } from './auth';
 
-export const mockFeedNotifications: FeedNotificationPayload[] = Array.from({ length: 12 }, () => ({
+const myMockStory: StoryNotificationPayload = {
   id: faker.string.uuid(),
-  userId: faker.string.uuid(),
-  username: faker.internet.username(),
-  displayName: faker.person.fullName(),
-  avatar: getRandomFile(faker.string.uuid()),
-  viewed: faker.datatype.boolean(),
-  total: faker.number.int({ min: 1, max: 5 }),
-  createdAt: faker.date.recent().toISOString(),
-}));
+  userId: accounts[0].id,
+  username: accounts[0].username,
+  displayName: accounts[0].displayName,
+  avatar: accounts[0].avatar,
+  viewed: false,
+  total: 3,
+  createdAt: new Date().toISOString(),
+};
 
-// Create individual mock feeds for each notification
-export const mockFeeds: FeedPayload[] = mockFeedNotifications.map((notification) => {
+export const mockStoryNotifications: StoryNotificationPayload[] = [
+  myMockStory,
+  ...Array.from({ length: 12 }, () => ({
+    id: faker.string.uuid(),
+    userId: faker.string.uuid(),
+    username: faker.internet.username(),
+    displayName: faker.person.fullName(),
+    avatar: getRandomFile(faker.string.uuid()),
+    viewed: faker.datatype.boolean(),
+    total: faker.number.int({ min: 1, max: 5 }),
+    createdAt: faker.date.recent().toISOString(),
+  })),
+];
+
+export const mockStories: StoryPayload[] = mockStoryNotifications.map((notification) => {
   // Use index as seed for consistent distribution
   const seedRandom = (seed: number, max: number) => {
     const x = Math.sin(seed) * 10000;
     return Math.floor((x - Math.floor(x)) * max);
   };
 
-  // Helper to generate a feed (optionally with a specific id)
-  const generateFeed = (feedId?: string) => {
+  const generateStory = (storyId?: string) => {
     // Determine content type: 70% image, 10% text, 20% video
     const contentTypeRand = seedRandom(Math.random() * 10000, 100);
     let contentType: 'image' | 'text' | 'video';
@@ -54,7 +67,7 @@ export const mockFeeds: FeedPayload[] = mockFeedNotifications.map((notification)
     }
 
     return {
-      id: feedId || faker.string.uuid(),
+      id: storyId || faker.string.uuid(),
       content,
       createdAt: faker.date.recent().toISOString(),
       ...(shouldHaveSound && {
@@ -63,20 +76,19 @@ export const mockFeeds: FeedPayload[] = mockFeedNotifications.map((notification)
     };
   };
 
-  const feedCount = notification.total;
-  const feeds = [generateFeed(notification.id)];
-  for (let i = 1; i < feedCount; i++) {
-    feeds.push(generateFeed());
+  const storyCount = notification.total;
+  const stories = [generateStory(notification.id)];
+  for (let i = 1; i < storyCount; i++) {
+    stories.push(generateStory());
   }
 
   return {
     user: {
       id: notification.userId,
-      email: faker.internet.email(),
       username: notification.username,
       displayName: notification.displayName,
       avatar: notification.avatar,
     },
-    feeds,
+    stories,
   };
 });

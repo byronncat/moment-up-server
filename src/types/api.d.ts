@@ -1,5 +1,5 @@
 declare module 'api' {
-  import type { User, Moment, CloudinaryFile, Hashtag, Feed } from 'schema';
+  import type { User, Moment, CloudinaryFile, Hashtag, Story } from 'schema';
   interface AccountPayload {
     id: User['id'];
     email: User['email'];
@@ -12,7 +12,7 @@ declare module 'api' {
     bio?: User['bio'];
     followers: number;
     following: number;
-    hasFeed: boolean;
+    hasStory: boolean;
     isFollowing?: boolean;
   }
 
@@ -54,33 +54,33 @@ declare module 'api' {
     count: number;
   }
 
-  interface FeedNotificationPayload {
-    id: Feed['id'];
+  interface StoryNotificationPayload {
+    id: Story['id'];
     userId: User['id'];
     username: User['username'];
     displayName: User['displayName'];
     avatar?: User['avatar'];
     viewed: boolean;
     total: number;
-    createdAt: Feed['createdAt'];
+    createdAt: Story['createdAt'];
   }
 
-  type FeedMediaContent = {
+  type StoryMediaContent = {
     id: CloudinaryFile['id'];
     type: CloudinaryFile['type'];
     url: CloudinaryFile['url'];
     aspectRatio: '9:16';
   };
 
-  type FeedContent = Exclude<Feed['text'], null> | FeedMediaContent;
+  type StoryContent = Exclude<Story['text'], null> | StoryMediaContent;
 
-  interface FeedPayload {
-    user: AccountPayload;
-    feeds: {
-      id: Feed['id'];
-      content: FeedContent;
+  interface StoryPayload {
+    user: Omit<AccountPayload, 'email'>;
+    stories: {
+      id: Story['id'];
+      content: StoryContent;
       sound?: CloudinaryFile['url'];
-      createdAt: Feed['createdAt'];
+      createdAt: Story['createdAt'];
     }[];
   }
 

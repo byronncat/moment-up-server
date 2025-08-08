@@ -26,7 +26,7 @@ function createRandomUser() {
     followers: faker.number.int({ max: MAX_FOLLOW_NUM }),
     following: faker.number.int({ max: MAX_FOLLOW_NUM }),
     isFollowing: faker.datatype.boolean(),
-    hasFeed: faker.datatype.boolean(),
+    hasStory: faker.datatype.boolean(),
   };
 }
 

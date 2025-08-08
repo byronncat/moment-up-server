@@ -40,7 +40,7 @@ export const mockSuggestedUsers: UserPayload[] = Array.from({ length: 5 }, () =>
     followers: faker.number.int({ min: 10000, max: 300000 }),
     following: faker.number.int({ min: 500, max: 150000 }),
     isFollowing: faker.datatype.boolean(),
-    hasFeed: faker.datatype.boolean(),
+    hasStory: faker.datatype.boolean(),
     ...(hasFollowedBy && {
       followedBy: {
         displayItems: Array.from({ length: faker.number.int({ min: 1, max: 3 }) }, () => ({

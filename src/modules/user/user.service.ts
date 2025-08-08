@@ -68,7 +68,7 @@ export class UserService {
           : null,
       followers: faker.number.int({ min: 0, max: 1000 }),
       following: faker.number.int({ min: 0, max: 1000 }),
-      hasFeed: true,
+      hasStory: true,
     };
     return profile;
   }
