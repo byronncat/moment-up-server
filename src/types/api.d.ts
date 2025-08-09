@@ -74,14 +74,16 @@ declare module 'api' {
 
   type StoryContent = Exclude<Story['text'], null> | StoryMediaContent;
 
+  type StoryData = {
+    id: Story['id'];
+    content: StoryContent;
+    sound?: CloudinaryFile['url'];
+    createdAt: Story['createdAt'];
+  };
+
   interface StoryPayload {
     user: Omit<AccountPayload, 'email'>;
-    stories: {
-      id: Story['id'];
-      content: StoryContent;
-      sound?: CloudinaryFile['url'];
-      createdAt: Story['createdAt'];
-    }[];
+    stories: StoryData[];
   }
 
   interface PaginationPayload<T> {

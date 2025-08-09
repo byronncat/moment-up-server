@@ -10,7 +10,7 @@ const myMockStory: StoryNotificationPayload = {
   displayName: accounts[0].displayName,
   avatar: accounts[0].avatar,
   viewed: false,
-  total: 3,
+  total: 7,
   createdAt: new Date().toISOString(),
 };
 
