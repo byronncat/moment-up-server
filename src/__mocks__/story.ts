@@ -1,7 +1,8 @@
-import type { StoryNotificationPayload, StoryPayload } from 'api';
+import type { StoryContent, StoryNotificationPayload, StoryPayload } from 'api';
 import { getRandomFile, soundUrl } from './file';
 import { faker } from '@faker-js/faker';
 import { accounts } from './auth';
+import { StoryBackground } from '../common/constants';
 
 const myMockStory: StoryNotificationPayload = {
   id: faker.string.uuid(),
@@ -39,28 +40,32 @@ export const mockStories: StoryPayload[] = mockStoryNotifications.map((notificat
     // Determine content type: 70% image, 10% text, 20% video
     const contentTypeRand = seedRandom(Math.random() * 10000, 100);
     let contentType: 'image' | 'text' | 'video';
-    if (contentTypeRand < 70) contentType = 'image';
-    else if (contentTypeRand < 80) contentType = 'text';
+    if (contentTypeRand < 50) contentType = 'image';
+    else if (contentTypeRand < 90) contentType = 'text';
     else contentType = 'video';
 
     // Determine if should have sound: 30% for video, 70% for image/text
     const soundRand = seedRandom(Math.random() * 10000, 100);
     const shouldHaveSound = contentType === 'video' ? soundRand < 30 : soundRand < 70;
 
-    let content: any;
+    let content: StoryContent;
     if (contentType === 'text') {
-      content = faker.lorem.paragraph();
+      content = {
+        type: 'text',
+        text: faker.lorem.paragraph(),
+        background: faker.number.int({ min: 0, max: Object.keys(StoryBackground).length / 2 - 1 }),
+      };
     } else if (contentType === 'image') {
       content = {
-        id: faker.string.uuid(),
         type: 'image',
+        id: faker.string.uuid(),
         url: getRandomFile(faker.string.uuid(), '4:5'),
-        aspectRatio: '4:5',
+        aspectRatio: '9:16',
       };
     } else {
       content = {
-        id: faker.string.uuid(),
         type: 'video',
+        id: faker.string.uuid(),
         url: 'https://res.cloudinary.com/dq02xgn2g/video/upload/v1754136062/_mock_/so-what.mp4',
         aspectRatio: '9:16',
       };

@@ -1,5 +1,7 @@
 declare module 'api' {
   import type { User, Moment, CloudinaryFile, Hashtag, Story } from 'schema';
+  import type { StoryBackground } from 'common/constants';
+
   interface AccountPayload {
     id: User['id'];
     email: User['email'];
@@ -65,14 +67,20 @@ declare module 'api' {
     createdAt: Story['createdAt'];
   }
 
+  type StoryTextContent = {
+    type: 'text';
+    text: string;
+    background: StoryBackground;
+  };
+
   type StoryMediaContent = {
+    type: Exclude<CloudinaryFile['type'], 'audio'>;
     id: CloudinaryFile['id'];
-    type: CloudinaryFile['type'];
     url: CloudinaryFile['url'];
     aspectRatio: '9:16';
   };
 
-  type StoryContent = Exclude<Story['text'], null> | StoryMediaContent;
+  type StoryContent = StoryTextContent | StoryMediaContent;
 
   type StoryData = {
     id: Story['id'];

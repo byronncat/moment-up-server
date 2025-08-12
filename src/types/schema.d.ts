@@ -1,5 +1,5 @@
 declare module 'schema' {
-  import { ProfileVisibility } from 'common/constants';
+  import type { ProfileVisibility, StoryBackground } from 'common/constants';
 
   // === SQL ===
   type User = {
@@ -26,10 +26,20 @@ declare module 'schema' {
     readonly createdAt: Date | string;
   };
 
+  interface TextContent {
+    text: string;
+    background: StoryBackground;
+  }
+
+  interface MediaContent {
+    id: CloudinaryFile['id'];
+  }
+
   type Story = {
     readonly id: string;
     readonly userId: User['id'];
-    text: string | null;
+    content: TextContent | MediaContent;
+    sound: CloudinaryFile['id'] | null;
     readonly createdAt: Date | string;
   };
 
