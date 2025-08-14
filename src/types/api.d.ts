@@ -1,5 +1,5 @@
 declare module 'api' {
-  import type { User, Moment, CloudinaryFile, Hashtag, Story } from 'schema';
+  import type { User, Moment, CloudinaryFile, Hashtag, Story, Comment } from 'schema';
   import type { StoryBackground } from 'common/constants';
 
   interface AccountPayload {
@@ -92,6 +92,15 @@ declare module 'api' {
   interface StoryPayload {
     user: Omit<AccountPayload, 'email'>;
     stories: StoryData[];
+  }
+
+  interface CommentPayload {
+    id: Comment['id'];
+    user: UserPayload;
+    content: Comment['content'];
+    likes: number;
+    isLiked: boolean;
+    updatedAt: Comment['updatedAt'];
   }
 
   interface PaginationPayload<T> {

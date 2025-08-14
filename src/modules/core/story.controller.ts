@@ -4,7 +4,6 @@ import { Controller, HttpCode, HttpStatus, Get, UseGuards, Param, Delete } from 
 import { StoryService } from './story.service';
 import { AccessTokenGuard } from 'src/common/guards';
 import { AccessToken } from 'src/common/decorators';
-import { IdParamDto, UsernameParamDto } from 'src/common/validators';
 
 @Controller({
   path: 'stories',
@@ -16,7 +15,8 @@ export class StoryController {
   @Get()
   @HttpCode(HttpStatus.OK)
   @UseGuards(AccessTokenGuard)
-  async getStories(@AccessToken() { sub: userId }: JwtPayload) {
+  async getStories(@AccessToken() token: JwtPayload) {
+    const userId = token.sub || '';
     return {
       stories: await this.storyService.getStories(userId),
     };
@@ -25,7 +25,7 @@ export class StoryController {
   @Get('user/:username')
   @HttpCode(HttpStatus.OK)
   @UseGuards(AccessTokenGuard)
-  async getStory(@Param() { username }: UsernameParamDto) {
+  async getStory(@Param('username') username: string) {
     return {
       story: await this.storyService.getStoryByUsername(username),
     };
@@ -34,7 +34,8 @@ export class StoryController {
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @UseGuards(AccessTokenGuard)
-  async deleteStory(@Param() { id }: IdParamDto, @AccessToken() { sub: userId }: JwtPayload) {
+  async deleteStory(@Param('id') id: string, @AccessToken() token: JwtPayload) {
+    const userId = token.sub || '';
     await this.storyService.deleteStory(id, userId);
   }
 }

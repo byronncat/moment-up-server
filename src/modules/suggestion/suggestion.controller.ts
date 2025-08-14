@@ -17,8 +17,8 @@ export class SuggestionController {
   @Get('users')
   @HttpCode(HttpStatus.OK)
   @UseGuards(AccessTokenGuard)
-  async getUserSuggestions(@AccessToken() accessToken: JwtPayload) {
-    const { sub: userId } = accessToken;
+  async getUserSuggestions(@AccessToken() token: JwtPayload) {
+    const userId = token.sub || '';
     return {
       users: await this.suggestionService.getUser(userId),
     };
@@ -35,9 +35,9 @@ export class SuggestionController {
   @UseGuards(AccessTokenGuard)
   async reportTrendingTopic(
     @Body(ValidationPipe) reportDto: ReportDto,
-    @AccessToken() accessToken: JwtPayload
+    @AccessToken() token: JwtPayload
   ) {
-    const { sub: userId } = accessToken;
+    const userId = token.sub || '';
     await this.suggestionService.reportTrendingTopic(reportDto, userId);
     return {
       message: 'Report submitted successfully',

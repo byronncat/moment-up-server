@@ -1,0 +1,71 @@
+import type { JwtPayload } from 'library';
+
+import {
+  Controller,
+  HttpCode,
+  HttpStatus,
+  Get,
+  UseGuards,
+  Param,
+  Query,
+  Post,
+  Delete,
+  Body,
+} from '@nestjs/common';
+import { CommentService } from './comment.service';
+import { AccessToken } from 'src/common/decorators';
+import { AccessTokenGuard } from 'src/common/guards';
+import { PaginationDto } from './dto';
+import { CommentDto } from './dto/comment';
+
+@Controller({
+  path: 'comments',
+  version: '1',
+})
+export class CommentController {
+  constructor(private readonly commentService: CommentService) {}
+
+  @Get('moment/:momentId')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AccessTokenGuard)
+  async getComments(
+    @Param('momentId') momentId: string,
+    @Query() paginationDto: PaginationDto,
+    @AccessToken() token: JwtPayload
+  ) {
+    const userId = token.sub || '';
+    return await this.commentService.getComments(momentId, userId, paginationDto);
+  }
+
+  @Post('moment/:momentId')
+  @HttpCode(HttpStatus.CREATED)
+  @UseGuards(AccessTokenGuard)
+  async addComment(
+    @Body() commentDto: CommentDto,
+    @Param('momentId') momentId: string,
+    @AccessToken() token: JwtPayload
+  ) {
+    const userId = token.sub || '';
+    return {
+      comment: await this.commentService.addComment(commentDto, userId, momentId),
+    };
+  }
+
+  @Post(':id/like')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AccessTokenGuard)
+  async likeComment(@Param('id') id: string, @AccessToken() token: JwtPayload) {
+    const userId = token.sub || '';
+    return {
+      comment: await this.commentService.like(id, userId),
+    };
+  }
+
+  @Delete(':id/unlike')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(AccessTokenGuard)
+  async unlikeComment(@Param('id') id: string, @AccessToken() token: JwtPayload) {
+    const userId = token.sub || '';
+    await this.commentService.unlike(id, userId);
+  }
+}

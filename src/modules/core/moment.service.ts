@@ -1,6 +1,6 @@
 import { mockMoments } from 'src/__mocks__/moment';
 import type { PaginationPayload, MomentPayload } from 'api';
-import type { Bookmark, Like, Moment, Repost, User } from 'schema';
+import type { Bookmark, MomentLike, Moment, Repost, User } from 'schema';
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { PaginationDto, RepostDto, ExploreDto, ProfileMomentDto } from './dto';
 import { Auth } from 'src/common/helpers';
@@ -8,7 +8,7 @@ import { Auth } from 'src/common/helpers';
 @Injectable()
 export class MomentService {
   private moments = mockMoments;
-  private likes: Like[] = [];
+  private likes: MomentLike[] = [];
   private bookmarks: Bookmark[] = [];
   private reposts: Repost[] = [];
 
@@ -29,9 +29,9 @@ export class MomentService {
     }
   }
 
-  public async geHometMoments(userId: User['id'], pageOptions: PaginationDto) {
-    const startIndex = (pageOptions.page - 1) * pageOptions.limit;
-    const endIndex = pageOptions.page * pageOptions.limit;
+  public async geHometMoments(userId: User['id'], { page, limit }: PaginationDto) {
+    const startIndex = (page - 1) * limit;
+    const endIndex = page * limit;
     const momentSlice = this.moments.slice(startIndex, endIndex);
 
     const syncedMoments = momentSlice.map((moment) => {
@@ -58,25 +58,25 @@ export class MomentService {
 
     const pagination: PaginationPayload<MomentPayload> = {
       total: this.moments.length,
-      page: pageOptions.page,
-      limit: pageOptions.limit,
-      hasNextPage: pageOptions.page < Math.ceil(this.moments.length / pageOptions.limit),
+      page,
+      limit,
+      hasNextPage: page < Math.ceil(this.moments.length / limit),
       items: syncedMoments,
     };
     return pagination;
   }
 
-  private async geExploreMoments(userId: User['id'], exploreDto: ExploreDto) {
+  private async geExploreMoments(userId: User['id'], { page, limit, type }: ExploreDto) {
     let filteredMoments = this.moments;
 
-    if (exploreDto.type === 'media') {
+    if (type === 'media') {
       filteredMoments = this.moments.filter(
         (moment) => moment.post.files && moment.post.files.length > 0
       );
     }
 
-    const startIndex = (exploreDto.page - 1) * exploreDto.limit;
-    const endIndex = exploreDto.page * exploreDto.limit;
+    const startIndex = (page - 1) * limit;
+    const endIndex = page * limit;
     const momentSlice = filteredMoments.slice(startIndex, endIndex);
 
     const syncedMoments = momentSlice.map((moment) => {
@@ -103,26 +103,26 @@ export class MomentService {
 
     const pagination: PaginationPayload<MomentPayload> = {
       total: filteredMoments.length,
-      page: exploreDto.page,
-      limit: exploreDto.limit,
-      hasNextPage: exploreDto.page < Math.ceil(filteredMoments.length / exploreDto.limit),
+      page,
+      limit,
+      hasNextPage: page < Math.ceil(filteredMoments.length / limit),
       items: syncedMoments,
     };
 
     return pagination;
   }
 
-  private async getUserMoments(userId: User['id'], profileMomentDto: ProfileMomentDto) {
+  private async getUserMoments(userId: User['id'], { page, limit, filter }: ProfileMomentDto) {
     let filteredMoments = this.moments;
 
-    if (profileMomentDto.filter === 'media') {
+    if (filter === 'media') {
       filteredMoments = this.moments.filter(
         (moment) => moment.post.files && moment.post.files.length > 0
       );
     }
 
-    const startIndex = (profileMomentDto.page - 1) * profileMomentDto.limit;
-    const endIndex = profileMomentDto.page * profileMomentDto.limit;
+    const startIndex = (page - 1) * limit;
+    const endIndex = page * limit;
     const momentSlice = filteredMoments.slice(startIndex, endIndex);
 
     const syncedMoments = momentSlice.map((moment) => {
@@ -149,10 +149,9 @@ export class MomentService {
 
     const pagination: PaginationPayload<MomentPayload> = {
       total: filteredMoments.length,
-      page: profileMomentDto.page,
-      limit: profileMomentDto.limit,
-      hasNextPage:
-        profileMomentDto.page < Math.ceil(filteredMoments.length / profileMomentDto.limit),
+      page,
+      limit,
+      hasNextPage: page < Math.ceil(filteredMoments.length / limit),
       items: syncedMoments,
     };
 

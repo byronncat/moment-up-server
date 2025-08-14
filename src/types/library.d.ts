@@ -2,8 +2,8 @@ declare module 'library' {
   import type { Request } from 'express';
 
   type JwtPayload = {
-    sub: string;
-    jti: string;
+    sub?: string;
+    jti?: string;
   };
 
   interface AuthRequest extends Request {

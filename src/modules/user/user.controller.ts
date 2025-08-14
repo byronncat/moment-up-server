@@ -36,18 +36,18 @@ export class UserController {
   @Post(':id/follow')
   @HttpCode(HttpStatus.CREATED)
   @UseGuards(AccessTokenGuard)
-  async followUser(@AccessToken() accessToken: JwtPayload, @Param('id') targetUserId: string) {
+  async followUser(@AccessToken() token: JwtPayload, @Param('id') targetUserId: string) {
     await new Promise((resolve) => setTimeout(resolve, 3000));
-    const currentUserId = accessToken.sub;
+    const currentUserId = token.sub || '';
     return await this.userService.follow(currentUserId, targetUserId);
   }
 
   @Delete(':id/unfollow')
   @HttpCode(HttpStatus.NO_CONTENT)
   @UseGuards(AccessTokenGuard)
-  async unfollowUser(@AccessToken() accessToken: JwtPayload, @Param('id') targetUserId: string) {
+  async unfollowUser(@AccessToken() token: JwtPayload, @Param('id') targetUserId: string) {
     await new Promise((resolve) => setTimeout(resolve, 3000));
-    const currentUserId = accessToken.sub;
+    const currentUserId = token.sub || '';
     await this.userService.unfollow(currentUserId, targetUserId);
   }
 }

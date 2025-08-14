@@ -27,6 +27,7 @@ function createRandomUser() {
     following: faker.number.int({ max: MAX_FOLLOW_NUM }),
     isFollowing: faker.datatype.boolean(),
     hasStory: faker.datatype.boolean(),
+    bio: faker.lorem.sentence(),
   };
 }
 

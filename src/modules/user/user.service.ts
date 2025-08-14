@@ -4,7 +4,7 @@ import { getRandomFile } from 'src/__mocks__/file';
 import { faker } from '@faker-js/faker';
 
 import type { User, Follow } from 'schema';
-import type { AccountPayload, ProfilePayload } from 'api';
+import type { AccountPayload, ProfilePayload, UserPayload } from 'api';
 import type { GoogleUser } from 'library';
 
 type UniqueUserId = User['id'] | User['email'] | User['username'];
@@ -49,6 +49,34 @@ export class UserService {
     if (!user) return null;
     const account: AccountPayload = this.parseToAccountPayload(user);
     return account;
+  }
+
+  public async getUserPayload(userId: User['id']) {
+    const user = await this.getById(userId);
+    if (!user) return null;
+    const payload: UserPayload = {
+      id: user.id,
+      email: user.email,
+      username: user.username,
+      displayName: user.displayName,
+      avatar: user.avatar,
+      followers: faker.number.int({ min: 0, max: 1000 }),
+      following: faker.number.int({ min: 0, max: 1000 }),
+      hasStory: faker.datatype.boolean({ probability: 0.5 }),
+      isFollowing: faker.datatype.boolean({ probability: 0.5 }),
+      bio: faker.lorem.paragraph(),
+      followedBy: {
+        count: faker.number.int({ min: 0, max: 1000 }),
+        displayItems: [
+          {
+            id: faker.string.uuid(),
+            displayName: faker.person.fullName(),
+            avatar: getRandomFile(faker.person.fullName()),
+          },
+        ],
+      },
+    };
+    return payload;
   }
 
   public async getProfileByUsername(username: User['username']) {

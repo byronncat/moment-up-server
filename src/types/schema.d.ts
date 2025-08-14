@@ -47,7 +47,7 @@ declare module 'schema' {
     readonly id: string;
     readonly userId: User['id'];
     readonly momentId: Moment['id'];
-    text: string;
+    content: string;
     updatedAt: Date | string;
     readonly createdAt: Date | string;
   };
@@ -80,10 +80,17 @@ declare module 'schema' {
     readonly createdAt: Date | string;
   };
 
-  type Like = {
+  type MomentLike = {
     readonly id: string;
     readonly userId: User['id'];
     readonly momentId: Moment['id'];
+    readonly createdAt: Date | string;
+  };
+
+  type CommentLike = {
+    readonly id: string;
+    readonly userId: User['id'];
+    readonly commentId: Comment['id'];
     readonly createdAt: Date | string;
   };
 
