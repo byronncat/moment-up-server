@@ -19,11 +19,7 @@ export class CommentService {
     private readonly momentService: MomentService
   ) {}
 
-  public async getComments(
-    momentId: Moment['id'],
-    userId: User['id'],
-    { page, limit }: PaginationDto
-  ) {
+  public async get(momentId: Moment['id'], userId: User['id'], { page, limit }: PaginationDto) {
     const ownComments = this.comments.filter((comment) => comment.user.id === userId);
     const otherComments = this.comments.filter((comment) => comment.user.id !== userId);
     this.comments = [...ownComments, ...otherComments];
@@ -39,7 +35,7 @@ export class CommentService {
     return pagination;
   }
 
-  public async addComment(commentDto: CommentDto, userId: User['id'], momentId: Moment['id']) {
+  public async add({ momentId, content }: CommentDto, userId: User['id']) {
     const user = await this.userService.getUserPayload(userId);
     if (!user) throw new NotFoundException('User not found');
 
@@ -52,16 +48,22 @@ export class CommentService {
     const commentPayload: CommentPayload = {
       id: Auth.generateId('uuid'),
       user,
-      content: commentDto.content,
+      content,
       likes: 0,
       isLiked: false,
       updatedAt: new Date().toISOString(),
     };
-    console.log('old length', this.comments.length);
     this.comments.push(commentPayload);
-    console.log('new length', this.comments.length);
 
     return commentPayload;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  public async delete(id: Comment['id'], userId: User['id']) {
+    const comment = this.comments.find((comment) => comment.id === id);
+    if (!comment) throw new NotFoundException('Comment not found');
+    this.comments = this.comments.filter((comment) => comment.id !== id);
+    return comment;
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars

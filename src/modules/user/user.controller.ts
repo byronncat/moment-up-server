@@ -38,7 +38,7 @@ export class UserController {
   @UseGuards(AccessTokenGuard)
   async followUser(@AccessToken() token: JwtPayload, @Param('id') targetUserId: string) {
     await new Promise((resolve) => setTimeout(resolve, 3000));
-    const currentUserId = token.sub || '';
+    const currentUserId = token?.sub || '';
     return await this.userService.follow(currentUserId, targetUserId);
   }
 
@@ -47,7 +47,7 @@ export class UserController {
   @UseGuards(AccessTokenGuard)
   async unfollowUser(@AccessToken() token: JwtPayload, @Param('id') targetUserId: string) {
     await new Promise((resolve) => setTimeout(resolve, 3000));
-    const currentUserId = token.sub || '';
+    const currentUserId = token?.sub || '';
     await this.userService.unfollow(currentUserId, targetUserId);
   }
 }

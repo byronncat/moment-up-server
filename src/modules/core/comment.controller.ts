@@ -33,29 +33,33 @@ export class CommentController {
     @Query() paginationDto: PaginationDto,
     @AccessToken() token: JwtPayload
   ) {
-    const userId = token.sub || '';
-    return await this.commentService.getComments(momentId, userId, paginationDto);
+    const userId = token?.sub || '';
+    return await this.commentService.get(momentId, userId, paginationDto);
   }
 
-  @Post('moment/:momentId')
+  @Post()
   @HttpCode(HttpStatus.CREATED)
   @UseGuards(AccessTokenGuard)
-  async addComment(
-    @Body() commentDto: CommentDto,
-    @Param('momentId') momentId: string,
-    @AccessToken() token: JwtPayload
-  ) {
-    const userId = token.sub || '';
+  async addComment(@Body() commentDto: CommentDto, @AccessToken() token: JwtPayload) {
+    const userId = token?.sub || '';
     return {
-      comment: await this.commentService.addComment(commentDto, userId, momentId),
+      comment: await this.commentService.add(commentDto, userId),
     };
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(AccessTokenGuard)
+  async deleteComment(@Param('id') id: string, @AccessToken() token: JwtPayload) {
+    const userId = token?.sub || '';
+    await this.commentService.delete(id, userId);
   }
 
   @Post(':id/like')
   @HttpCode(HttpStatus.OK)
   @UseGuards(AccessTokenGuard)
   async likeComment(@Param('id') id: string, @AccessToken() token: JwtPayload) {
-    const userId = token.sub || '';
+    const userId = token?.sub || '';
     return {
       comment: await this.commentService.like(id, userId),
     };
@@ -65,7 +69,7 @@ export class CommentController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @UseGuards(AccessTokenGuard)
   async unlikeComment(@Param('id') id: string, @AccessToken() token: JwtPayload) {
-    const userId = token.sub || '';
+    const userId = token?.sub || '';
     await this.commentService.unlike(id, userId);
   }
 }

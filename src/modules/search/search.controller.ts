@@ -34,7 +34,7 @@ export class SearchController {
   @HttpCode(HttpStatus.OK)
   @UseGuards(AccessTokenGuard)
   async getHistory(@AccessToken() token: JwtPayload, @Query() getHistoryDto: GetHistoryDto) {
-    const userId = token.sub || '';
+    const userId = token?.sub || '';
     return {
       history: await this.searchService.getSearchHistory(userId, getHistoryDto.limit),
     };
@@ -44,7 +44,7 @@ export class SearchController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @UseGuards(AccessTokenGuard)
   async clearHistory(@AccessToken() token: JwtPayload) {
-    const userId = token.sub || '';
+    const userId = token?.sub || '';
     await this.searchService.clearSearchHistory(userId);
   }
 
@@ -52,7 +52,7 @@ export class SearchController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @UseGuards(AccessTokenGuard)
   async removeHistoryItem(@AccessToken() token: JwtPayload, @Param('id') id: string) {
-    const userId = token.sub || '';
+    const userId = token?.sub || '';
     await this.searchService.removeSearchHistoryItem(userId, id);
   }
 }
