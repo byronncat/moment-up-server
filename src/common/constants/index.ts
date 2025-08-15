@@ -35,7 +35,7 @@ export enum Audience {
   ONLY_ME,
 }
 
-export enum ReportType {
+export enum TrendingReportType {
   NOT_RELEVANT,
   SPAM,
   ABUSIVE,
