@@ -12,6 +12,7 @@ declare module 'api' {
 
   interface ProfilePayload extends AccountPayload {
     bio?: User['bio'];
+    backgroundImage?: string;
     followers: number;
     following: number;
     hasStory: boolean;
@@ -126,6 +127,11 @@ declare module 'api' {
   }
 
   type NotificationPayload = SecurityNotificationPayload | CommunityNotificationPayload;
+
+  interface PopularProfilePayload
+    extends Omit<ProfilePayload, 'followers' | 'following' | 'hasStory' | 'isFollowing'> {
+    backgroundImage?: string;
+  }
 
   interface PaginationPayload<T> {
     total: number;

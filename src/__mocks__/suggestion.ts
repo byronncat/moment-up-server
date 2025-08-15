@@ -1,4 +1,4 @@
-import type { UserPayload, HashtagPayload } from 'api';
+import type { UserPayload, HashtagPayload, PopularProfilePayload } from 'api';
 import { getRandomFile } from './file';
 import { faker } from '@faker-js/faker';
 
@@ -75,3 +75,15 @@ export const mockTrendingTopics: HashtagPayload[] = Array.from(
     id,
     count: faker.number.int({ min: 500000, max: 2000000 }),
   }));
+
+export const mockPopularProfiles: PopularProfilePayload[] = Array.from({ length: 5 }, () => ({
+  id: faker.string.uuid(),
+  displayName: faker.person.fullName(),
+  username: faker.internet.username(),
+  email: faker.internet.email(),
+  avatar: getRandomFile(faker.string.uuid()),
+  backgroundImage: faker.datatype.boolean(0.8)
+    ? getRandomFile(faker.string.uuid(), '1.91:1')
+    : undefined,
+  bio: faker.datatype.boolean(0.5) ? faker.lorem.paragraph() : undefined,
+}));

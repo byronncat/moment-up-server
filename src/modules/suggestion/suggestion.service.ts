@@ -1,4 +1,8 @@
-import { mockSuggestedUsers, mockTrendingTopics } from 'src/__mocks__/suggestion';
+import {
+  mockPopularProfiles,
+  mockSuggestedUsers,
+  mockTrendingTopics,
+} from 'src/__mocks__/suggestion';
 import { Injectable, Inject } from '@nestjs/common';
 import { Logger } from 'winston';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
@@ -11,6 +15,11 @@ export class SuggestionService {
   public async getUser(userId: string) {
     this.logger.silly(userId);
     return mockSuggestedUsers;
+  }
+
+  public async getPopular(userId: string) {
+    this.logger.silly(userId);
+    return mockPopularProfiles;
   }
 
   public async getTrending() {

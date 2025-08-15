@@ -60,6 +60,9 @@ export class UserService {
       username: user.username,
       displayName: user.displayName,
       avatar: user.avatar,
+      backgroundImage: faker.datatype.boolean(0.5)
+        ? getRandomFile(faker.string.uuid(), '1.91:1')
+        : undefined,
       followers: faker.number.int({ min: 0, max: 1000 }),
       following: faker.number.int({ min: 0, max: 1000 }),
       hasStory: faker.datatype.boolean({ probability: 0.5 }),
@@ -88,6 +91,9 @@ export class UserService {
       username: user?.username || username,
       displayName: user?.displayName || faker.person.fullName(),
       avatar: user?.avatar || getRandomFile(username),
+      backgroundImage: faker.datatype.boolean(0.5)
+        ? getRandomFile(faker.string.uuid(), '1.91:1')
+        : undefined,
       bio:
         user?.bio || !user
           ? faker.datatype.boolean({ probability: 0.5 })

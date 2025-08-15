@@ -24,6 +24,16 @@ export class SuggestionController {
     };
   }
 
+  @Get('popular')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AccessTokenGuard)
+  async getPopularProfiles(@AccessToken() token: JwtPayload) {
+    const userId = token?.sub || '';
+    return {
+      users: await this.suggestionService.getPopular(userId),
+    };
+  }
+
   @Get('trending')
   @HttpCode(HttpStatus.OK)
   async getHashtagSuggestions() {

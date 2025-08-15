@@ -541,7 +541,7 @@ export const soundUrl = [
   'https://res.cloudinary.com/dq02xgn2g/video/upload/v1754421045/_mock_/Blue_Archive_OST_221._U_mak3_m3_smil3_yqz6gj.mp3',
 ];
 
-export function getRandomFile(text: string, aspectRatio?: '4:5' | '9:16') {
+export function getRandomFile(text: string, aspectRatio?: '4:5' | '9:16' | '1.91:1') {
   const seed = text ? text.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) : 0;
   const filteredImages = aspectRatio
     ? imageUrls.filter((img) => img.aspectRatio === aspectRatio)
