@@ -103,6 +103,30 @@ declare module 'api' {
     updatedAt: Comment['updatedAt'];
   }
 
+  interface SecurityNotificationPayload {
+    id: string;
+    type: 'security';
+    userId: string;
+    createdAt: string;
+  }
+
+  interface CommunityNotificationPayload {
+    id: string;
+    type: 'social';
+    user: UserPayload;
+    createdAt: string;
+    information:
+      | {
+          type: 'post' | 'mention';
+          content: string;
+        }
+      | {
+          type: 'follow';
+        };
+  }
+
+  type NotificationPayload = SecurityNotificationPayload | CommunityNotificationPayload;
+
   interface PaginationPayload<T> {
     total: number;
     page: number;

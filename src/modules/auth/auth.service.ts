@@ -4,8 +4,6 @@ import type { User } from 'schema';
 
 type EmailTemplate = 'otp' | 'verify' | 'welcome';
 
-// === Service ===
-
 import {
   ForbiddenException,
   Injectable,
@@ -17,12 +15,13 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { MailerService } from '@nestjs-modules/mailer';
+import { UserService } from '../user/user.service';
+import { Auth } from 'src/common/helpers';
+
+import { HbsService } from './hbs.service';
 import { Logger } from 'winston';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
-import { MailerService } from '@nestjs-modules/mailer';
-
-import { Auth } from 'src/common/helpers';
-import { HbsService } from './hbs.service';
 import { Otp } from 'src/common/utilities';
 import {
   LoginDto,
@@ -32,7 +31,6 @@ import {
   VerifyDto,
   SwitchAccountDto,
 } from './dto';
-import { UserService } from '../user/user.service';
 import { TOKEN_ID_LENGTH, Url, Cookie } from 'src/common/constants';
 
 const OTP_MAX_AGE = 5 * 60 * 1000; // 5 minutes

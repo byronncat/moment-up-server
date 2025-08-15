@@ -90,3 +90,18 @@ export enum StoryBackground {
   RADIENT_GRADIENT,
   ORANGE_SUN_TORNADO,
 }
+
+export enum NotificationType {
+  ALL = 'all',
+  SECURITY = 'security',
+  SOCIAL = 'social',
+  POST = 'post',
+  REQUEST = 'request',
+  MENTION = 'mention',
+  FOLLOW = 'follow',
+}
+
+export enum ExploreType {
+  MEDIA = 'media',
+  POST = 'post',
+}

@@ -15,7 +15,7 @@ import {
 import { CommentService } from './comment.service';
 import { AccessToken } from 'src/common/decorators';
 import { AccessTokenGuard } from 'src/common/guards';
-import { PaginationDto } from './dto';
+import { PaginationDto } from 'src/common/validators';
 import { CommentDto } from './dto/comment';
 
 @Controller({

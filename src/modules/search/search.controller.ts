@@ -33,10 +33,10 @@ export class SearchController {
   @Get('history')
   @HttpCode(HttpStatus.OK)
   @UseGuards(AccessTokenGuard)
-  async getHistory(@AccessToken() token: JwtPayload, @Query() getHistoryDto: GetHistoryDto) {
+  async getHistory(@AccessToken() token: JwtPayload, @Query() { limit }: GetHistoryDto) {
     const userId = token?.sub || '';
     return {
-      history: await this.searchService.getSearchHistory(userId, getHistoryDto.limit),
+      history: await this.searchService.getSearchHistory(userId, limit),
     };
   }
 

@@ -1,13 +1,21 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { APP_INTERCEPTOR, APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { WinstonModule } from 'nest-winston';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
-import { AuthModule, CoreModule, SearchModule, SuggestionModule, UserModule } from './modules';
+import {
+  AuthModule,
+  CoreModule,
+  NotificationModule,
+  SearchModule,
+  SuggestionModule,
+  UserModule,
+} from './modules';
 import { RequestLogger } from './common/interceptors';
 import { HttpExceptionFilter } from './common/filters';
 import { environment, createWinstonTransports } from './configurations';
+import { AccessTokenMiddleware } from './common/middlewares';
 
 @Module({
   imports: [
@@ -50,6 +58,7 @@ import { environment, createWinstonTransports } from './configurations';
     SuggestionModule,
     SearchModule,
     UserModule,
+    NotificationModule,
   ],
   providers: [
     {
@@ -66,4 +75,8 @@ import { environment, createWinstonTransports } from './configurations';
     },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(AccessTokenMiddleware).forRoutes('*');
+  }
+}

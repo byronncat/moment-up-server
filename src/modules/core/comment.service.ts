@@ -1,11 +1,13 @@
 import { mockComments } from 'src/__mocks__/comment';
 import type { PaginationPayload, CommentPayload } from 'api';
-import { User, Moment, Comment } from 'schema';
+import type { User, Moment, Comment } from 'schema';
+
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { CommentDto, PaginationDto } from './dto';
-import { Auth } from 'src/common/helpers';
 import { UserService } from '../user/user.service';
 import { MomentService } from './moment.service';
+import { Auth } from 'src/common/helpers';
+import { CommentDto } from './dto';
+import { PaginationDto } from 'src/common/validators';
 
 @Injectable()
 export class CommentService {

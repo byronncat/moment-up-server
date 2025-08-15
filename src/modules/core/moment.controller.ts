@@ -15,7 +15,8 @@ import {
 import { MomentService } from './moment.service';
 import { AccessTokenGuard } from 'src/common/guards';
 import { AccessToken } from 'src/common/decorators';
-import { PaginationDto, RepostDto, ExploreDto, ProfileMomentDto } from './dto';
+import { RepostDto, ExploreDto, ProfileMomentDto } from './dto';
+import { PaginationDto } from 'src/common/validators';
 import { INITIAL_PAGE } from 'src/common/constants';
 
 @Controller({

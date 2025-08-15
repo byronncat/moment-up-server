@@ -1,19 +1,25 @@
-import { Controller, Get } from '@nestjs/common';
+import type { JwtPayload } from 'library';
+import { Controller, Get, HttpCode, HttpStatus, Query, UseGuards } from '@nestjs/common';
 import { NotificationService } from './notification.service';
+import { AccessToken } from 'src/common/decorators';
+import { AccessTokenGuard } from 'src/common/guards';
+import { NotificationsDto } from './dto/notifications';
 
-@Controller('notifications')
+@Controller({
+  path: 'notifications',
+  version: '1',
+})
 export class NotificationController {
   constructor(private readonly notificationService: NotificationService) {}
 
   @Get()
-  async getNotifications() {
-    // TODO: Implement get notifications endpoint
-    return { message: 'Get notifications endpoint' };
-  }
-
-  @Get('unread-count')
-  async getUnreadCount() {
-    // TODO: Implement get unread count endpoint
-    return { message: 'Get unread count endpoint' };
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AccessTokenGuard)
+  async getNotifications(
+    @AccessToken() token: JwtPayload,
+    @Query() notificationsDto: NotificationsDto
+  ) {
+    const userId = token?.sub || '';
+    return await this.notificationService.get(userId, notificationsDto);
   }
 }
