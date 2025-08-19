@@ -2,9 +2,18 @@ import { getRandomFile } from './file';
 import { SearchItemType } from '../common/constants';
 import { faker } from '@faker-js/faker';
 
-export const mockSearches = [
+function uniqueById<T extends { id: string }>(arr: T[]): T[] {
+  const seen = new Set<string>();
+  return arr.filter((item) => {
+    if (seen.has(item.id)) return false;
+    seen.add(item.id);
+    return true;
+  });
+}
+
+export const mockSearches = faker.helpers.shuffle([
   // Users with faker-generated data
-  ...Array.from({ length: 5 }, () => ({
+  ...Array.from({ length: 50 }, () => ({
     id: faker.string.uuid(),
     type: SearchItemType.USER as const,
     email: faker.internet.email(),
@@ -14,27 +23,29 @@ export const mockSearches = [
   })),
 
   // Hashtags using various faker categories as IDs
-  ...Array.from({ length: 12 }, () => ({
-    id: faker.helpers.arrayElement([
-      faker.food.meat(),
-      faker.music.genre(),
-      faker.food.fruit(),
-      faker.animal.type(),
-      faker.color.human(),
-      faker.vehicle.type(),
-      faker.food.dish(),
-      faker.science.chemicalElement().name.toLowerCase(),
-      faker.commerce.department(),
-      faker.hacker.noun(),
-      faker.food.vegetable(),
-      faker.food.spice(),
-    ]),
-    type: SearchItemType.HASHTAG as const,
-    count: faker.number.int({ min: 10000, max: 1000000 }),
-  })),
+  ...uniqueById(
+    Array.from({ length: 50 }, () => ({
+      id: faker.helpers.arrayElement([
+        faker.food.meat(),
+        faker.music.genre(),
+        faker.food.fruit(),
+        faker.animal.type(),
+        faker.color.human(),
+        faker.vehicle.type(),
+        faker.food.dish(),
+        faker.science.chemicalElement().name.toLowerCase(),
+        faker.commerce.department(),
+        faker.hacker.noun(),
+        faker.food.vegetable(),
+        faker.food.spice(),
+      ]),
+      type: SearchItemType.HASHTAG as const,
+      count: faker.number.int({ min: 10000, max: 1000000 }),
+    }))
+  ),
 
   // Query searches using meaningful search terms
-  ...Array.from({ length: 10 }, () => ({
+  ...Array.from({ length: 7 }, () => ({
     type: SearchItemType.QUERY as const,
     id: faker.helpers
       .arrayElement([
@@ -51,4 +62,4 @@ export const mockSearches = [
       ])
       .toLowerCase(),
   })),
-];
+]);

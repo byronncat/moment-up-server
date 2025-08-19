@@ -76,7 +76,7 @@ export const mockTrendingTopics: HashtagPayload[] = Array.from(
     count: faker.number.int({ min: 500000, max: 2000000 }),
   }));
 
-export const mockPopularProfiles: PopularProfilePayload[] = Array.from({ length: 5 }, () => ({
+export const mockPopularProfiles: PopularProfilePayload[] = Array.from({ length: 4 }, () => ({
   id: faker.string.uuid(),
   displayName: faker.person.fullName(),
   username: faker.internet.username(),

@@ -8,7 +8,7 @@ export class IsValidSearchTypes implements ValidatorConstraintInterface {
   validate(value: any) {
     if (typeof value !== 'string') return false;
 
-    const allowedTypes = ['user', 'post', 'hashtag'];
+    const allowedTypes = ['user', 'post', 'hashtag', 'media'];
     const types = value.split('&').map((type) => type.trim());
 
     const uniqueTypes = [...new Set(types)];
@@ -19,7 +19,18 @@ export class IsValidSearchTypes implements ValidatorConstraintInterface {
   }
 
   defaultMessage() {
-    return 'Type must contain only valid values (user, post, hashtag) separated by & with no duplicates';
+    return 'Type must contain only valid values (user, post, hashtag, media) separated by & with no duplicates';
+  }
+}
+
+@ValidatorConstraint({ name: 'isValidSearchOrder', async: false })
+export class IsValidSearchOrder implements ValidatorConstraintInterface {
+  validate(value: any) {
+    if (typeof value !== 'string') return false;
+    return ['most_popular', 'newest'].includes(value);
+  }
+  defaultMessage() {
+    return 'Order must be either most_popular or newest';
   }
 }
 
@@ -31,6 +42,10 @@ export class SearchDto {
   @Validate(IsValidSearchTypes)
   @IsOptional()
   type?: string;
+
+  @Validate(IsValidSearchOrder)
+  @IsOptional()
+  order?: string;
 
   @Type(() => Number)
   @Min(1, { message: 'Page must be greater than 0' })
