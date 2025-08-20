@@ -41,10 +41,14 @@ function createRandomPost(
     aspectRatio: '4:5' | '1.91:1' | '4:5' | '9:16';
   }> = []
 ) {
+  const hasMedia = !forceTextOnly && mediaFiles.length > 0;
   const hasText = faker.datatype.boolean({ probability: 0.7 });
 
+  // Ensure post has at least text or media (or both)
+  const shouldIncludeText = hasText || (!hasMedia && forceTextOnly);
+
   return {
-    ...(hasText && {
+    ...(shouldIncludeText && {
       text: faker.helpers.arrayElement([
         faker.lorem.sentence(),
         faker.lorem.paragraph(),
@@ -53,7 +57,7 @@ function createRandomPost(
         `${faker.company.buzzPhrase()} #${faker.color.human().toLowerCase()} #${faker.vehicle.type().toLowerCase().replace(' ', '')}`,
       ]),
     }),
-    ...(!forceTextOnly && mediaFiles.length > 0 && { files: mediaFiles }),
+    ...(hasMedia && { files: mediaFiles }),
     likes: faker.number.int({ max: MAX_LIKE_NUM }),
     comments: faker.number.int({ max: MAX_COMMENT_NUM }),
     reposts: faker.number.int({ max: MAX_REPOST_NUM }),
