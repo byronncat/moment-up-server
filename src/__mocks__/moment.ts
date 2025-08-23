@@ -38,7 +38,7 @@ function createRandomPost(
     id: string;
     type: 'image' | 'video';
     url: string;
-    aspectRatio: '4:5' | '1.91:1' | '4:5' | '9:16';
+    aspectRatio: '4:5' | '1.91:1' | '4:5' | '9:16' | '1:1';
   }> = []
 ) {
   const hasMedia = !forceTextOnly && mediaFiles.length > 0;
