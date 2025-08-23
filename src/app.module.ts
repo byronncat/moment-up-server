@@ -56,7 +56,7 @@ import { AccessTokenMiddleware } from './common/middlewares';
     AuthModule,
     CoreModule,
     SuggestionModule,
-    // SearchModule,
+    SearchModule,
     UserModule,
     NotificationModule,
   ],
