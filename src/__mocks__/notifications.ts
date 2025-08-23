@@ -63,7 +63,7 @@ const generateCommunityNotification = (): CommunityNotificationPayload => {
 };
 
 // Generate dynamic notifications
-const generateNotifications = (): NotificationPayload[] => {
+export const generateNotifications = (): NotificationPayload[] => {
   const notifications: NotificationPayload[] = [];
 
   // Generate 1-2 security notifications
@@ -83,5 +83,3 @@ const generateNotifications = (): NotificationPayload[] => {
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
 };
-
-export const mockNotifications: NotificationPayload[] = generateNotifications();

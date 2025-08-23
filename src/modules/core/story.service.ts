@@ -1,11 +1,11 @@
-import { mockStories, mockStoryNotifications } from 'src/__mocks__/story';
+import { createMockStories, mockStoryNotifications } from 'src/__mocks__/story';
 import type { Story, User } from 'schema';
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 
 @Injectable()
 export class StoryService {
-  private stories = mockStories;
   private storyNotifications = mockStoryNotifications;
+  private stories = createMockStories();
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   public async getStories(userId: User['id']) {

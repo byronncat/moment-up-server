@@ -67,46 +67,46 @@ function createRandomPost(
   };
 }
 
-// Generate moments
-const moments: MomentPayload[] = [];
-let mediaIndex = 0;
+export const mockMoments: MomentPayload[] = (() => {
+  const moments = [];
+  let mediaIndex = 0;
 
-// Create media posts until all media files are used
-while (mediaIndex < allMedia.length) {
-  const filesPerPost = faker.number.int({ min: 1, max: 6 });
-  const mediaFilesForPost = [];
+  // Create media posts until all media files are used
+  while (mediaIndex < allMedia.length) {
+    const filesPerPost = faker.number.int({ min: 1, max: 6 });
+    const mediaFilesForPost = [];
 
-  // Get 1-6 media files for this post
-  for (let i = 0; i < filesPerPost && mediaIndex < allMedia.length; i++) {
-    const media = allMedia[mediaIndex];
-    mediaFilesForPost.push({
-      id: i.toString(),
-      type: media.url.includes('.mp4') ? ('video' as const) : ('image' as const),
-      url: media.url,
-      aspectRatio: media.aspectRatio,
+    // Get 1-6 media files for this post
+    for (let i = 0; i < filesPerPost && mediaIndex < allMedia.length; i++) {
+      const media = allMedia[mediaIndex];
+      mediaFilesForPost.push({
+        id: i.toString(),
+        type: media.url.includes('.mp4') ? ('video' as const) : ('image' as const),
+        url: media.url,
+        aspectRatio: media.aspectRatio,
+      });
+      mediaIndex++;
+    }
+
+    // Create moment with this group of files
+    moments.push({
+      id: faker.string.uuid(),
+      user: createRandomUser(),
+      post: createRandomPost(false, mediaFilesForPost),
     });
-    mediaIndex++;
   }
 
-  // Create moment with this group of files
-  moments.push({
-    id: faker.string.uuid(),
-    user: createRandomUser(),
-    post: createRandomPost(false, mediaFilesForPost),
-  });
-}
+  // Calculate text-only posts (half the number of media posts)
+  const textOnlyPosts = Math.floor(moments.length / 2);
 
-// Calculate text-only posts (half the number of media posts)
-const textOnlyPosts = Math.floor(moments.length / 2);
+  // Add text-only posts
+  for (let i = 0; i < textOnlyPosts; i++) {
+    moments.push({
+      id: faker.string.uuid(),
+      user: createRandomUser(),
+      post: createRandomPost(true), // Force text only
+    });
+  }
 
-// Add text-only posts
-for (let i = 0; i < textOnlyPosts; i++) {
-  moments.push({
-    id: faker.string.uuid(),
-    user: createRandomUser(),
-    post: createRandomPost(true), // Force text only
-  });
-}
-
-// Shuffle all moments for random order
-export const mockMoments: MomentPayload[] = moments.sort(() => Math.random() - 0.5);
+  return moments.sort(() => Math.random() - 0.5);
+})();

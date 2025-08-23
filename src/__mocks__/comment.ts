@@ -26,4 +26,8 @@ export function createMockComment(): CommentPayload {
   };
 }
 
-export const mockComments: CommentPayload[] = Array.from({ length: 30 }, () => createMockComment());
+export const createMockComments = (): CommentPayload[] =>
+  Array.from({ length: 30 }, () => createMockComment()).sort((a, b) => {
+    if (a.likes !== b.likes) return b.likes - a.likes;
+    return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+  });

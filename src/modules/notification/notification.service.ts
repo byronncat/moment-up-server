@@ -1,12 +1,12 @@
 import type { NotificationPayload, PaginationPayload } from 'api';
 import { Injectable } from '@nestjs/common';
-import { mockNotifications } from 'src/__mocks__/notifications';
+import { generateNotifications } from 'src/__mocks__/notifications';
 import { NotificationsDto } from './dto/notifications';
 import { NotificationType } from 'src/common/constants';
 
 @Injectable()
 export class NotificationService {
-  private readonly notifications = mockNotifications;
+  private readonly notifications = generateNotifications();
 
   public async get(userId: string, { page, limit, type }: NotificationsDto) {
     const notifications = this.notifications

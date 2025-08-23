@@ -1,4 +1,4 @@
-import { mockComments } from 'src/__mocks__/comment';
+import { createMockComments } from 'src/__mocks__/comment';
 import type { PaginationPayload, CommentPayload } from 'api';
 import type { User, Moment, Comment } from 'schema';
 
@@ -11,10 +11,7 @@ import { PaginationDto } from 'src/common/validators';
 
 @Injectable()
 export class CommentService {
-  private comments = mockComments.sort((a, b) => {
-    if (a.likes !== b.likes) return b.likes - a.likes;
-    return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
-  });
+  private comments: CommentPayload[] = createMockComments();
 
   constructor(
     private readonly userService: UserService,

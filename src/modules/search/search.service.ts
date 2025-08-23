@@ -1,4 +1,4 @@
-import { mockSearches } from 'src/__mocks__/search';
+import { createMockSearches } from 'src/__mocks__/search';
 import { mockMoments } from 'src/__mocks__/moment';
 import type { AccountPayload, HashtagPayload, MomentPayload, PaginationPayload } from 'api';
 import { SearchItemType } from 'src/common/constants';
@@ -40,106 +40,81 @@ import { SearchDto } from './dto';
 
 @Injectable()
 export class SearchService {
-  private searchHistory: SearchHistoryPayload[] = mockSearches;
+  private searchHistory: SearchHistoryPayload[] = createMockSearches();
 
   public async search(searchData: SearchDto) {
     const { query, type, order, page, limit } = searchData;
 
-    const postData: SearchPayload[] = mockMoments.map((moment) => ({
-      type: SearchItemType.POST,
-      ...moment,
-    }));
+    // Parse requested types
+    const typeMapping: Record<string, SearchItemType> = {
+      user: SearchItemType.USER,
+      post: SearchItemType.POST,
+      hashtag: SearchItemType.HASHTAG,
+      media: SearchItemType.MEDIA,
+    };
 
-    const mediaData: SearchPayload[] = mockMoments
-      .filter((moment) => moment.post?.files && moment.post.files.length > 0)
-      .map((moment) => ({
-        type: SearchItemType.MEDIA,
-        ...moment,
-      }));
+    const requestedTypes = type
+      ? type
+          .split('&')
+          .map((t) => t.trim())
+          .map((t) => typeMapping[t])
+          .filter((t) => t !== undefined)
+      : [
+          SearchItemType.USER,
+          SearchItemType.QUERY,
+          SearchItemType.HASHTAG,
+          SearchItemType.POST,
+          SearchItemType.MEDIA,
+        ];
 
-    let allData: SearchPayload[] = [
-      ...(mockSearches as SearchPayload[]),
-      ...postData,
-      ...mediaData,
-    ];
+    // Search directly from source data
+    const results: SearchPayload[] = [];
+    let totalCount = 0;
 
-    if (query) {
-      allData = allData.filter((item) => {
-        const searchTerm = query.toLowerCase();
-
-        switch (item.type) {
-          case SearchItemType.USER:
-            return (
-              item.username?.toLowerCase().includes(searchTerm) ||
-              item.displayName?.toLowerCase().includes(searchTerm)
-            );
-          case SearchItemType.QUERY:
-            return item.id.toLowerCase().includes(searchTerm);
-          case SearchItemType.HASHTAG:
-            return item.id.toLowerCase().includes(searchTerm);
-          case SearchItemType.POST:
-            return (
-              (item as any).user?.username?.toLowerCase().includes(searchTerm) ||
-              (item as any).user?.displayName?.toLowerCase().includes(searchTerm) ||
-              (item as any).post?.text?.toLowerCase().includes(searchTerm)
-            );
-          case SearchItemType.MEDIA:
-            return (
-              ((item as any).user?.username?.toLowerCase().includes(searchTerm) ||
-                (item as any).user?.displayName?.toLowerCase().includes(searchTerm) ||
-                (item as any).post?.text?.toLowerCase().includes(searchTerm)) &&
-              (item as any).post?.files?.length > 0
-            );
-          default:
-            return false;
-        }
-      });
+    // Search in mockSearches (users, queries, hashtags)
+    if (
+      requestedTypes.some((t) =>
+        [SearchItemType.USER, SearchItemType.QUERY, SearchItemType.HASHTAG].includes(t)
+      )
+    ) {
+      const searchResults = this.searchInMockSearches(query, requestedTypes);
+      results.push(...searchResults);
+      totalCount += searchResults.length;
     }
 
-    if (type) {
-      const typeMapping: Record<string, SearchItemType> = {
-        user: SearchItemType.USER,
-        post: SearchItemType.POST,
-        hashtag: SearchItemType.HASHTAG,
-        media: SearchItemType.MEDIA,
-      };
-
-      const allowedTypes = type.split('&').map((t) => t.trim());
-      const searchItemTypes = allowedTypes
-        .map((t) => typeMapping[t])
-        .filter((t) => t !== undefined);
-
-      if (searchItemTypes.length > 0) {
-        allData = allData.filter((item) => searchItemTypes.includes(item.type));
-      }
+    // Search in moments (posts and media)
+    if (requestedTypes.some((t) => [SearchItemType.POST, SearchItemType.MEDIA].includes(t))) {
+      const momentResults = this.searchInMoments(query, requestedTypes);
+      results.push(...momentResults);
+      totalCount += momentResults.length;
     }
 
-    if (order) {
-      allData = this.sortSearchResults(allData, order);
-    }
+    // Sort results if needed
+    const sortedResults = order ? this.sortSearchResults(results, order) : results;
 
+    // Handle pagination
     let result: PaginationPayload<SearchPayload>;
     if (type && type.includes('&')) {
-      const postData = allData.filter((item) => item.type === SearchItemType.POST);
-      const totalPosts = postData.length;
-
-      // For multi-type searches: hasNextPage is true if there are more posts after page 1
-      const hasNextPage = page === 1 ? totalPosts > limit : totalPosts > (page - 1) * limit;
+      const postCount = sortedResults.filter((item) => item.type === SearchItemType.POST).length;
+      const hasNextPage = page === 1 ? postCount > limit : postCount > (page - 1) * limit;
 
       result = {
         page,
-        total: allData.length,
+        total: totalCount,
         limit,
         hasNextPage,
-        items: this.paginateByCategory(allData, type, page, limit),
+        items: this.paginateByCategory(sortedResults, type, page, limit),
       };
     } else {
+      const startIndex = (page - 1) * limit;
+      const endIndex = startIndex + limit;
+
       result = {
         page,
         limit,
-        total: allData.length,
-        hasNextPage: allData.length > page * limit,
-        items: allData.slice((page - 1) * limit, page * limit),
+        total: totalCount,
+        hasNextPage: totalCount > endIndex,
+        items: sortedResults.slice(startIndex, endIndex),
       };
     }
 
@@ -161,13 +136,90 @@ export class SearchService {
     this.searchHistory = this.searchHistory.filter((item) => item.id !== itemId);
   }
 
+  private searchInMockSearches(
+    query: string | undefined,
+    requestedTypes: SearchItemType[]
+  ): SearchPayload[] {
+    const results: SearchPayload[] = [];
+    const searchTerm = query?.toLowerCase();
+
+    for (const item of this.searchHistory as SearchPayload[]) {
+      // Skip if type not requested
+      if (!requestedTypes.includes(item.type)) continue;
+
+      // Skip if query doesn't match
+      if (searchTerm && !this.matchesSearchTerm(item, searchTerm)) continue;
+
+      results.push(item);
+    }
+
+    return results;
+  }
+
+  private searchInMoments(
+    query: string | undefined,
+    requestedTypes: SearchItemType[]
+  ): SearchPayload[] {
+    const results: SearchPayload[] = [];
+    const searchTerm = query?.toLowerCase();
+    const needsPosts = requestedTypes.includes(SearchItemType.POST);
+    const needsMedia = requestedTypes.includes(SearchItemType.MEDIA);
+
+    if (!needsPosts && !needsMedia) return results;
+
+    for (const moment of mockMoments) {
+      const hasMedia = moment.post?.files && moment.post.files.length > 0;
+
+      // Check if this moment matches the requested types
+      const matchesPost = needsPosts;
+      const matchesMedia = needsMedia && hasMedia;
+
+      if (!matchesPost && !matchesMedia) continue;
+
+      // Check if query matches
+      if (searchTerm && !this.momentMatchesSearchTerm(moment, searchTerm)) continue;
+
+      // Add as POST type (media is handled through filtering)
+      results.push({
+        type: SearchItemType.POST,
+        ...moment,
+      });
+    }
+
+    return results;
+  }
+
+  private matchesSearchTerm(item: SearchPayload, searchTerm: string): boolean {
+    switch (item.type) {
+      case SearchItemType.USER:
+        return (
+          item.username?.toLowerCase().includes(searchTerm) ||
+          item.displayName?.toLowerCase().includes(searchTerm)
+        );
+      case SearchItemType.QUERY:
+        return item.id.toLowerCase().includes(searchTerm);
+      case SearchItemType.HASHTAG:
+        return item.id.toLowerCase().includes(searchTerm);
+      default:
+        return false;
+    }
+  }
+
+  private momentMatchesSearchTerm(moment: any, searchTerm: string): boolean {
+    return (
+      moment.user?.username?.toLowerCase().includes(searchTerm) ||
+      moment.user?.displayName?.toLowerCase().includes(searchTerm) ||
+      moment.post?.text?.toLowerCase().includes(searchTerm)
+    );
+  }
+
   private sortSearchResults(data: SearchPayload[], order: string): SearchPayload[] {
     if (order === 'newest') {
       return data.sort((a, b) => {
         const getDate = (item: SearchPayload) => {
-          // For posts and media, use post.updatedAt, fallback to createdAt if available
-          if (item.type === SearchItemType.POST || item.type === SearchItemType.MEDIA) {
-            const moment = item as MomentData | MediaSearchData;
+          // For posts (including those treated as media), use post.updatedAt
+          if (item.type === SearchItemType.POST) {
+            const moment = item as MomentData;
             return moment.post?.updatedAt ? new Date(moment.post.updatedAt).getTime() : 0;
           }
           // For other types, keep current order (return same timestamp)
@@ -192,8 +244,7 @@ export class SearchService {
         const getPopularityScore = (item: SearchPayload) => {
           switch (item.type) {
             case SearchItemType.POST:
-            case SearchItemType.MEDIA:
-              const moment = item as MomentData | MediaSearchData;
+              const moment = item as MomentData;
               return moment.post?.likes || 0;
             case SearchItemType.HASHTAG:
               const hashtag = item as HashtagSearchData;
@@ -251,7 +302,20 @@ export class SearchService {
 
       categoryOrder.forEach((itemType) => {
         if (searchItemTypes.includes(itemType)) {
-          const categoryData = data.filter((item) => item.type === itemType);
+          let categoryData: SearchPayload[];
+
+          if (itemType === SearchItemType.MEDIA) {
+            // For media type, filter posts that have media files
+            categoryData = data.filter(
+              (item) =>
+                item.type === SearchItemType.POST &&
+                (item as any).post?.files &&
+                (item as any).post.files.length > 0
+            );
+          } else {
+            categoryData = data.filter((item) => item.type === itemType);
+          }
+
           const paginatedCategoryData = categoryData.slice(0, limit);
           result.push(...paginatedCategoryData);
         }

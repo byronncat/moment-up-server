@@ -29,71 +29,76 @@ export const mockStoryNotifications: StoryNotificationPayload[] = [
   })),
 ];
 
-export const mockStories: StoryPayload[] = mockStoryNotifications.map((notification) => {
-  // Use index as seed for consistent distribution
-  const seedRandom = (seed: number, max: number) => {
-    const x = Math.sin(seed) * 10000;
-    return Math.floor((x - Math.floor(x)) * max);
-  };
+export const createMockStories = (): StoryPayload[] => {
+  return mockStoryNotifications.map((notification) => {
+    // Use index as seed for consistent distribution
+    const seedRandom = (seed: number, max: number) => {
+      const x = Math.sin(seed) * 10000;
+      return Math.floor((x - Math.floor(x)) * max);
+    };
 
-  const generateStory = (storyId?: string) => {
-    // Determine content type: 70% image, 10% text, 20% video
-    const contentTypeRand = seedRandom(Math.random() * 10000, 100);
-    let contentType: 'image' | 'text' | 'video';
-    if (contentTypeRand < 50) contentType = 'image';
-    else if (contentTypeRand < 90) contentType = 'text';
-    else contentType = 'video';
+    const generateStory = (storyId?: string) => {
+      // Determine content type: 70% image, 10% text, 20% video
+      const contentTypeRand = seedRandom(Math.random() * 10000, 100);
+      let contentType: 'image' | 'text' | 'video';
+      if (contentTypeRand < 50) contentType = 'image';
+      else if (contentTypeRand < 90) contentType = 'text';
+      else contentType = 'video';
 
-    // Determine if should have sound: 30% for video, 70% for image/text
-    const soundRand = seedRandom(Math.random() * 10000, 100);
-    const shouldHaveSound = contentType === 'video' ? soundRand < 30 : soundRand < 70;
+      // Determine if should have sound: 30% for video, 70% for image/text
+      const soundRand = seedRandom(Math.random() * 10000, 100);
+      const shouldHaveSound = contentType === 'video' ? soundRand < 30 : soundRand < 70;
 
-    let content: StoryContent;
-    if (contentType === 'text') {
-      content = {
-        type: 'text',
-        text: faker.lorem.paragraph(),
-        background: faker.number.int({ min: 0, max: Object.keys(StoryBackground).length / 2 - 1 }),
+      let content: StoryContent;
+      if (contentType === 'text') {
+        content = {
+          type: 'text',
+          text: faker.lorem.paragraph(),
+          background: faker.number.int({
+            min: 0,
+            max: Object.keys(StoryBackground).length / 2 - 1,
+          }),
+        };
+      } else if (contentType === 'image') {
+        content = {
+          type: 'image',
+          id: faker.string.uuid(),
+          url: getRandomFile(faker.string.uuid(), '4:5'),
+          aspectRatio: '9:16',
+        };
+      } else {
+        content = {
+          type: 'video',
+          id: faker.string.uuid(),
+          url: 'https://res.cloudinary.com/dq02xgn2g/video/upload/v1754136062/_mock_/so-what.mp4',
+          aspectRatio: '9:16',
+        };
+      }
+
+      return {
+        id: storyId || faker.string.uuid(),
+        content,
+        createdAt: faker.date.recent().toISOString(),
+        ...(shouldHaveSound && {
+          sound: soundUrl[seedRandom(Math.random() * 10000, soundUrl.length)],
+        }),
       };
-    } else if (contentType === 'image') {
-      content = {
-        type: 'image',
-        id: faker.string.uuid(),
-        url: getRandomFile(faker.string.uuid(), '4:5'),
-        aspectRatio: '9:16',
-      };
-    } else {
-      content = {
-        type: 'video',
-        id: faker.string.uuid(),
-        url: 'https://res.cloudinary.com/dq02xgn2g/video/upload/v1754136062/_mock_/so-what.mp4',
-        aspectRatio: '9:16',
-      };
+    };
+
+    const storyCount = notification.total;
+    const stories = [generateStory(notification.id)];
+    for (let i = 1; i < storyCount; i++) {
+      stories.push(generateStory());
     }
 
     return {
-      id: storyId || faker.string.uuid(),
-      content,
-      createdAt: faker.date.recent().toISOString(),
-      ...(shouldHaveSound && {
-        sound: soundUrl[seedRandom(Math.random() * 10000, soundUrl.length)],
-      }),
+      user: {
+        id: notification.userId,
+        username: notification.username,
+        displayName: notification.displayName,
+        avatar: notification.avatar,
+      },
+      stories,
     };
-  };
-
-  const storyCount = notification.total;
-  const stories = [generateStory(notification.id)];
-  for (let i = 1; i < storyCount; i++) {
-    stories.push(generateStory());
-  }
-
-  return {
-    user: {
-      id: notification.userId,
-      username: notification.username,
-      displayName: notification.displayName,
-      avatar: notification.avatar,
-    },
-    stories,
-  };
-});
+  });
+};
