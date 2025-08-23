@@ -13,7 +13,7 @@ function uniqueById<T extends { id: string }>(arr: T[]): T[] {
 
 export const mockSearches = faker.helpers.shuffle([
   // Users with faker-generated data
-  ...Array.from({ length: 50 }, () => ({
+  ...Array.from({ length: 12 }, () => ({
     id: faker.string.uuid(),
     type: SearchItemType.USER as const,
     email: faker.internet.email(),
@@ -24,7 +24,7 @@ export const mockSearches = faker.helpers.shuffle([
 
   // Hashtags using various faker categories as IDs
   ...uniqueById(
-    Array.from({ length: 50 }, () => ({
+    Array.from({ length: 5 }, () => ({
       id: faker.helpers.arrayElement([
         faker.food.meat(),
         faker.music.genre(),
@@ -45,7 +45,7 @@ export const mockSearches = faker.helpers.shuffle([
   ),
 
   // Query searches using meaningful search terms
-  ...Array.from({ length: 7 }, () => ({
+  ...Array.from({ length: 3 }, () => ({
     type: SearchItemType.QUERY as const,
     id: faker.helpers
       .arrayElement([
