@@ -28,7 +28,8 @@ async function bootstrap() {
     transports: createWinstonTransports(false),
   });
 
-  if (process.env.NODE_ENV === 'development') {
+  const https = process.env.NODE_ENV === 'development' && process.env.HTTPS === 'true';
+  if (https) {
     const httpsOptions = {
       key: fs.readFileSync(path.join(__dirname, '../certificates/localhost+2-key.pem')),
       cert: fs.readFileSync(path.join(__dirname, '../certificates/localhost+2.pem')),
@@ -93,8 +94,8 @@ async function bootstrap() {
       saveUninitialized: false,
       cookie: {
         httpOnly: true,
-        secure: true,
-        sameSite: 'none',
+        secure: https,
+        sameSite: https ? 'none' : 'lax',
         maxAge: 7 * 24 * 60 * 60 * 1000,
       },
     })
