@@ -8,7 +8,7 @@ const myMockStory: StoryNotificationPayload = {
   id: faker.string.uuid(),
   userId: accounts[0].id,
   username: accounts[0].username,
-  displayName: accounts[0].displayName,
+  displayName: accounts[0].display_name,
   avatar: accounts[0].avatar,
   viewed: false,
   total: 7,

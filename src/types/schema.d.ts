@@ -5,7 +5,7 @@ declare module 'schema' {
   type User = {
     readonly id: string;
     readonly username: string;
-    displayName: string;
+    display_name: string | null;
     email: string;
     password: string | null;
     avatar: string | null;
@@ -13,8 +13,8 @@ declare module 'schema' {
     bio: string | null;
     blocked: boolean;
     verified: boolean;
-    profileVisibility: ProfileVisibility;
-    updatedAt: Date | string;
+    privacy: ProfileVisibility;
+    readonly lastModified: Date | string;
     readonly createdAt: Date | string;
   };
 

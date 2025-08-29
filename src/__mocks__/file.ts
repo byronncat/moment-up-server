@@ -969,6 +969,14 @@ export const imageUrls = [
     url: 'https://pbs.twimg.com/media/Gx5LJGKbsAMq-vP?format=jpg&name=4096x4096',
     aspectRatio: '1:1' as const,
   },
+  {
+    url: 'https://pbs.twimg.com/media/Fln7nDqakAA0hk-?format=jpg&name=4096x4096',
+    aspectRatio: '4:5' as const,
+  },
+  {
+    url: 'https://pbs.twimg.com/media/GCQoHy0awAASpFb?format=jpg&name=4096x4096',
+    aspectRatio: '1.91:1' as const,
+  },
 ];
 
 export const videoUrls = [

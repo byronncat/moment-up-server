@@ -6,7 +6,7 @@ declare module 'api' {
     id: User['id'];
     email: User['email'];
     username: User['username'];
-    displayName: User['displayName'];
+    displayName: User['display_name'];
     avatar?: User['avatar'];
   }
 

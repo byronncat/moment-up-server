@@ -194,7 +194,7 @@ export class SearchService {
       case SearchItemType.USER:
         return (
           item.username?.toLowerCase().includes(searchTerm) ||
-          item.displayName?.toLowerCase().includes(searchTerm)
+          (item.displayName !== null && item.displayName.toLowerCase().includes(searchTerm))
         );
       case SearchItemType.QUERY:
         return item.id.toLowerCase().includes(searchTerm);

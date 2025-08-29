@@ -28,7 +28,7 @@ export class UserService {
       id: user.id,
       email: user.email,
       username: user.username,
-      displayName: user.displayName,
+      displayName: user.display_name,
       avatar: user.avatar,
     };
     return result;
@@ -58,7 +58,7 @@ export class UserService {
       id: user.id,
       email: user.email,
       username: user.username,
-      displayName: user.displayName,
+      displayName: user.display_name,
       avatar: user.avatar,
       backgroundImage: faker.datatype.boolean(0.5)
         ? getRandomFile(faker.string.uuid(), '1.91:1')
@@ -89,7 +89,7 @@ export class UserService {
       id: user?.id || faker.string.uuid(),
       email: user?.email || faker.internet.email(),
       username: user?.username || username,
-      displayName: user?.displayName || faker.person.fullName(),
+      displayName: user?.display_name || faker.person.fullName(),
       avatar: user?.avatar || getRandomFile(username),
       backgroundImage: faker.datatype.boolean(0.5)
         ? getRandomFile(faker.string.uuid(), '1.91:1')
@@ -113,7 +113,7 @@ export class UserService {
     const newUser: User = {
       id: Auth.generateId('uuid'),
       username: userData.username,
-      displayName: userData.username,
+      display_name: userData.username,
       email: userData.email,
       password: userData.password,
       avatar: null,
@@ -121,8 +121,8 @@ export class UserService {
       bio: null,
       blocked: false,
       verified: false,
-      profileVisibility: ProfileVisibility.PUBLIC,
-      updatedAt: new Date(),
+      privacy: ProfileVisibility.PUBLIC,
+      lastModified: new Date(),
       createdAt: new Date(),
     };
 
@@ -139,7 +139,7 @@ export class UserService {
     const newUser: User = {
       id: Auth.generateId('uuid'),
       username: googleData.email.split('@')[0],
-      displayName,
+      display_name: displayName,
       email: googleData.email,
       blocked: false,
       verified: true,
@@ -147,8 +147,8 @@ export class UserService {
       avatar: googleData.picture || null,
       backgroundImage: null,
       bio: null,
-      profileVisibility: ProfileVisibility.PUBLIC,
-      updatedAt: new Date(),
+      privacy: ProfileVisibility.PUBLIC,
+      lastModified: new Date(),
       createdAt: new Date(),
     };
 
