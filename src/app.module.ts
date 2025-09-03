@@ -11,6 +11,8 @@ import {
   SearchModule,
   SuggestionModule,
   UserModule,
+  DatabaseModule,
+  DevelopmentModule,
 } from './modules';
 import { RequestLogger } from './common/interceptors';
 import { HttpExceptionFilter } from './common/filters';
@@ -59,6 +61,8 @@ import { AccessTokenMiddleware } from './common/middlewares';
     SearchModule,
     UserModule,
     NotificationModule,
+    DatabaseModule,
+    DevelopmentModule,
   ],
   providers: [
     {

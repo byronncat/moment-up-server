@@ -1,6 +1,7 @@
 import type { ExpressSession } from 'express-session';
 import type { JwtPayload, GoogleUser } from 'library';
 import type { User } from 'schema';
+import type { AccountPayload } from 'api';
 
 type EmailTemplate = 'otp' | 'verify' | 'welcome';
 
@@ -31,7 +32,7 @@ import {
   VerifyDto,
   SwitchAccountDto,
 } from './dto';
-import { TOKEN_ID_LENGTH, Url, Cookie } from 'src/common/constants';
+import { TOKEN_ID_LENGTH, Url, Cookie, AccountExist } from 'src/common/constants';
 
 const OTP_MAX_AGE = 5 * 60 * 1000; // 5 minutes
 const VERIFICATION_TOKEN_MAX_AGE = '30m';
@@ -57,7 +58,9 @@ export class AuthService {
   public async refresh(session: ExpressSession) {
     if (session.user) {
       const userId = session.user.sub;
-      const account = await this.userService.getAccountById(userId);
+      const account = await this.userService.getById(userId, {
+        select: 'id',
+      });
       if (account) {
         const newAccessToken = await this.createJwtToken(account.id, ACCESS_TOKEN_MAX_AGE);
         session.user.jti = newAccessToken.jti;
@@ -70,43 +73,65 @@ export class AuthService {
 
   public async currentUser(session: ExpressSession, accessToken?: JwtPayload) {
     const userId = accessToken?.sub || session.user?.sub;
-    const account = await this.userService.getAccountById(userId);
+    if (!userId) throw new UnauthorizedException('User not authenticated');
+
+    const account = await this.userService.getById(userId, {
+      select: 'id, username, display_name, email, avatar',
+    });
     if (!account) throw new UnauthorizedException('User not authenticated');
 
-    return account;
+    const payload: AccountPayload = {
+      id: account.id,
+      username: account.username,
+      displayName: account.display_name,
+      email: account.email,
+      avatar: account.avatar,
+    };
+    return payload;
   }
 
   public async login(data: LoginDto, session: ExpressSession) {
-    const account = await this.userService.getById(data.identity);
+    const account = await this.userService.getById(data.identity, {
+      select: 'id, username, display_name, email, avatar, password, blocked, verified',
+    });
 
     if (!account) throw new UnauthorizedException('Invalid credentials');
     if (account.blocked) throw new ForbiddenException('Account is blocked');
+    if (!account.password || !(await Auth.compare(data.password, account.password)))
+      throw new UnauthorizedException('Invalid credentials');
     if (!account.verified) {
       await this.sendVerificationEmail(account.email);
       throw new UnauthorizedException(
         'Email not verified. A new verification email has been sent.'
       );
     }
-    if (!account.password || !(await Auth.compare(data.password, account.password)))
-      throw new UnauthorizedException('Invalid credentials');
 
     const accessToken = await this.createJwtToken(account.id, ACCESS_TOKEN_MAX_AGE);
     session.user = { sub: account.id, jti: accessToken.jti };
     session.cookie.maxAge = REFRESH_TOKEN_MAX_AGE;
 
+    const payload: AccountPayload = {
+      id: account.id,
+      username: account.username,
+      displayName: account.display_name,
+      email: account.email,
+      avatar: account.avatar,
+    };
+
     return {
       accessToken: accessToken.value,
-      user: this.userService.parseToAccountPayload(account),
+      user: payload,
     };
   }
 
   public async register(data: RegisterDto) {
-    const existingUser = await this.userService.getAccountById(data.email);
-    if (existingUser) throw new ConflictException('User with this email already exists');
+    const status = await this.userService.isAccountExist(data.email, data.username);
 
-    const existingUsername = await this.userService.getAccountById(data.username);
-    if (existingUsername) throw new ConflictException('Username already taken');
-
+    if (status !== AccountExist.NONE) {
+      if (status === AccountExist.EMAIL)
+        throw new ConflictException('User with this email already exists');
+      if (status === AccountExist.USERNAME) throw new ConflictException('Username already taken');
+    }
     const hashedPassword = await Auth.hash(data.password, this.saltRounds);
 
     const newUser = await this.userService.addCredentialUser({
@@ -118,7 +143,14 @@ export class AuthService {
 
     await this.sendVerificationEmail(data.email);
 
-    return this.userService.parseToAccountPayload(newUser);
+    const payload: AccountPayload = {
+      id: newUser.id,
+      username: newUser.username,
+      displayName: newUser.display_name,
+      email: newUser.email,
+      avatar: newUser.avatar,
+    };
+    return payload;
   }
 
   public logout(session: ExpressSession) {
@@ -135,14 +167,14 @@ export class AuthService {
     };
 
     const payload = await this.verifyJwtToken(data.token);
-    if (!payload) {
+    if (!payload || !payload.sub) {
       return this.hbsService.renderSuccessTemplate('failure', {
         ...baseContext,
         errorMessage: 'Invalid verification token. The link may be corrupted or malformed.',
       });
     }
 
-    const account = await this.userService.getAccountById(payload.sub);
+    const account = await this.userService.getById(payload.sub);
     if (!account) {
       return this.hbsService.renderSuccessTemplate('failure', {
         ...baseContext,

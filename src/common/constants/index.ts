@@ -103,3 +103,9 @@ export enum ExploreType {
   MEDIA = 'media',
   POST = 'post',
 }
+
+export enum AccountExist {
+  NONE,
+  EMAIL,
+  USERNAME,
+}

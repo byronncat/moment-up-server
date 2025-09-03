@@ -1,0 +1,376 @@
+import { Injectable, OnModuleInit, Inject } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { Logger } from 'winston';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import { String } from 'src/common/helpers';
+
+type Table = 'users';
+
+export type SelectOptions = {
+  select?: string;
+  where?: Record<string, any>;
+  orWhere?: Record<string, any>;
+  caseSensitive?: boolean;
+  orderBy?: { column: string; ascending?: boolean };
+  limit?: number;
+  offset?: number;
+};
+
+@Injectable()
+export class SupabaseService implements OnModuleInit {
+  private supabase: SupabaseClient;
+
+  constructor(
+    @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
+    private readonly configService: ConfigService
+  ) {}
+
+  onModuleInit() {
+    const supabaseUrl = this.configService.get<string>('db.supabaseUrl');
+    const supabaseKey = this.configService.get<string>('db.supabaseKey');
+
+    this.supabase = createClient(supabaseUrl!, supabaseKey!, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    });
+
+    this.logger.info('Supabase client initialized successfully');
+  }
+
+  getClient(): SupabaseClient {
+    if (!this.supabase)
+      throw new Error(
+        'Supabase client not initialized. Make sure the service is properly configured.'
+      );
+
+    return this.supabase;
+  }
+
+  private shouldUseIlike(value: any): boolean {
+    if (typeof value !== 'string') return false;
+    if (String.isUuid(value)) return false;
+    return true;
+  }
+
+  async select<T = any>(table: Table, options?: SelectOptions): Promise<T[]> {
+    try {
+      let query = this.supabase.from(table).select(options?.select || '*');
+
+      if (options?.where)
+        Object.entries(options.where).forEach(([key, value]) => {
+          if (value !== undefined) {
+            const useIlike = options.caseSensitive === false && this.shouldUseIlike(value);
+            if (useIlike) query = query.ilike(key, `${value}`);
+            else query = query.eq(key, value);
+          }
+        });
+
+      if (options?.orWhere) {
+        const orClauses = Object.entries(options.orWhere)
+          .filter(([, value]) => value !== undefined)
+          .map(([key, value]) => {
+            const useIlike = options.caseSensitive === false && this.shouldUseIlike(value);
+            const operator = useIlike ? 'ilike' : 'eq';
+            return `${key}.${operator}.${value}`;
+          })
+          .join(',');
+        if (orClauses) query = query.or(orClauses);
+      }
+
+      if (options?.orderBy)
+        query = query.order(options.orderBy.column, {
+          ascending: options.orderBy.ascending ?? true,
+        });
+
+      if (options?.limit) query = query.limit(options.limit);
+
+      if (options?.offset)
+        query = query.range(options.offset, options.offset + (options?.limit || 10) - 1);
+
+      const { data, error } = await query;
+      if (error) throw `Select from ${table} failed: ${error.message}`;
+
+      return (data as T[]) || [];
+    } catch (errorMessage) {
+      this.logger.error(errorMessage);
+      throw new Error(errorMessage);
+    }
+  }
+
+  async insert<T = any>(table: string, data: Partial<T> | Partial<T>[]): Promise<T[]> {
+    try {
+      const { data: result, error } = await this.supabase
+        .from(table)
+        .insert(data as any)
+        .select();
+
+      if (error) throw `Insert into ${table} failed: ${error.message}`;
+
+      return (result as T[]) || [];
+    } catch (errorMessage) {
+      this.logger.error(errorMessage);
+      throw new Error(errorMessage);
+    }
+  }
+
+  async update<T = any>(table: string, data: Partial<T>, where: Record<string, any>): Promise<T[]> {
+    try {
+      let query = this.supabase.from(table).update(data as any);
+
+      Object.entries(where).forEach(([key, value]) => {
+        if (value !== undefined) {
+          query = query.eq(key, value);
+        }
+      });
+
+      const { data: result, error } = await query.select();
+      if (error) throw new Error(`Update in ${table} failed: ${error.message}`);
+
+      return (result as T[]) || [];
+    } catch (errorMessage) {
+      this.logger.error(errorMessage);
+      throw new Error(errorMessage);
+    }
+  }
+
+  /**
+   * Delete data from any table
+   */
+  async delete<T = any>(table: string, where: Record<string, any>): Promise<T[]> {
+    try {
+      let query = this.supabase.from(table).delete();
+
+      Object.entries(where).forEach(([key, value]) => {
+        if (value !== undefined) {
+          query = query.eq(key, value);
+        }
+      });
+
+      const { data: result, error } = await query.select();
+
+      if (error) {
+        this.logger.error(`Delete from ${table} failed:`, error);
+        throw new Error(`Delete from ${table} failed: ${error.message}`);
+      }
+
+      return (result as T[]) || [];
+    } catch (error) {
+      this.logger.error('Delete operation error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Execute operations within a transaction context
+   */
+  async transaction<TResult>(
+    operations: (client: SupabaseClient) => Promise<TResult>
+  ): Promise<TResult> {
+    try {
+      // Supabase doesn't have explicit transactions in the client library
+      // but we can use RPC functions for complex transactions
+      return await operations(this.supabase);
+    } catch (error) {
+      this.logger.error('Transaction error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Check if the database connection is healthy
+   */
+  async healthCheck(): Promise<boolean> {
+    try {
+      const { error } = await this.supabase.from('users').select('id').limit(1);
+      return !error;
+    } catch (error) {
+      this.logger.error('Health check failed:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Get table row count
+   */
+  async count(
+    table: string,
+    where?: Record<string, any>,
+    caseSensitive?: boolean
+  ): Promise<number> {
+    try {
+      let query = this.supabase.from(table).select('*', { count: 'exact', head: true });
+
+      if (where) {
+        Object.entries(where).forEach(([key, value]) => {
+          if (value !== undefined) {
+            // Use case-insensitive (ilike) only for string fields when caseSensitive is false
+            // Everything else (numbers, booleans, UUIDs, etc.) uses exact matching (eq)
+            const useIlike = caseSensitive === false && this.shouldUseIlike(value);
+
+            if (useIlike) {
+              query = query.ilike(key, `${value}`);
+            } else {
+              query = query.eq(key, value);
+            }
+          }
+        });
+      }
+
+      const { count, error } = await query;
+
+      if (error) {
+        this.logger.error(`Count from ${table} failed:`, error);
+        throw new Error(`Count from ${table} failed: ${error.message}`);
+      }
+
+      return count || 0;
+    } catch (error) {
+      this.logger.error('Count operation error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Perform upsert operation
+   */
+  async upsert<T = any>(
+    table: string,
+    data: Partial<T> | Partial<T>[],
+    options?: {
+      onConflict?: string;
+      ignoreDuplicates?: boolean;
+    }
+  ): Promise<T[]> {
+    try {
+      const { data: result, error } = await this.supabase
+        .from(table)
+        .upsert(data as any, {
+          onConflict: options?.onConflict,
+          ignoreDuplicates: options?.ignoreDuplicates,
+        })
+        .select();
+
+      if (error) {
+        this.logger.error(`Upsert into ${table} failed:`, error);
+        throw new Error(`Upsert into ${table} failed: ${error.message}`);
+      }
+
+      return (result as T[]) || [];
+    } catch (error) {
+      this.logger.error('Upsert operation error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Subscribe to real-time changes on a table
+   */
+  subscribeToTable(
+    table: string,
+    callback: (payload: {
+      eventType: 'INSERT' | 'UPDATE' | 'DELETE';
+      new: Record<string, any> | null;
+      old: Record<string, any> | null;
+    }) => void,
+    options?: {
+      event?: 'INSERT' | 'UPDATE' | 'DELETE' | '*';
+      filter?: string;
+    }
+  ) {
+    const channel = this.supabase
+      .channel(`${table}-changes`)
+      .on(
+        'postgres_changes' as any,
+        {
+          event: options?.event || '*',
+          schema: 'public',
+          table: table,
+          filter: options?.filter,
+        },
+        callback as any
+      )
+      .subscribe();
+
+    return channel;
+  }
+
+  /**
+   * Unsubscribe from real-time changes
+   */
+  async unsubscribe(channel: any) {
+    await this.supabase.removeChannel(channel);
+  }
+
+  /**
+   * Find a single record by ID
+   */
+  async findById<T = any>(table: string, id: string): Promise<T | null> {
+    try {
+      const { data, error } = await this.supabase.from(table).select('*').eq('id', id).single();
+
+      if (error) {
+        if (error.code === 'PGRST116') {
+          // No rows returned
+          return null;
+        }
+        this.logger.error(`Find by ID in ${table} failed:`, error);
+        throw new Error(`Find by ID in ${table} failed: ${error.message}`);
+      }
+
+      return data as T;
+    } catch (error) {
+      this.logger.error('Find by ID operation error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Find records with pagination
+   */
+  async findWithPagination<T = any>(
+    table: Table,
+    options: {
+      page: number;
+      limit: number;
+      where?: Record<string, any>;
+      caseSensitive?: boolean;
+      orderBy?: { column: string; ascending?: boolean };
+    }
+  ): Promise<{
+    data: T[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  }> {
+    try {
+      const offset = (options.page - 1) * options.limit;
+
+      // Get total count
+      const total = await this.count(table, options.where, options.caseSensitive);
+
+      // Get paginated data
+      const data = await this.select<T>(table, {
+        where: options.where,
+        caseSensitive: options.caseSensitive,
+        orderBy: options.orderBy,
+        limit: options.limit,
+        offset,
+      });
+
+      return {
+        data,
+        total,
+        page: options.page,
+        limit: options.limit,
+        totalPages: Math.ceil(total / options.limit),
+      };
+    } catch (error) {
+      this.logger.error('Pagination operation error:', error);
+      throw error;
+    }
+  }
+}

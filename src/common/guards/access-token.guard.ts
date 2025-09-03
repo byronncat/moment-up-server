@@ -26,9 +26,11 @@ export class AccessTokenGuard implements CanActivate {
     const session: ExpressSession = request.session;
 
     try {
-      if (!token) throw new UnauthorizedException('Access token is required');
+      if (!token || !token.sub) throw new UnauthorizedException('Access token is required');
 
-      const user = await this.userService.getById(token?.sub);
+      const user = await this.userService.getById(token.sub, {
+        select: 'id, verified, blocked',
+      });
       if (!user) throw new UnauthorizedException('User not found');
       if (!user.verified) throw new ForbiddenException('Email not verified');
       if (user.blocked) throw new ForbiddenException('Account is blocked');

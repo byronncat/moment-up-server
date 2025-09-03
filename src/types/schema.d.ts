@@ -1,22 +1,27 @@
 declare module 'schema' {
   import type { ProfileVisibility, StoryBackground } from 'common/constants';
 
+  type uuid = string;
+  type timestamptz = Date | string;
+
   // === SQL ===
   type User = {
-    readonly id: string;
+    readonly id: uuid;
     readonly username: string;
     display_name: string | null;
     email: string;
     password: string | null;
     avatar: string | null;
-    backgroundImage: string | null;
+    background_image: string | null;
     bio: string | null;
     blocked: boolean;
     verified: boolean;
     privacy: ProfileVisibility;
-    readonly lastModified: Date | string;
-    readonly createdAt: Date | string;
+    readonly last_modified: timestamptz;
+    readonly createdAt: timestamptz;
   };
+
+  // +++ Ongoing +++
 
   type Moment = {
     readonly id: string;

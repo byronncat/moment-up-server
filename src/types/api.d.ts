@@ -7,7 +7,7 @@ declare module 'api' {
     email: User['email'];
     username: User['username'];
     displayName: User['display_name'];
-    avatar?: User['avatar'];
+    avatar: User['avatar'];
   }
 
   interface ProfilePayload extends AccountPayload {
@@ -62,7 +62,7 @@ declare module 'api' {
     userId: User['id'];
     username: User['username'];
     displayName: User['displayName'];
-    avatar?: User['avatar'];
+    avatar: User['avatar'];
     viewed: boolean;
     total: number;
     createdAt: Story['createdAt'];

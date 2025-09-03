@@ -15,13 +15,16 @@ import {
   BadRequestException,
   ConflictException,
 } from '@nestjs/common';
-import { Auth } from 'src/common/helpers';
-import { ProfileVisibility } from 'src/common/constants';
+import { SupabaseService, type SelectOptions } from '../database/supabase.service';
+import { Auth, String } from 'src/common/helpers';
+import { AccountExist, ProfileVisibility } from 'src/common/constants';
 
 @Injectable()
 export class UserService {
   private readonly accounts = accounts;
   private readonly follows = follows;
+
+  constructor(private readonly supabaseService: SupabaseService) {}
 
   public parseToAccountPayload(user: User) {
     const result: AccountPayload = {
@@ -34,12 +37,53 @@ export class UserService {
     return result;
   }
 
-  public async getById(id: UniqueUserId | undefined) {
-    const user: User | undefined = this.accounts.find(
-      (account) => account.id === id || account.username === id || account.email === id
-    );
-    if (!user) return null;
-    return user;
+  public async getById(id: UniqueUserId, options?: Pick<SelectOptions, 'select'>) {
+    try {
+      const isUuid = String.isUuid(id);
+      const users = await this.supabaseService.select<User>('users', {
+        select: options?.select,
+        caseSensitive: false,
+        orWhere: isUuid ? { id: id } : { username: id, email: id },
+      });
+      if (users.length === 0) return null;
+      return users[0];
+    } catch {
+      return null;
+    }
+  }
+
+  public async isAccountExist(email: UniqueUserId, username: UniqueUserId) {
+    try {
+      const users = await this.supabaseService.select<User>('users', {
+        select: 'email, username',
+        caseSensitive: false,
+        orWhere: { email: email, username: username },
+      });
+
+      if (users.length > 0) {
+        if (email.toLowerCase() === users[0].email) return AccountExist.EMAIL;
+        if (username.toLowerCase() === users[0].username) return AccountExist.USERNAME;
+      }
+      return AccountExist.NONE;
+    } catch {
+      return AccountExist.NONE;
+    }
+  }
+
+  public async addCredentialUser(
+    userData: Required<Pick<User, 'email' | 'username' | 'password'>>
+  ) {
+    try {
+      const newUser = await this.supabaseService.insert<User>('users', {
+        email: userData.email.toLocaleLowerCase(),
+        username: userData.username.toLocaleLowerCase(),
+        password: userData.password,
+      });
+
+      return newUser[0];
+    } catch {
+      return null;
+    }
   }
 
   public async getAccountById(id: UniqueUserId | undefined) {
@@ -107,29 +151,6 @@ export class UserService {
     return profile;
   }
 
-  public async addCredentialUser(
-    userData: Required<Pick<User, 'email' | 'username' | 'password'>>
-  ) {
-    const newUser: User = {
-      id: Auth.generateId('uuid'),
-      username: userData.username,
-      display_name: userData.username,
-      email: userData.email,
-      password: userData.password,
-      avatar: null,
-      backgroundImage: null,
-      bio: null,
-      blocked: false,
-      verified: false,
-      privacy: ProfileVisibility.PUBLIC,
-      lastModified: new Date(),
-      createdAt: new Date(),
-    };
-
-    this.accounts.push(newUser);
-    return newUser;
-  }
-
   public async addGoogleUser(googleData: GoogleUser) {
     const displayName =
       googleData.firstName && googleData.lastName
@@ -145,10 +166,10 @@ export class UserService {
       verified: true,
       password: null,
       avatar: googleData.picture || null,
-      backgroundImage: null,
+      background_image: null,
       bio: null,
       privacy: ProfileVisibility.PUBLIC,
-      lastModified: new Date(),
+      last_modified: new Date(),
       createdAt: new Date(),
     };
 
@@ -165,10 +186,16 @@ export class UserService {
   }
 
   public async verifyEmail(userId: User['id']) {
-    const userIndex = this.accounts.findIndex((account) => account.id === userId);
-    if (userIndex === -1) return null;
-    this.accounts[userIndex].verified = true;
-    return this.accounts[userIndex] as User;
+    try {
+      const user = await this.supabaseService.update<User>(
+        'users',
+        { verified: true },
+        { id: userId }
+      );
+      return user[0];
+    } catch {
+      return null;
+    }
   }
 
   public async follow(currentUserId: User['id'], targetUserId: User['id']) {
