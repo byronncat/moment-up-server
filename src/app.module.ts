@@ -18,6 +18,7 @@ import { RequestLogger } from './common/interceptors';
 import { HttpExceptionFilter } from './common/filters';
 import { environment, createWinstonTransports } from './configurations';
 import { AccessTokenMiddleware } from './common/middlewares';
+import { RateLimit } from './common/constants';
 
 @Module({
   imports: [
@@ -41,8 +42,8 @@ import { AccessTokenMiddleware } from './common/middlewares';
     ThrottlerModule.forRoot({
       throttlers: [
         {
-          ttl: 10000,
-          limit: 10,
+          ttl: RateLimit.TTL,
+          limit: RateLimit.LIMIT,
         },
       ],
     }),

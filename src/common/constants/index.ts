@@ -1,3 +1,8 @@
+export const RateLimit = {
+  TTL: 60000, // 1 minute
+  LIMIT: 100,
+};
+
 export const Cookie = {
   Name: {
     SESSION: 'connect.sid',

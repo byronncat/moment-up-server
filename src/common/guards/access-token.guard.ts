@@ -9,16 +9,12 @@ import {
   ForbiddenException,
   Inject,
 } from '@nestjs/common';
-import { UserService } from '../../modules/user/user.service';
 import { Logger } from 'winston';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 
 @Injectable()
 export class AccessTokenGuard implements CanActivate {
-  constructor(
-    @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
-    private readonly userService: UserService
-  ) {}
+  constructor(@Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<AuthRequest>();
@@ -27,14 +23,6 @@ export class AccessTokenGuard implements CanActivate {
 
     try {
       if (!token || !token.sub) throw new UnauthorizedException('Access token is required');
-
-      const user = await this.userService.getById(token.sub, {
-        select: 'id, verified, blocked',
-      });
-      if (!user) throw new UnauthorizedException('User not found');
-      if (!user.verified) throw new ForbiddenException('Email not verified');
-      if (user.blocked) throw new ForbiddenException('Account is blocked');
-
       return true;
     } catch (error) {
       this.clearAuthState(session);

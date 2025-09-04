@@ -59,9 +59,12 @@ export class AuthService {
     if (session.user) {
       const userId = session.user.sub;
       const account = await this.userService.getById(userId, {
-        select: 'id',
+        select: 'id, verified, blocked',
       });
       if (account) {
+        if (account.blocked) throw new ForbiddenException('Account is blocked');
+        if (!account.verified) throw new ForbiddenException('Email not verified');
+
         const newAccessToken = await this.createJwtToken(account.id, ACCESS_TOKEN_MAX_AGE);
         session.user.jti = newAccessToken.jti;
         return newAccessToken.value;
