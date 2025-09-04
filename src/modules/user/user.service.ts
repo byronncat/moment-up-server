@@ -86,6 +86,30 @@ export class UserService {
     }
   }
 
+  public async addGoogleUser(googleData: GoogleUser) {
+    const displayName =
+      googleData.firstName && googleData.lastName
+        ? `${googleData.firstName} ${googleData.lastName}`
+        : googleData.email.split('@')[0];
+
+    let username = Auth.generateUsername(googleData.email);
+    while (true) {
+      const duplicateCount = await this.supabaseService.count('users', { username });
+      if (duplicateCount === 0) break;
+      username = Auth.generateUsername(googleData.email);
+    }
+
+    const newUser = await this.supabaseService.insert<User>('users', {
+      username,
+      display_name: displayName,
+      email: googleData.email,
+      blocked: false,
+      verified: true,
+    });
+
+    return newUser[0];
+  }
+
   public async getAccountById(id: UniqueUserId | undefined) {
     const user: User | undefined = this.accounts.find(
       (acc) => acc.id === id || acc.email === id || acc.username === id
@@ -149,35 +173,6 @@ export class UserService {
       hasStory: true,
     };
     return profile;
-  }
-
-  public async addGoogleUser(googleData: GoogleUser) {
-    const displayName =
-      googleData.firstName && googleData.lastName
-        ? `${googleData.firstName} ${googleData.lastName}`
-        : googleData.email.split('@')[0];
-
-    const newUser: User = {
-      id: Auth.generateId('uuid'),
-      username: googleData.email.split('@')[0],
-      // eslint-disable-next-line @typescript-eslint/naming-convention
-      display_name: displayName,
-      email: googleData.email,
-      blocked: false,
-      verified: true,
-      password: null,
-      avatar: googleData.picture || null,
-      // eslint-disable-next-line @typescript-eslint/naming-convention
-      background_image: null,
-      bio: null,
-      privacy: ProfileVisibility.PUBLIC,
-      // eslint-disable-next-line @typescript-eslint/naming-convention
-      last_modified: new Date(),
-      createdAt: new Date(),
-    };
-
-    this.accounts.push(newUser);
-    return newUser;
   }
 
   public async updatePassword(userId: User['id'], hashedPassword: User['password']) {

@@ -39,6 +39,7 @@ import {
 } from './dto';
 import { GoogleOAuthGuard } from './guards';
 import { AccessTokenGuard } from 'src/common/guards';
+import { SocialAuthError } from 'src/common/constants';
 
 @Controller({
   path: 'auth',
@@ -155,7 +156,10 @@ export class AuthController {
       const result = await this.authService.googleLogin(req.user, session);
       res.redirect(`${clientUrl}/auth/success?token=${result.accessToken}`);
     } catch (error) {
-      res.redirect(`${clientUrl}/auth/error?message=${encodeURIComponent(error.message)}`);
+      let errorCode = SocialAuthError.AUTHENTICATION_FAILED;
+      if (error.message === 'Account is blocked') errorCode = SocialAuthError.ACCOUNT_BLOCKED;
+
+      res.redirect(`${clientUrl}/auth/error?code=${errorCode}`);
     }
   }
 }

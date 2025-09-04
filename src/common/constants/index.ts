@@ -114,3 +114,8 @@ export enum AccountExist {
   EMAIL,
   USERNAME,
 }
+
+export enum SocialAuthError {
+  ACCOUNT_BLOCKED = 'AccountBlocked',
+  AUTHENTICATION_FAILED = 'AuthenticationFailed',
+}

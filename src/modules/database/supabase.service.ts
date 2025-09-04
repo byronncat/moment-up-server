@@ -136,6 +136,35 @@ export class SupabaseService implements OnModuleInit {
     }
   }
 
+  async count(
+    table: string,
+    where?: Record<string, any>,
+    caseSensitive?: boolean
+  ): Promise<number> {
+    try {
+      let query = this.supabase.from(table).select('*', { count: 'exact', head: true });
+
+      if (where) {
+        Object.entries(where).forEach(([key, value]) => {
+          if (value !== undefined) {
+            const useIlike = caseSensitive === false && this.shouldUseIlike(value);
+
+            if (useIlike) query = query.ilike(key, `${value}`);
+            else query = query.eq(key, value);
+          }
+        });
+      }
+
+      const { count, error } = await query;
+      if (error) throw new Error(`Count from ${table} failed: ${error.message}`);
+
+      return count || 0;
+    } catch (errorMessage) {
+      this.logger.error('Count operation error:', errorMessage);
+      throw new Error(errorMessage);
+    }
+  }
+
   /**
    * Delete data from any table
    */
@@ -189,47 +218,6 @@ export class SupabaseService implements OnModuleInit {
     } catch (error) {
       this.logger.error('Health check failed:', error);
       return false;
-    }
-  }
-
-  /**
-   * Get table row count
-   */
-  async count(
-    table: string,
-    where?: Record<string, any>,
-    caseSensitive?: boolean
-  ): Promise<number> {
-    try {
-      let query = this.supabase.from(table).select('*', { count: 'exact', head: true });
-
-      if (where) {
-        Object.entries(where).forEach(([key, value]) => {
-          if (value !== undefined) {
-            // Use case-insensitive (ilike) only for string fields when caseSensitive is false
-            // Everything else (numbers, booleans, UUIDs, etc.) uses exact matching (eq)
-            const useIlike = caseSensitive === false && this.shouldUseIlike(value);
-
-            if (useIlike) {
-              query = query.ilike(key, `${value}`);
-            } else {
-              query = query.eq(key, value);
-            }
-          }
-        });
-      }
-
-      const { count, error } = await query;
-
-      if (error) {
-        this.logger.error(`Count from ${table} failed:`, error);
-        throw new Error(`Count from ${table} failed: ${error.message}`);
-      }
-
-      return count || 0;
-    } catch (error) {
-      this.logger.error('Count operation error:', error);
-      throw error;
     }
   }
 

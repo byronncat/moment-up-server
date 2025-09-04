@@ -241,11 +241,13 @@ export class AuthService {
 
   public async googleLogin(googleUser: GoogleUser, session: ExpressSession) {
     try {
-      let account = await this.userService.getById(googleUser.googleId);
-      if (!account) account = await this.userService.getById(googleUser.email);
+      let account = await this.userService.getById(googleUser.email, {
+        select: 'id, username, display_name, email, avatar, blocked, verified',
+      });
 
       if (account) {
         if (account.blocked) throw new ForbiddenException('Account is blocked');
+        if (!account.verified) this.userService.verifyEmail(account.id);
       } else {
         account = await this.userService.addGoogleUser(googleUser);
         if (!account) throw new InternalServerErrorException('Failed to create user account');
@@ -256,9 +258,16 @@ export class AuthService {
       session.user = { sub: account.id, jti: accessToken.jti };
       session.cookie.maxAge = REFRESH_TOKEN_MAX_AGE;
 
+      const payload: AccountPayload = {
+        id: account.id,
+        username: account.username,
+        displayName: account.display_name,
+        email: account.email,
+        avatar: account.avatar,
+      };
       return {
         accessToken: accessToken.value,
-        user: this.userService.parseToAccountPayload(account),
+        user: payload,
       };
     } catch (error) {
       this.logger.error(`Google login failed: ${error.message}`, {

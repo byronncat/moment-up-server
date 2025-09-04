@@ -26,6 +26,11 @@ export function generateId(type: 'uuid' | 'nanoid' | 'otp', options?: { length?:
   return nanoid(options?.length ?? 10);
 }
 
+export function generateUsername(email: string): string {
+  const uniqueId = customAlphabet(ALPHANUM)(6);
+  return `${email.split('@')[0]}_${uniqueId}`;
+}
+
 export function parseBearer(authorizationHeader?: string): string | undefined {
   if (!authorizationHeader) return undefined;
   const [type, token] = authorizationHeader.split(' ') ?? [];
