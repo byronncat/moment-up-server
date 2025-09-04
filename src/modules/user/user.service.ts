@@ -43,7 +43,7 @@ export class UserService {
       const users = await this.supabaseService.select<User>('users', {
         select: options?.select,
         caseSensitive: false,
-        orWhere: isUuid ? { id: id } : { username: id, email: id },
+        orWhere: isUuid ? { id } : { username: id, email: id },
       });
       if (users.length === 0) return null;
       return users[0];
@@ -57,7 +57,7 @@ export class UserService {
       const users = await this.supabaseService.select<User>('users', {
         select: 'email, username',
         caseSensitive: false,
-        orWhere: { email: email, username: username },
+        orWhere: { email, username },
       });
 
       if (users.length > 0) {
@@ -160,15 +160,18 @@ export class UserService {
     const newUser: User = {
       id: Auth.generateId('uuid'),
       username: googleData.email.split('@')[0],
+      // eslint-disable-next-line @typescript-eslint/naming-convention
       display_name: displayName,
       email: googleData.email,
       blocked: false,
       verified: true,
       password: null,
       avatar: googleData.picture || null,
+      // eslint-disable-next-line @typescript-eslint/naming-convention
       background_image: null,
       bio: null,
       privacy: ProfileVisibility.PUBLIC,
+      // eslint-disable-next-line @typescript-eslint/naming-convention
       last_modified: new Date(),
       createdAt: new Date(),
     };
