@@ -4,7 +4,7 @@ import { getRandomFile } from 'src/__mocks__/file';
 import { faker } from '@faker-js/faker';
 
 import type { User, Follow } from 'schema';
-import type { AccountPayload, ProfilePayload, UserPayload } from 'api';
+import type { AccountDto, ProfilePayload, UserPayload } from 'api';
 import type { GoogleUser } from 'library';
 
 type UniqueUserId = User['id'] | User['email'] | User['username'];
@@ -26,8 +26,8 @@ export class UserService {
 
   constructor(private readonly supabaseService: SupabaseService) {}
 
-  public parseToAccountPayload(user: User) {
-    const result: AccountPayload = {
+  public parseToAccountDto(user: User) {
+    const result: AccountDto = {
       id: user.id,
       email: user.email,
       username: user.username,
@@ -110,15 +110,6 @@ export class UserService {
     return newUser[0];
   }
 
-  public async getAccountById(id: UniqueUserId | undefined) {
-    const user: User | undefined = this.accounts.find(
-      (acc) => acc.id === id || acc.email === id || acc.username === id
-    );
-    if (!user) return null;
-    const account: AccountPayload = this.parseToAccountPayload(user);
-    return account;
-  }
-
   public async getUserPayload(userId: User['id']) {
     const user = await this.getById(userId);
     if (!user) return null;
@@ -176,11 +167,16 @@ export class UserService {
   }
 
   public async updatePassword(userId: User['id'], hashedPassword: User['password']) {
-    const userIndex = this.accounts.findIndex((account) => account.id === userId);
-    if (userIndex === -1) return null;
-
-    this.accounts[userIndex].password = hashedPassword;
-    return this.accounts[userIndex] as User;
+    try {
+      await this.supabaseService.update<User>(
+        'users',
+        { password: hashedPassword },
+        { id: userId }
+      );
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   public async verifyEmail(userId: User['id']) {

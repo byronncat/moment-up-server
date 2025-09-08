@@ -1,7 +1,7 @@
 import type { ExpressSession } from 'express-session';
 import type { JwtPayload, GoogleUser } from 'library';
 import type { User } from 'schema';
-import type { AccountPayload } from 'api';
+import type { AccountDto } from 'api';
 
 type EmailTemplate = 'otp' | 'verify' | 'welcome';
 
@@ -39,6 +39,37 @@ const VERIFICATION_TOKEN_MAX_AGE = '30m';
 const REFRESH_TOKEN_MAX_AGE = 365 * 24 * 60 * 60 * 1000; // 1 year
 const ACCESS_TOKEN_MAX_AGE = '2h';
 
+const Message = {
+  NotAuthenticated: 'User not authenticated',
+  Account: {
+    Blocked: 'Account is blocked',
+    NotVerified: 'Email not verified, a new verification email has been sent',
+    NotFound: 'Account not found, the account may have been deleted',
+  },
+  Login: {
+    Success: 'Login successful',
+    InvalidCredentials: 'Invalid credentials',
+  },
+  Register: {
+    Success: 'Register successful',
+    UsernameConflict: 'Username already taken',
+    EmailConflict: 'User with this email already exists',
+    Failed: 'Failed to create user account',
+  },
+  Verify: {
+    Success: 'Email verified',
+    InvalidToken: 'Invalid verification token, the link may be corrupted or malformed',
+    Failed: 'Email verification failed, please try again later',
+    SendFailed: 'Failed to send verification email',
+  },
+  RecoverPassword: {
+    Success: 'Password recovered',
+    Mismatch: 'Passwords do not match',
+    Expired: 'OTP expired, please request a new one',
+    Failed: 'Failed to recover password',
+  },
+};
+
 @Injectable()
 export class AuthService {
   private readonly saltRounds: number = this.configService.get('security.hashSaltRounds')!;
@@ -62,8 +93,8 @@ export class AuthService {
         select: 'id, verified, blocked',
       });
       if (account) {
-        if (account.blocked) throw new ForbiddenException('Account is blocked');
-        if (!account.verified) throw new ForbiddenException('Email not verified');
+        if (account.blocked) throw new ForbiddenException(Message.Account.Blocked);
+        if (!account.verified) throw new ForbiddenException(Message.Account.NotVerified);
 
         const newAccessToken = await this.createJwtToken(account.id, ACCESS_TOKEN_MAX_AGE);
         session.user.jti = newAccessToken.jti;
@@ -71,19 +102,19 @@ export class AuthService {
       }
     }
     this.clearAuthState(session);
-    throw new UnauthorizedException('User not authenticated');
+    throw new UnauthorizedException(Message.NotAuthenticated);
   }
 
   public async currentUser(session: ExpressSession, accessToken?: JwtPayload) {
     const userId = accessToken?.sub || session.user?.sub;
-    if (!userId) throw new UnauthorizedException('User not authenticated');
+    if (!userId) throw new UnauthorizedException(Message.NotAuthenticated);
 
     const account = await this.userService.getById(userId, {
       select: 'id, username, display_name, email, avatar',
     });
-    if (!account) throw new UnauthorizedException('User not authenticated');
+    if (!account) throw new UnauthorizedException(Message.NotAuthenticated);
 
-    const payload: AccountPayload = {
+    const payload: AccountDto = {
       id: account.id,
       username: account.username,
       displayName: account.display_name,
@@ -98,22 +129,20 @@ export class AuthService {
       select: 'id, username, display_name, email, avatar, password, blocked, verified',
     });
 
-    if (!account) throw new UnauthorizedException('Invalid credentials');
-    if (account.blocked) throw new ForbiddenException('Account is blocked');
+    if (!account) throw new UnauthorizedException(Message.Login.InvalidCredentials);
+    if (account.blocked) throw new ForbiddenException(Message.Account.Blocked);
     if (!account.password || !(await Auth.compare(data.password, account.password)))
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException(Message.Login.InvalidCredentials);
     if (!account.verified) {
       await this.sendVerificationEmail(account.email);
-      throw new UnauthorizedException(
-        'Email not verified. A new verification email has been sent.'
-      );
+      throw new UnauthorizedException(Message.Account.NotVerified);
     }
 
     const accessToken = await this.createJwtToken(account.id, ACCESS_TOKEN_MAX_AGE);
     session.user = { sub: account.id, jti: accessToken.jti };
     session.cookie.maxAge = REFRESH_TOKEN_MAX_AGE;
 
-    const payload: AccountPayload = {
+    const payload: AccountDto = {
       id: account.id,
       username: account.username,
       displayName: account.display_name,
@@ -132,8 +161,9 @@ export class AuthService {
 
     if (status !== AccountExist.NONE) {
       if (status === AccountExist.EMAIL)
-        throw new ConflictException('User with this email already exists');
-      if (status === AccountExist.USERNAME) throw new ConflictException('Username already taken');
+        throw new ConflictException(Message.Register.EmailConflict);
+      if (status === AccountExist.USERNAME)
+        throw new ConflictException(Message.Register.UsernameConflict);
     }
     const hashedPassword = await Auth.hash(data.password, this.saltRounds);
 
@@ -142,11 +172,11 @@ export class AuthService {
       email: data.email,
       password: hashedPassword,
     });
-    if (!newUser) throw new InternalServerErrorException('Failed to create user account');
+    if (!newUser) throw new InternalServerErrorException(Message.Register.Failed);
 
     await this.sendVerificationEmail(data.email);
 
-    const payload: AccountPayload = {
+    const payload: AccountDto = {
       id: newUser.id,
       username: newUser.username,
       displayName: newUser.display_name,
@@ -173,7 +203,7 @@ export class AuthService {
     if (!payload || !payload.sub) {
       return this.hbsService.renderSuccessTemplate('failure', {
         ...baseContext,
-        errorMessage: 'Invalid verification token. The link may be corrupted or malformed.',
+        errorMessage: Message.Verify.InvalidToken,
       });
     }
 
@@ -181,7 +211,7 @@ export class AuthService {
     if (!account) {
       return this.hbsService.renderSuccessTemplate('failure', {
         ...baseContext,
-        errorMessage: 'User account not found. The account may have been deleted.',
+        errorMessage: Message.Account.NotFound,
       });
     }
 
@@ -189,7 +219,7 @@ export class AuthService {
     if (!user) {
       return this.hbsService.renderSuccessTemplate('failure', {
         ...baseContext,
-        errorMessage: 'Email verification failed. Please try again later.',
+        errorMessage: Message.Verify.Failed,
       });
     }
 
@@ -198,8 +228,10 @@ export class AuthService {
   }
 
   public async sendOtpEmail(data: IdentityDto, session: ExpressSession) {
-    const account = await this.userService.getAccountById(data.identity);
-    if (account) {
+    const account = await this.userService.getById(data.identity, {
+      select: 'id, email, password',
+    });
+    if (account && account.password) {
       const otpConfig = {
         expirationTimeMs: OTP_MAX_AGE,
         purpose: 'password-reset' as const,
@@ -223,18 +255,20 @@ export class AuthService {
 
   public async recoverPassword(data: ChangePasswordDto, session: ExpressSession) {
     if (data.newPassword !== data.confirmPassword)
-      throw new UnauthorizedException('Passwords do not match');
+      throw new UnauthorizedException(Message.RecoverPassword.Mismatch);
 
     const { otp } = session;
     if (!otp || !Otp.verify(session, data.otp, 'password-reset'))
-      throw new UnauthorizedException('OTP expired. Please request a new one.');
+      throw new UnauthorizedException(Message.RecoverPassword.Expired);
 
-    const account = await this.userService.getAccountById(otp.uid);
-    if (!account) throw new NotFoundException('User not found');
+    const account = await this.userService.getById(otp.uid, {
+      select: 'id, password',
+    });
+    if (!account) throw new NotFoundException(Message.Account.NotFound);
 
     const hashedPassword = await Auth.hash(data.newPassword, this.saltRounds);
-    const user = await this.userService.updatePassword(account.id, hashedPassword);
-    if (!user) throw new InternalServerErrorException('Failed to update password');
+    const changedSuccess = await this.userService.updatePassword(account.id, hashedPassword);
+    if (!changedSuccess) throw new InternalServerErrorException(Message.RecoverPassword.Failed);
 
     Otp.clear(session);
   }
@@ -246,11 +280,11 @@ export class AuthService {
       });
 
       if (account) {
-        if (account.blocked) throw new ForbiddenException('Account is blocked');
+        if (account.blocked) throw new ForbiddenException(Message.Account.Blocked);
         if (!account.verified) this.userService.verifyEmail(account.id);
       } else {
         account = await this.userService.addGoogleUser(googleUser);
-        if (!account) throw new InternalServerErrorException('Failed to create user account');
+        if (!account) throw new InternalServerErrorException(Message.Register.Failed);
         await this.sendWelcomeEmail(account.email, account.username);
       }
 
@@ -258,7 +292,7 @@ export class AuthService {
       session.user = { sub: account.id, jti: accessToken.jti };
       session.cookie.maxAge = REFRESH_TOKEN_MAX_AGE;
 
-      const payload: AccountPayload = {
+      const payload: AccountDto = {
         id: account.id,
         username: account.username,
         displayName: account.display_name,
@@ -280,8 +314,8 @@ export class AuthService {
 
   public async switchAccount(data: SwitchAccountDto, session: ExpressSession) {
     const account = await this.userService.getById(data.accountId);
-    if (!account) throw new NotFoundException('Account not found');
-    if (account.blocked) throw new ForbiddenException('Account is blocked');
+    if (!account) throw new NotFoundException(Message.Account.NotFound);
+    if (account.blocked) throw new ForbiddenException(Message.Account.Blocked);
 
     const accessToken = await this.createJwtToken(account.id, ACCESS_TOKEN_MAX_AGE);
     session.user = { sub: account.id, jti: accessToken.jti };
@@ -289,7 +323,7 @@ export class AuthService {
 
     return {
       accessToken: accessToken.value,
-      user: this.userService.parseToAccountPayload(account),
+      user: this.userService.parseToAccountDto(account),
     };
   }
 
@@ -313,7 +347,7 @@ export class AuthService {
         location: 'AuthService.sendVerificationEmail',
         context: 'Email',
       });
-      throw new InternalServerErrorException('Failed to send verification email');
+      throw new InternalServerErrorException(Message.Verify.SendFailed);
     }
   }
 
@@ -378,7 +412,6 @@ export class AuthService {
   /*
    * Using sync version of verifyJwtToken to avoid blocking the event loop.
    */
-
   private async verifyJwtToken(token: string) {
     try {
       const payload: JwtPayload = await this.jwtService.verifyAsync(token, {
