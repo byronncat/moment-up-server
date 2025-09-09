@@ -2,7 +2,7 @@ import { IsNotEmpty, IsString, IsEnum } from 'class-validator';
 import { Type } from 'class-transformer';
 import { TrendingReportType } from '../../../common/constants';
 
-export class ReportDto {
+export class TrendingReportDto {
   @IsString({ message: 'Topic ID must be a string' })
   @IsNotEmpty({ message: 'Topic ID is required' })
   topicId: string;

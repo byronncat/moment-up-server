@@ -2,7 +2,7 @@ declare module 'api' {
   import type { User, Moment, CloudinaryFile, Hashtag, Story, Comment } from 'schema';
   import type { StoryBackground } from 'common/constants';
 
-  interface AccountPayload {
+  interface AccountDto {
     id: User['id'];
     email: User['email'];
     username: User['username'];
@@ -10,7 +10,7 @@ declare module 'api' {
     avatar: User['avatar'];
   }
 
-  interface ProfilePayload extends AccountPayload {
+  interface ProfilePayload extends AccountDto {
     bio?: User['bio'];
     backgroundImage?: string;
     followers: number;
@@ -35,7 +35,7 @@ declare module 'api' {
     updatedAt: Moment['updatedAt'];
   }
 
-  interface UserPayload extends AccountPayload, ProfilePayload {
+  interface UserPayload extends AccountDto, ProfilePayload {
     followedBy?: {
       count: number;
       displayItems: {
@@ -52,8 +52,8 @@ declare module 'api' {
     post: PostPayload;
   }
 
-  interface HashtagPayload {
-    id: Hashtag['id'];
+  interface HashtagDto {
+    name: Hashtag['name'];
     count: number;
   }
 
@@ -91,7 +91,7 @@ declare module 'api' {
   };
 
   interface StoryPayload {
-    user: Omit<AccountPayload, 'email'>;
+    user: Omit<AccountDto, 'email'>;
     stories: StoryData[];
   }
 

@@ -1,9 +1,9 @@
 import { createMockSearches } from 'src/__mocks__/search';
 import { mockMoments } from 'src/__mocks__/moment';
-import type { AccountPayload, HashtagPayload, MomentPayload, PaginationPayload } from 'api';
+import type { AccountDto, HashtagDto, MomentPayload, PaginationPayload } from 'api';
 import { SearchItemType } from 'src/common/constants';
 
-export interface UserSearchData extends AccountPayload {
+export interface UserSearchData extends AccountDto {
   type: SearchItemType.USER;
 }
 
@@ -12,7 +12,7 @@ export interface QuerySearchData {
   type: SearchItemType.QUERY;
 }
 
-export interface HashtagSearchData extends HashtagPayload {
+export interface HashtagSearchData extends HashtagDto {
   type: SearchItemType.HASHTAG;
 }
 
@@ -40,7 +40,8 @@ import { SearchDto } from './dto';
 
 @Injectable()
 export class SearchService {
-  private searchHistory: SearchHistoryPayload[] = createMockSearches();
+  // TODO: fix hashtag type
+  private searchHistory: any[] = createMockSearches();
 
   public async search(searchData: SearchDto) {
     const { query, type, order, page, limit } = searchData;
@@ -199,7 +200,7 @@ export class SearchService {
       case SearchItemType.QUERY:
         return item.id.toLowerCase().includes(searchTerm);
       case SearchItemType.HASHTAG:
-        return item.id.toLowerCase().includes(searchTerm);
+        return item.name.toLowerCase().includes(searchTerm);
       default:
         return false;
     }

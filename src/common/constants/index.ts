@@ -27,6 +27,10 @@ export const Url = {
 
 export const INITIAL_PAGE = 1;
 
+export const DatabaseError = {
+  UNDEFINED_FUNCTION: '42883',
+};
+
 export enum ProfileVisibility {
   PUBLIC,
   PRIVATE,

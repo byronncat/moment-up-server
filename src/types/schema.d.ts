@@ -4,7 +4,7 @@ declare module 'schema' {
   type uuid = string;
   type timestamptz = Date | string;
 
-  // === SQL ===
+  // === Main ===
   type User = {
     readonly id: uuid;
     readonly username: string;
@@ -19,6 +19,18 @@ declare module 'schema' {
     privacy: ProfileVisibility;
     readonly last_modified: timestamptz;
     readonly createdAt: timestamptz;
+  };
+
+  type Hashtag = {
+    readonly id: number;
+    readonly name: string;
+    readonly created_at: timestamptz;
+  };
+
+  // === Relationship ===
+  type PostHashtag = {
+    readonly post_id: Moment['id'];
+    readonly hashtag_id: Hashtag['id'];
   };
 
   // +++ Ongoing +++
@@ -62,11 +74,6 @@ declare module 'schema' {
     readonly userId: User['id'];
     readonly type: number; // SearchItemType enum
     readonly query: string;
-    readonly createdAt: Date | string;
-  };
-
-  type Hashtag = {
-    readonly id: string;
     readonly createdAt: Date | string;
   };
 

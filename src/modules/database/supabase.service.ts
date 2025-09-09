@@ -5,7 +5,9 @@ import { Logger } from 'winston';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { String } from 'src/common/helpers';
 
-type Table = 'users';
+type MainTable = 'users' | 'hashtags' | 'posts';
+type RelationshipTable = 'post_hashtags';
+type Table = MainTable | RelationshipTable;
 
 export type SelectOptions = {
   select?: string;
@@ -91,32 +93,32 @@ export class SupabaseService implements OnModuleInit {
         query = query.range(options.offset, options.offset + (options?.limit || 10) - 1);
 
       const { data, error } = await query;
-      if (error) throw `Select from ${table} failed: ${error.message}`;
+      if (error) throw new Error(`Select from ${table} failed: ${error.message}`);
 
       return (data as T[]) || [];
-    } catch (errorMessage) {
-      this.logger.error(errorMessage);
-      throw new Error(errorMessage);
+    } catch (error) {
+      this.logger.error(error);
+      throw new Error(error);
     }
   }
 
-  async insert<T = any>(table: string, data: Partial<T> | Partial<T>[]): Promise<T[]> {
+  async insert<T = any>(table: Table, data: Partial<T> | Partial<T>[]): Promise<T[]> {
     try {
       const { data: result, error } = await this.supabase
         .from(table)
         .insert(data as any)
         .select();
 
-      if (error) throw `Insert into ${table} failed: ${error.message}`;
+      if (error) throw new Error(`Insert into ${table} failed: ${error.message}`);
 
       return (result as T[]) || [];
-    } catch (errorMessage) {
-      this.logger.error(errorMessage);
-      throw new Error(errorMessage);
+    } catch (error) {
+      this.logger.error(error);
+      throw new Error(error);
     }
   }
 
-  async update<T = any>(table: string, data: Partial<T>, where: Record<string, any>): Promise<T[]> {
+  async update<T = any>(table: Table, data: Partial<T>, where: Record<string, any>): Promise<T[]> {
     try {
       let query = this.supabase.from(table).update(data as any);
 
@@ -130,17 +132,13 @@ export class SupabaseService implements OnModuleInit {
       if (error) throw new Error(`Update in ${table} failed: ${error.message}`);
 
       return (result as T[]) || [];
-    } catch (errorMessage) {
-      this.logger.error(errorMessage);
-      throw new Error(errorMessage);
+    } catch (error) {
+      this.logger.error(error);
+      throw new Error(error);
     }
   }
 
-  async count(
-    table: string,
-    where?: Record<string, any>,
-    caseSensitive?: boolean
-  ): Promise<number> {
+  async count(table: Table, where?: Record<string, any>, caseSensitive?: boolean): Promise<number> {
     try {
       let query = this.supabase.from(table).select('*', { count: 'exact', head: true });
 
@@ -159,15 +157,13 @@ export class SupabaseService implements OnModuleInit {
       if (error) throw new Error(`Count from ${table} failed: ${error.message}`);
 
       return count || 0;
-    } catch (errorMessage) {
-      this.logger.error('Count operation error:', errorMessage);
-      throw new Error(errorMessage);
+    } catch (error) {
+      this.logger.error('Count operation error:', error);
+      throw new Error(error);
     }
   }
 
-  /**
-   * Delete data from any table
-   */
+  // === Ongoing ===
   async delete<T = any>(table: string, where: Record<string, any>): Promise<T[]> {
     try {
       let query = this.supabase.from(table).delete();
