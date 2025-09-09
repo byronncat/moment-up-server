@@ -2,6 +2,7 @@ import { Module, Global } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { SupabaseService } from './supabase.service';
 import { RedisService } from './redis.service';
+import { createClient } from 'redis';
 
 @Global()
 @Module({
@@ -10,8 +11,6 @@ import { RedisService } from './redis.service';
     {
       provide: 'REDIS_CLIENT',
       useFactory: async (configService: ConfigService) => {
-        const { createClient } = await import('redis');
-        
         const client = createClient({
           username: configService.get<string>('db.redisUsername'),
           password: configService.get<string>('db.redisPassword'),

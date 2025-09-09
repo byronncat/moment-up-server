@@ -1,5 +1,5 @@
 declare module 'schema' {
-  import type { ProfileVisibility, StoryBackground } from 'common/constants';
+  import type { ProfileVisibility, StoryBackground, TrendingReportType } from 'common/constants';
 
   type uuid = string;
   type timestamptz = Date | string;
@@ -24,6 +24,14 @@ declare module 'schema' {
   type Hashtag = {
     readonly id: number;
     readonly name: string;
+    readonly created_at: timestamptz;
+  };
+
+  type TrendingReport = {
+    readonly id: number;
+    readonly hashtag_id: Hashtag['id'];
+    readonly user_id: User['id'];
+    readonly type: TrendingReportType;
     readonly created_at: timestamptz;
   };
 

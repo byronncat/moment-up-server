@@ -5,7 +5,7 @@ import { Logger } from 'winston';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { String } from 'src/common/helpers';
 
-type MainTable = 'users' | 'hashtags' | 'posts';
+type MainTable = 'users' | 'hashtags' | 'posts' | 'trending_reports';
 type RelationshipTable = 'post_hashtags';
 type Table = MainTable | RelationshipTable;
 

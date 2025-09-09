@@ -1,4 +1,4 @@
-import type { UserPayload, HashtagPayload, PopularProfilePayload } from 'api';
+import type { UserPayload, HashtagDto, PopularProfilePayload } from 'api';
 import { getRandomFile } from './file';
 import { faker } from '@faker-js/faker';
 
@@ -54,7 +54,7 @@ export const mockSuggestedUsers: UserPayload[] = Array.from({ length: 5 }, () =>
   };
 });
 
-export const mockTrendingTopics: HashtagPayload[] = Array.from(
+export const mockTrendingTopics: HashtagDto[] = Array.from(
   new Set(
     Array.from({ length: 10 }, () =>
       faker.helpers.arrayElement([
@@ -71,8 +71,8 @@ export const mockTrendingTopics: HashtagPayload[] = Array.from(
   )
 )
   .slice(0, 5)
-  .map((id) => ({
-    id,
+  .map((name) => ({
+    name,
     count: faker.number.int({ min: 500000, max: 2000000 }),
   }));
 

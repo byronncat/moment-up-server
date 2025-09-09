@@ -30,13 +30,26 @@ interface TimeWindow {
 }
 
 // === Service ===
-import { Injectable, Inject } from '@nestjs/common';
+import {
+  Injectable,
+  Inject,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { RedisService } from '../database/redis.service';
 import { SupabaseService } from '../database/supabase.service';
 import { TrendingReportDto } from './dto';
 import { Logger } from 'winston';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { DatabaseError } from 'src/common/constants';
+import { Hashtag, TrendingReport } from 'schema';
+
+const Message = {
+  Hashtag: {
+    TopicNotFound: 'Topic not found',
+    ReportFailed: 'Failed to report trending topic',
+  },
+};
 
 @Injectable()
 export class SuggestionService {
@@ -69,6 +82,7 @@ export class SuggestionService {
 
   // === Trending hashtag ===
   public async getTrending(limit: number): Promise<HashtagDto[]> {
+    // TODO: Remove this after testing
     if (this.configService.get('MOCK_DATA')) {
       const mockHashtags = new Set<string>();
 
@@ -121,8 +135,36 @@ export class SuggestionService {
     return uniqueHashtags;
   }
 
-  public async reportTrendingTopic(reportDto: TrendingReportDto, userId: string) {
-    this.logger.silly(`${reportDto.topicId} reported by ${userId}`);
+  public async reportTrendingTopic({ topic, type }: TrendingReportDto, userId: string) {
+    // TODO: Remove this after testing
+    if (this.configService.get('MOCK_DATA')) {
+      const trendingReports = await this.supabaseService.insert<TrendingReport>(
+        'trending_reports',
+        {
+          hashtag_id: 15,
+          user_id: userId,
+          type,
+        }
+      );
+      if (trendingReports.length === 0)
+        throw new InternalServerErrorException(Message.Hashtag.ReportFailed);
+    }
+
+    const topics = await this.supabaseService.select<Hashtag>('hashtags', {
+      select: 'id',
+      where: {
+        name: topic,
+      },
+    });
+    if (topics.length === 0) throw new NotFoundException(Message.Hashtag.TopicNotFound);
+
+    const trendingReports = await this.supabaseService.insert<TrendingReport>('trending_reports', {
+      hashtag_id: topics[0].id,
+      user_id: userId,
+      type,
+    });
+    if (trendingReports.length === 0)
+      throw new InternalServerErrorException('Failed to report trending topic');
   }
 
   private async addHashtags(postId: string, hashtags: string[]): Promise<void> {
@@ -140,7 +182,6 @@ export class SuggestionService {
           throw new Error('RPC function process_hashtags_for_post not found');
         else throw new Error(`Failed to process hashtags atomically: ${error.message}`);
       }
-      console.log(data);
     } catch (error) {
       this.logger.error('Error in atomic hashtag processing:', error);
       throw error;
