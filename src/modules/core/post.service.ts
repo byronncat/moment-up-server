@@ -1,6 +1,6 @@
 import { mockMoments } from 'src/__mocks__/moment';
 import type { PaginationPayload, MomentPayload } from 'api';
-import type { Bookmark, MomentLike, Moment, Repost, User } from 'schema';
+import type { Bookmark, MomentLike, Post, Repost, User } from 'schema';
 
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { Auth } from 'src/common/helpers';
@@ -8,7 +8,7 @@ import { RepostDto, ExploreDto, ProfileMomentDto } from './dto';
 import { PaginationDto } from 'src/common/validators';
 
 @Injectable()
-export class MomentService {
+export class PostService {
   private moments = mockMoments;
   private likes: MomentLike[] = [];
   private bookmarks: Bookmark[] = [];
@@ -160,7 +160,7 @@ export class MomentService {
     return pagination;
   }
 
-  public async getById(userId: User['id'] | null, id: Moment['id']) {
+  public async getById(userId: User['id'] | null, id: Post['id']) {
     const moment = this.moments.find((moment) => moment.id === id);
     if (!moment) throw new NotFoundException('Moment not found');
 
@@ -189,7 +189,7 @@ export class MomentService {
     return newMoment;
   }
 
-  public async like(userId: User['id'], momentId: Moment['id']) {
+  public async like(userId: User['id'], momentId: Post['id']) {
     const moment = this.moments.find((moment) => moment.id === momentId);
     if (!moment) throw new NotFoundException('Moment not found');
 
@@ -207,7 +207,7 @@ export class MomentService {
     return likeRecord;
   }
 
-  public async unlike(userId: User['id'], momentId: Moment['id']) {
+  public async unlike(userId: User['id'], momentId: Post['id']) {
     const moment = this.moments.find((moment) => moment.id === momentId);
     if (!moment) throw new NotFoundException('Moment not found');
 
@@ -217,7 +217,7 @@ export class MomentService {
     this.likes = this.likes.filter((l) => l.id !== like.id);
   }
 
-  public async bookmark(userId: User['id'], momentId: Moment['id']) {
+  public async bookmark(userId: User['id'], momentId: Post['id']) {
     const moment = this.moments.find((moment) => moment.id === momentId);
     if (!moment) throw new NotFoundException('Moment not found');
 
@@ -237,7 +237,7 @@ export class MomentService {
     return bookmarkRecord;
   }
 
-  public async unbookmark(userId: User['id'], momentId: Moment['id']) {
+  public async unbookmark(userId: User['id'], momentId: Post['id']) {
     const moment = this.moments.find((moment) => moment.id === momentId);
     if (!moment) throw new NotFoundException('Moment not found');
 
@@ -252,7 +252,7 @@ export class MomentService {
   public async repost(
     subject: {
       user: User['id'];
-      moment: Moment['id'];
+      moment: Post['id'];
     },
     data: RepostDto
   ) {

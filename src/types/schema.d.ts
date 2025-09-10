@@ -17,9 +17,32 @@ declare module 'schema' {
     blocked: boolean;
     verified: boolean;
     privacy: ProfileVisibility;
-    readonly last_modified: timestamptz;
-    readonly createdAt: timestamptz;
+    last_modified: timestamptz;
+    readonly created_at: timestamptz;
+    deleted_at: timestamptz | null;
   };
+
+  type Post = {
+    readonly id: string;
+    readonly user_id: User['id'];
+    text: string | null;
+    last_modified: timestamptz;
+    readonly created_at: timestamptz;
+  };
+
+  type Story = {
+    readonly id: string;
+    readonly user_id: User['id'];
+    text: StoryTextContent | null;
+    media: CloudinaryFile['id'] | null;
+    sound: CloudinaryFile['id'] | null;
+    readonly created_at: timestamptz;
+  };
+
+  interface StoryTextContent {
+    text: string;
+    background: StoryBackground;
+  }
 
   type Hashtag = {
     readonly id: number;
@@ -41,32 +64,13 @@ declare module 'schema' {
     readonly hashtag_id: Hashtag['id'];
   };
 
+  type Follow = {
+    readonly follower_id: User['id'];
+    readonly following_id: User['id'];
+    readonly created_at: timestamptz;
+  };
+
   // +++ Ongoing +++
-
-  type Moment = {
-    readonly id: string;
-    readonly userId: User['id'];
-    text: string | null;
-    updatedAt: Date | string;
-    readonly createdAt: Date | string;
-  };
-
-  interface TextContent {
-    text: string;
-    background: StoryBackground;
-  }
-
-  interface MediaContent {
-    id: CloudinaryFile['id'];
-  }
-
-  type Story = {
-    readonly id: string;
-    readonly userId: User['id'];
-    content: TextContent | MediaContent;
-    sound: CloudinaryFile['id'] | null;
-    readonly createdAt: Date | string;
-  };
 
   type Comment = {
     readonly id: string;
@@ -90,13 +94,6 @@ declare module 'schema' {
     readonly id: string;
     readonly userId: User['id'];
     readonly blockedUserId: User['id'];
-    readonly createdAt: Date | string;
-  };
-
-  type Follow = {
-    readonly id: string;
-    readonly followerId: User['id'];
-    readonly followingId: User['id'];
     readonly createdAt: Date | string;
   };
 

@@ -12,7 +12,7 @@ import {
   Body,
   ForbiddenException,
 } from '@nestjs/common';
-import { MomentService } from './moment.service';
+import { PostService } from './post.service';
 import { AccessTokenGuard } from 'src/common/guards';
 import { AccessToken } from 'src/common/decorators';
 import { RepostDto, ExploreDto, ProfileMomentDto } from './dto';
@@ -24,14 +24,14 @@ import { INITIAL_PAGE } from 'src/common/constants';
   version: '1',
 })
 export class MomentController {
-  constructor(private readonly momentService: MomentService) {}
+  constructor(private readonly postService: PostService) {}
 
   @Get('home')
   @HttpCode(HttpStatus.OK)
   @UseGuards(AccessTokenGuard)
   async getHomeMoments(@AccessToken() token: JwtPayload, @Query() paginationDto: PaginationDto) {
     const userId = token?.sub || '';
-    return await this.momentService.getMoments('home', userId, paginationDto);
+    return await this.postService.getMoments('home', userId, paginationDto);
   }
 
   @Get('explore')
@@ -39,7 +39,7 @@ export class MomentController {
   @UseGuards(AccessTokenGuard)
   async getExploreMoments(@AccessToken() token: JwtPayload, @Query() exploreDto: ExploreDto) {
     const userId = token?.sub || '';
-    return await this.momentService.getMoments('explore', userId, exploreDto);
+    return await this.postService.getMoments('explore', userId, exploreDto);
   }
 
   @Get('user/:id')
@@ -51,7 +51,7 @@ export class MomentController {
   ) {
     if (!accessToken && page > INITIAL_PAGE)
       throw new ForbiddenException('Login to access more posts');
-    return await this.momentService.getMoments('user', id, {
+    return await this.postService.getMoments('user', id, {
       page,
       limit: accessToken ? limit : 12,
     });
@@ -62,7 +62,7 @@ export class MomentController {
   async getMoment(@AccessToken() token: JwtPayload, @Param('id') id: string) {
     const userId = token?.sub || '';
     return {
-      moment: await this.momentService.getById(userId, id),
+      moment: await this.postService.getById(userId, id),
     };
   }
 
@@ -72,7 +72,7 @@ export class MomentController {
   async likeMoment(@AccessToken() token: JwtPayload, @Param('id') id: string) {
     const userId = token?.sub || '';
     return {
-      like: await this.momentService.like(userId, id),
+      like: await this.postService.like(userId, id),
     };
   }
 
@@ -81,7 +81,7 @@ export class MomentController {
   @UseGuards(AccessTokenGuard)
   async unlikeMoment(@AccessToken() token: JwtPayload, @Param('id') id: string) {
     const userId = token?.sub || '';
-    await this.momentService.unlike(userId, id);
+    await this.postService.unlike(userId, id);
   }
 
   @Post(':id/bookmark')
@@ -90,7 +90,7 @@ export class MomentController {
   async bookmarkMoment(@AccessToken() token: JwtPayload, @Param('id') id: string) {
     const userId = token?.sub || '';
     return {
-      bookmark: await this.momentService.bookmark(userId, id),
+      bookmark: await this.postService.bookmark(userId, id),
     };
   }
 
@@ -99,7 +99,7 @@ export class MomentController {
   @UseGuards(AccessTokenGuard)
   async unbookmarkMoment(@AccessToken() token: JwtPayload, @Param('id') id: string) {
     const userId = token?.sub || '';
-    await this.momentService.unbookmark(userId, id);
+    await this.postService.unbookmark(userId, id);
   }
 
   @Post(':id/repost')
@@ -116,7 +116,7 @@ export class MomentController {
       moment: id,
     };
     return {
-      repost: await this.momentService.repost(subject, repostDto),
+      repost: await this.postService.repost(subject, repostDto),
     };
   }
 }

@@ -1,10 +1,10 @@
 import { createMockComments } from 'src/__mocks__/comment';
 import type { PaginationPayload, CommentPayload } from 'api';
-import type { User, Moment, Comment } from 'schema';
+import type { User, Post, Comment } from 'schema';
 
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { UserService } from '../user/user.service';
-import { MomentService } from './moment.service';
+import { PostService } from './post.service';
 import { Auth } from 'src/common/helpers';
 import { CommentDto } from './dto';
 import { PaginationDto } from 'src/common/validators';
@@ -15,10 +15,10 @@ export class CommentService {
 
   constructor(
     private readonly userService: UserService,
-    private readonly momentService: MomentService
+    private readonly postService: PostService
   ) {}
 
-  public async get(momentId: Moment['id'], userId: User['id'], { page, limit }: PaginationDto) {
+  public async get(postId: Post['id'], userId: User['id'], { page, limit }: PaginationDto) {
     const ownComments = this.comments.filter((comment) => comment.user.id === userId);
     const otherComments = this.comments.filter((comment) => comment.user.id !== userId);
     this.comments = [...ownComments, ...otherComments];
@@ -34,11 +34,11 @@ export class CommentService {
     return pagination;
   }
 
-  public async add({ momentId, content }: CommentDto, userId: User['id']) {
-    const user = await this.userService.getUserPayload(userId);
+  public async add({ momentId: postId, content }: CommentDto, userId: User['id']) {
+    const user = await this.userService.getUserDto(userId);
     if (!user) throw new NotFoundException('User not found');
 
-    const moment = await this.momentService.getById(userId, momentId);
+    const moment = await this.postService.getById(userId, postId);
     if (!moment) throw new NotFoundException('Moment not found');
 
     // save comment to database

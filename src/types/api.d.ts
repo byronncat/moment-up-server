@@ -4,7 +4,6 @@ declare module 'api' {
 
   interface AccountDto {
     id: User['id'];
-    email: User['email'];
     username: User['username'];
     displayName: User['display_name'];
     avatar: User['avatar'];
@@ -17,6 +16,17 @@ declare module 'api' {
     following: number;
     hasStory: boolean;
     isFollowing?: boolean;
+  }
+
+  interface UserDto extends AccountDto, ProfilePayload {
+    followedBy?: {
+      count: number;
+      displayItems: {
+        id: User['id'];
+        displayName: User['display_name'];
+        avatar?: User['avatar'];
+      }[];
+    };
   }
 
   interface PostPayload {
@@ -35,20 +45,9 @@ declare module 'api' {
     updatedAt: Moment['updatedAt'];
   }
 
-  interface UserPayload extends AccountDto, ProfilePayload {
-    followedBy?: {
-      count: number;
-      displayItems: {
-        id: User['id'];
-        displayName: User['displayName'];
-        avatar?: User['avatar'];
-      }[];
-    };
-  }
-
   interface MomentPayload {
     id: Moment['id'];
-    user: UserPayload;
+    user: UserDto;
     post: PostPayload;
   }
 
@@ -61,7 +60,7 @@ declare module 'api' {
     id: Story['id'];
     userId: User['id'];
     username: User['username'];
-    displayName: User['displayName'];
+    displayName: User['display_name'];
     avatar: User['avatar'];
     viewed: boolean;
     total: number;
@@ -97,7 +96,7 @@ declare module 'api' {
 
   interface CommentPayload {
     id: Comment['id'];
-    user: UserPayload;
+    user: UserDto;
     content: Comment['content'];
     likes: number;
     isLiked: boolean;
@@ -114,7 +113,7 @@ declare module 'api' {
   interface CommunityNotificationPayload {
     id: string;
     type: 'social';
-    user: UserPayload;
+    user: UserDto;
     createdAt: string;
     information:
       | {
