@@ -37,17 +37,51 @@ export class UserController {
   @HttpCode(HttpStatus.CREATED)
   @UseGuards(AccessTokenGuard)
   async followUser(@AccessToken() token: JwtPayload, @Param('id') targetUserId: string) {
-    await new Promise((resolve) => setTimeout(resolve, 3000));
     const currentUserId = token?.sub || '';
-    return await this.userService.follow(currentUserId, targetUserId);
+    return { follow: await this.userService.follow(currentUserId, targetUserId) };
   }
 
   @Delete(':id/unfollow')
   @HttpCode(HttpStatus.NO_CONTENT)
   @UseGuards(AccessTokenGuard)
   async unfollowUser(@AccessToken() token: JwtPayload, @Param('id') targetUserId: string) {
-    await new Promise((resolve) => setTimeout(resolve, 3000));
     const currentUserId = token?.sub || '';
     await this.userService.unfollow(currentUserId, targetUserId);
+  }
+
+  @Get(':id/followers')
+  @HttpCode(HttpStatus.OK)
+  async getFollowers(@Param('id') userId: string) {
+    const followers = await this.userService.getFollowers(userId);
+    return {
+      followers,
+    };
+  }
+
+  @Get(':id/following')
+  @HttpCode(HttpStatus.OK)
+  async getFollowing(@Param('id') userId: string) {
+    const following = await this.userService.getFollowing(userId);
+    return {
+      following,
+    };
+  }
+
+  @Get(':id/follow-status')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AccessTokenGuard)
+  async getFollowStatus(@AccessToken() token: JwtPayload, @Param('id') targetUserId: string) {
+    const currentUserId = token?.sub || '';
+    const [isFollowing, followerCount, followingCount] = await Promise.all([
+      this.userService.isFollowing(currentUserId, targetUserId),
+      this.userService.getFollowerCount(targetUserId),
+      this.userService.getFollowingCount(targetUserId),
+    ]);
+
+    return {
+      isFollowing,
+      followerCount,
+      followingCount,
+    };
   }
 }

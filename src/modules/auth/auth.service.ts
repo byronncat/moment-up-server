@@ -118,7 +118,6 @@ export class AuthService {
       id: account.id,
       username: account.username,
       displayName: account.display_name,
-      email: account.email,
       avatar: account.avatar,
     };
     return payload;
@@ -146,7 +145,6 @@ export class AuthService {
       id: account.id,
       username: account.username,
       displayName: account.display_name,
-      email: account.email,
       avatar: account.avatar,
     };
 
@@ -180,7 +178,6 @@ export class AuthService {
       id: newUser.id,
       username: newUser.username,
       displayName: newUser.display_name,
-      email: newUser.email,
       avatar: newUser.avatar,
     };
     return payload;
@@ -296,7 +293,6 @@ export class AuthService {
         id: account.id,
         username: account.username,
         displayName: account.display_name,
-        email: account.email,
         avatar: account.avatar,
       };
       return {
