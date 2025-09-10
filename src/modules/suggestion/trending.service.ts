@@ -1,4 +1,3 @@
-import { mockPopularProfiles, mockSuggestedUsers } from 'src/__mocks__/suggestion';
 import { ConfigService } from '@nestjs/config';
 import { faker } from '@faker-js/faker';
 
@@ -52,7 +51,7 @@ const Message = {
 };
 
 @Injectable()
-export class SuggestionService {
+export class TrendingService {
   private readonly defaultTrendingConfig: TrendingConfig = {
     windowSizeMinutes: 60, // 60-minute windows
     minCountThreshold: 5, // Minimum count to be considered
@@ -69,18 +68,6 @@ export class SuggestionService {
     private readonly configService: ConfigService
   ) {}
 
-  // === Popular profile ===
-  public async getUser(userId: string) {
-    this.logger.silly(userId);
-    return mockSuggestedUsers;
-  }
-
-  public async getPopular(userId: string) {
-    this.logger.silly(userId);
-    return mockPopularProfiles;
-  }
-
-  // === Trending hashtag ===
   public async getTrending(limit: number): Promise<HashtagDto[]> {
     // TODO: Remove this after testing
     if (this.configService.get('MOCK_DATA')) {
@@ -148,6 +135,7 @@ export class SuggestionService {
       );
       if (trendingReports.length === 0)
         throw new InternalServerErrorException(Message.Hashtag.ReportFailed);
+      return;
     }
 
     const topics = await this.supabaseService.select<Hashtag>('hashtags', {
@@ -180,7 +168,8 @@ export class SuggestionService {
       if (error) {
         if (error.code === DatabaseError.UNDEFINED_FUNCTION)
           throw new Error('RPC function process_hashtags_for_post not found');
-        else throw new Error(`Failed to process hashtags atomically: ${error.message}`);
+
+        throw new Error(`Failed to process hashtags atomically: ${error.message}`);
       }
     } catch (error) {
       this.logger.error('Error in atomic hashtag processing:', error);

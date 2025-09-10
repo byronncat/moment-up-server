@@ -11,7 +11,8 @@ import {
   Query,
 } from '@nestjs/common';
 import { ValidationPipe } from '@nestjs/common/pipes/validation.pipe';
-import { SuggestionService } from './suggestion.service';
+import { PeopleDiscoveryService } from './people-discovery.service';
+import { TrendingService } from './trending.service';
 import { AccessToken } from '../../common/decorators';
 import { AccessTokenGuard } from '../../common/guards';
 import { GetTrendingDto, TrendingReportDto } from './dto';
@@ -21,7 +22,10 @@ import { GetTrendingDto, TrendingReportDto } from './dto';
   version: '1',
 })
 export class SuggestionController {
-  constructor(private readonly suggestionService: SuggestionService) {}
+  constructor(
+    private readonly peopleDiscoveryService: PeopleDiscoveryService,
+    private readonly trendingService: TrendingService
+  ) {}
 
   @Get('users')
   @HttpCode(HttpStatus.OK)
@@ -29,7 +33,7 @@ export class SuggestionController {
   async getUserSuggestions(@AccessToken() token: JwtPayload) {
     const userId = token?.sub || '';
     return {
-      users: await this.suggestionService.getUser(userId),
+      users: await this.peopleDiscoveryService.getUser(userId),
     };
   }
 
@@ -39,14 +43,14 @@ export class SuggestionController {
   async getPopularProfiles(@AccessToken() token: JwtPayload) {
     const userId = token?.sub || '';
     return {
-      users: await this.suggestionService.getPopular(userId),
+      users: await this.peopleDiscoveryService.getPopular(userId),
     };
   }
 
   @Get('trending')
   @HttpCode(HttpStatus.OK)
   async getHashtagSuggestions(@Query(ValidationPipe) { limit }: GetTrendingDto) {
-    return { topics: await this.suggestionService.getTrending(limit) };
+    return { topics: await this.trendingService.getTrending(limit) };
   }
 
   @Post('trending/report')
@@ -57,7 +61,7 @@ export class SuggestionController {
     @AccessToken() token: JwtPayload
   ) {
     const userId = token?.sub || '';
-    await this.suggestionService.reportTrendingTopic(trendingReportDto, userId);
+    await this.trendingService.reportTrendingTopic(trendingReportDto, userId);
     return {
       message: 'Report submitted successfully',
     };
