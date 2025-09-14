@@ -148,8 +148,8 @@ export class AuthController {
   @UseGuards(GoogleOAuthGuard)
   async googleAuthCallback(
     @Req() req: GoogleAuthRequest,
-    @Session() session: ExpressSession,
-    @Res() res: Response
+    @Res() res: Response,
+    @Session() session: ExpressSession
   ) {
     const clientUrl = this.configService.get('http.allowedOrigin');
     try {
@@ -162,4 +162,16 @@ export class AuthController {
       res.redirect(`${clientUrl}/auth/error?code=${errorCode}`);
     }
   }
+
+  @Post('google/add-account')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AccessTokenGuard)
+  async addGoogleAccount(
+    @AccessToken() accessToken: JwtPayload,
+    @Session() session: ExpressSession
+  ) {
+    const user = await this.authService.currentUser(session, accessToken);
+    return { user };
+  }
+
 }

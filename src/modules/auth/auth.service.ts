@@ -43,7 +43,7 @@ const Message = {
   NotAuthenticated: 'User not authenticated',
   Account: {
     Blocked: 'Account is blocked',
-    NotVerified: 'Email not verified, a new verification email has been sent',
+    NotVerified: 'Email not verified',
     NotFound: 'Account not found, the account may have been deleted',
   },
   Login: {
@@ -57,6 +57,7 @@ const Message = {
     Failed: 'Failed to create user account',
   },
   Verify: {
+    SendEmail: 'Email not verified, a new verification email has been sent',
     Success: 'Email verified',
     InvalidToken: 'Invalid verification token, the link may be corrupted or malformed',
     Failed: 'Email verification failed, please try again later',
@@ -94,7 +95,7 @@ export class AuthService {
       });
       if (account) {
         if (account.blocked) throw new ForbiddenException(Message.Account.Blocked);
-        if (!account.verified) throw new ForbiddenException(Message.Account.NotVerified);
+        if (!account.verified) throw new ForbiddenException(Message.Verify.SendEmail);
 
         const newAccessToken = await this.createJwtToken(account.id, ACCESS_TOKEN_MAX_AGE);
         session.user.jti = newAccessToken.jti;
@@ -125,16 +126,20 @@ export class AuthService {
 
   public async login(data: LoginDto, session: ExpressSession) {
     const account = await this.userService.getById(data.identity, {
-      select: 'id, username, display_name, email, avatar, password, blocked, verified',
+      select: 'id, username, display_name, email, avatar, password, blocked, verified, deleted_at',
     });
 
     if (!account) throw new UnauthorizedException(Message.Login.InvalidCredentials);
     if (account.blocked) throw new ForbiddenException(Message.Account.Blocked);
-    if (!account.password || !(await Auth.compare(data.password, account.password)))
+    if (
+      account.deleted_at ||
+      !account.password ||
+      !(await Auth.compare(data.password, account.password))
+    )
       throw new UnauthorizedException(Message.Login.InvalidCredentials);
     if (!account.verified) {
       await this.sendVerificationEmail(account.email);
-      throw new UnauthorizedException(Message.Account.NotVerified);
+      throw new UnauthorizedException(Message.Verify.SendEmail);
     }
 
     const accessToken = await this.createJwtToken(account.id, ACCESS_TOKEN_MAX_AGE);
@@ -309,17 +314,27 @@ export class AuthService {
   }
 
   public async switchAccount(data: SwitchAccountDto, session: ExpressSession) {
-    const account = await this.userService.getById(data.accountId);
+    const account = await this.userService.getById(data.accountId, {
+      select: 'id, username, display_name, email, avatar, blocked, verified',
+    });
     if (!account) throw new NotFoundException(Message.Account.NotFound);
+    if (account.deleted_at) throw new NotFoundException(Message.Login.InvalidCredentials);
     if (account.blocked) throw new ForbiddenException(Message.Account.Blocked);
+    if (!account.verified) throw new UnauthorizedException(Message.Verify.SendEmail);
 
     const accessToken = await this.createJwtToken(account.id, ACCESS_TOKEN_MAX_AGE);
     session.user = { sub: account.id, jti: accessToken.jti };
     session.cookie.maxAge = REFRESH_TOKEN_MAX_AGE;
 
+    const payload: AccountDto = {
+      id: account.id,
+      username: account.username,
+      displayName: account.display_name,
+      avatar: account.avatar,
+    };
     return {
       accessToken: accessToken.value,
-      user: this.userService.parseToAccountDto(account),
+      user: payload,
     };
   }
 

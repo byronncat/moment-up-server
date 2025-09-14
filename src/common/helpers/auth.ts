@@ -31,6 +31,10 @@ export function generateUsername(email: string): string {
   return `${email.split('@')[0]}_${uniqueId}`;
 }
 
+export function generateDeletedId(id: string): string {
+  return `${id}_deleted_${generateId('uuid')}`;
+}
+
 export function parseBearer(authorizationHeader?: string): string | undefined {
   if (!authorizationHeader) return undefined;
   const [type, token] = authorizationHeader.split(' ') ?? [];
