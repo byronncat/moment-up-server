@@ -1,4 +1,4 @@
-import type { UserDto, PopularProfilePayload } from 'api';
+import type { UserSummaryDto, PopularProfileDto } from 'api';
 import type { User } from 'schema';
 
 import { Injectable, Inject } from '@nestjs/common';
@@ -15,7 +15,7 @@ export class PeopleDiscoveryService {
     private readonly userService: UserService
   ) {}
 
-  public async getUser(userId: string): Promise<UserDto[]> {
+  public async getUser(userId: string): Promise<UserSummaryDto[]> {
     try {
       const suggestions = await this.getUserSuggestions(userId);
       return suggestions;
@@ -25,7 +25,7 @@ export class PeopleDiscoveryService {
     }
   }
 
-  public async getPopular(userId: string): Promise<PopularProfilePayload[]> {
+  public async getPopular(userId: string): Promise<PopularProfileDto[]> {
     try {
       const trendingUserIds = await this.getTrendingUserIds(userId, 4);
       if (trendingUserIds.length === 0) return [];
@@ -37,12 +37,12 @@ export class PeopleDiscoveryService {
 
       return users.map((user) => ({
         id: user.id,
-        email: '',
         username: user.username,
         displayName: user.display_name,
         avatar: user.avatar,
         bio: user.bio,
         backgroundImage: undefined,
+        isProtected: false,
       }));
     } catch (error) {
       this.logger.error('Error getting popular profiles:', error);
@@ -50,7 +50,7 @@ export class PeopleDiscoveryService {
     }
   }
 
-  private async getUserSuggestions(userId: string): Promise<UserDto[]> {
+  private async getUserSuggestions(userId: string): Promise<UserSummaryDto[]> {
     const userIds: User['id'][] = [];
 
     const excludedUserIds = new Set([userId]);
@@ -64,14 +64,12 @@ export class PeopleDiscoveryService {
     const mutualConnections = await this.getMutualConnections(userId, excludedUserIds);
     userIds.push(...mutualConnections);
     mutualConnections.forEach((userId) => excludedUserIds.add(userId));
-    console.log('mutualConnections', mutualConnections);
 
     // 2. Interests / hashtags (users who post about similar topics)
     if (userIds.length < 5) {
       const interestBasedUsers = await this.getInterestBasedUsers(userId, excludedUserIds);
       userIds.push(...interestBasedUsers);
       interestBasedUsers.forEach((userId) => excludedUserIds.add(userId));
-      console.log('interestBasedUsers', interestBasedUsers);
     }
 
     // 3. Trending users (people gaining many followers quickly)
@@ -79,20 +77,16 @@ export class PeopleDiscoveryService {
       const trendingUsers = await this.getTrendingUserIds(userId, 10, excludedUserIds);
       userIds.push(...trendingUsers);
       trendingUsers.forEach((userId) => excludedUserIds.add(userId));
-      console.log('trendingUsers', trendingUsers);
     }
 
     // 4. Random but active users when no strong signals exist
     if (userIds.length < 5) {
       const activeUserIds = await this.getRandomActiveUsers(excludedUserIds);
       userIds.push(...activeUserIds);
-      console.log('activeUserIds', activeUserIds);
     }
 
-    console.log('activeUserIds', userIds);
-
     const suggestions = userIds.sort(() => Math.random() - 0.5).slice(0, 5);
-    return await this.parseToUserDto(suggestions);
+    return await this.parseToUserSummaryDto(suggestions);
   }
 
   private async getMutualConnections(
@@ -298,7 +292,7 @@ export class PeopleDiscoveryService {
     }
   }
 
-  private async parseToUserDto(userIds: string[]): Promise<UserDto[]> {
+  private async parseToUserSummaryDto(userIds: string[]): Promise<UserSummaryDto[]> {
     try {
       if (userIds.length === 0) return [];
 
@@ -341,7 +335,7 @@ export class PeopleDiscoveryService {
     } catch (error) {
       this.logger.error(error, {
         context: 'PeopleDiscovery',
-        location: 'parseToUserDto',
+        location: 'parseToUserSummaryDto',
       });
       return [];
     }

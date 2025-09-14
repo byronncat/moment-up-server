@@ -2,7 +2,7 @@ import { getRandomFile } from 'src/__mocks__/file';
 import { faker } from '@faker-js/faker';
 
 import type { User, Follow } from 'schema';
-import type { AccountDto, ProfilePayload, UserDto } from 'api';
+import type { ProfileDto, UserSummaryDto } from 'api';
 import type { GoogleUser } from 'library';
 
 type UniqueUserId = User['id'] | User['email'] | User['username'];
@@ -15,21 +15,11 @@ import {
 } from '@nestjs/common';
 import { SupabaseService, type SelectOptions } from '../database/supabase.service';
 import { Auth, String } from 'src/common/helpers';
-import { AccountExist } from 'src/common/constants';
+import { AccountExist, ProfileVisibility } from 'src/common/constants';
 
 @Injectable()
 export class UserService {
   constructor(private readonly supabaseService: SupabaseService) {}
-
-  public parseToAccountDto(user: User) {
-    const result: AccountDto = {
-      id: user.id,
-      username: user.username,
-      displayName: user.display_name,
-      avatar: user.avatar,
-    };
-    return result;
-  }
 
   public async getById(id: UniqueUserId, options?: Pick<SelectOptions, 'select'>) {
     try {
@@ -104,7 +94,7 @@ export class UserService {
     return newUser[0];
   }
 
-  public async getUserDto(userId: User['id'], currentUserId?: User['id']) {
+  public async getUserSummaryDto(userId: User['id'], currentUserId?: User['id']) {
     const user = await this.getById(userId);
     if (!user) return null;
 
@@ -120,14 +110,11 @@ export class UserService {
     // Get some followers for display
     const followers = await this.getFollowers(userId, 3);
 
-    const payload: UserDto = {
+    const payload: UserSummaryDto = {
       id: user.id,
       username: user.username,
       displayName: user.display_name,
       avatar: user.avatar,
-      backgroundImage: faker.datatype.boolean(0.5)
-        ? getRandomFile(faker.string.uuid(), '1.91:1')
-        : undefined,
       followers: followerCount,
       following: followingCount,
       hasStory: faker.datatype.boolean({ probability: 0.5 }),
@@ -146,30 +133,39 @@ export class UserService {
   }
 
   public async getProfileByUsername(username: User['username'], currentUserId?: User['id']) {
-    const user = await this.getById(username);
-    if (!user) return null;
+    try {
+      const user = await this.getById(username);
+      if (!user) return null;
 
-    // Get real follower/following counts
-    const [followerCount, followingCount] = await Promise.all([
-      this.getFollowerCount(user.id),
-      this.getFollowingCount(user.id),
-    ]);
+      let isFollowing = false;
+      if (currentUserId) isFollowing = await this.isFollowing(currentUserId, user.id);
 
-    const profile: ProfilePayload = {
-      id: user.id,
-      username: user.username,
-      displayName: user.display_name,
-      avatar: user.avatar,
-      backgroundImage: faker.datatype.boolean(0.5)
-        ? getRandomFile(faker.string.uuid(), '1.91:1')
-        : undefined,
-      bio:
-        user.bio || (faker.datatype.boolean({ probability: 0.5 }) ? faker.lorem.paragraph() : null),
-      followers: followerCount,
-      following: followingCount,
-      hasStory: true,
-    };
-    return profile;
+      const [followerCount, followingCount] = await Promise.all([
+        this.getFollowerCount(user.id),
+        this.getFollowingCount(user.id),
+      ]);
+
+      const profile: ProfileDto = {
+        id: user.id,
+        username: user.username,
+        displayName: user.display_name,
+        avatar: user.avatar,
+        backgroundImage: faker.datatype.boolean(0.5)
+          ? getRandomFile(faker.string.uuid(), '1.91:1')
+          : undefined,
+        bio:
+          user.bio ||
+          (faker.datatype.boolean({ probability: 0.5 }) ? faker.lorem.paragraph() : null),
+        followers: followerCount,
+        following: followingCount,
+        isFollowing,
+        isProtected: isFollowing ? false : user.privacy === ProfileVisibility.PRIVATE,
+        hasStory: true,
+      };
+      return profile;
+    } catch {
+      return null;
+    }
   }
 
   public async updatePassword(userId: User['id'], hashedPassword: User['password']) {
@@ -200,15 +196,17 @@ export class UserService {
 
   public async follow(currentUserId: User['id'], targetUserId: User['id']) {
     try {
-      const allUsersExist = await this.supabaseService.existsAll('users', [currentUserId, targetUserId]);
+      const allUsersExist = await this.supabaseService.existsAll('users', [
+        currentUserId,
+        targetUserId,
+      ]);
       if (!allUsersExist) throw new NotFoundException('User not found');
       if (currentUserId === targetUserId) throw new BadRequestException('Cannot follow yourself');
 
       const followExists = await this.supabaseService.exists('follows', {
         where: { follower_id: currentUserId, following_id: targetUserId },
       });
-      if (followExists)
-        throw new ConflictException('You are already following this user');
+      if (followExists) throw new ConflictException('You are already following this user');
 
       const newFollow = await this.supabaseService.insert<Follow>('follows', {
         follower_id: currentUserId,
@@ -230,15 +228,17 @@ export class UserService {
 
   public async unfollow(currentUserId: User['id'], targetUserId: User['id']) {
     try {
-      const allUsersExist = await this.supabaseService.existsAll('users', [currentUserId, targetUserId]);
+      const allUsersExist = await this.supabaseService.existsAll('users', [
+        currentUserId,
+        targetUserId,
+      ]);
       if (!allUsersExist) throw new NotFoundException('User not found');
       if (currentUserId === targetUserId) throw new BadRequestException('Cannot unfollow yourself');
 
       const followExists = await this.supabaseService.exists('follows', {
         where: { follower_id: currentUserId, following_id: targetUserId },
       });
-      if (!followExists)
-        throw new ConflictException('You are not following this user');
+      if (!followExists) throw new ConflictException('You are not following this user');
 
       await this.supabaseService.delete<Follow>('follows', {
         follower_id: currentUserId,

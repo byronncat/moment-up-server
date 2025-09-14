@@ -11,6 +11,7 @@ import {
   Post,
   UseGuards,
   NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { AccessTokenGuard } from 'src/common/guards';
@@ -25,8 +26,12 @@ export class UserController {
 
   @Get(':username')
   @HttpCode(HttpStatus.OK)
-  async getProfileByUsername(@Param('username') username: User['username']) {
-    const profile = await this.userService.getProfileByUsername(username);
+  async getProfileByUsername(
+    @AccessToken() token: JwtPayload,
+    @Param('username') username: User['username']
+  ) {
+    const currentUserId = token?.sub || '';
+    const profile = await this.userService.getProfileByUsername(username, currentUserId);
     if (!profile) throw new NotFoundException('Profile not found');
     return {
       profile,

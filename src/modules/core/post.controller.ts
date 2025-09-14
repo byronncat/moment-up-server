@@ -11,16 +11,16 @@ import {
   Delete,
   Body,
   ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import { PostService } from './post.service';
 import { AccessTokenGuard } from 'src/common/guards';
 import { AccessToken } from 'src/common/decorators';
-import { RepostDto, ExploreDto, ProfileMomentDto } from './dto';
-import { PaginationDto } from 'src/common/validators';
+import { RepostDto, ExploreDto, ProfileMomentDto, PaginationDto } from './dto';
 import { INITIAL_PAGE } from 'src/common/constants';
 
 @Controller({
-  path: 'moments',
+  path: 'posts',
   version: '1',
 })
 export class MomentController {

@@ -9,16 +9,17 @@ declare module 'api' {
     avatar: User['avatar'];
   }
 
-  interface ProfilePayload extends AccountDto {
+  interface ProfileDto extends AccountDto {
     bio?: User['bio'];
-    backgroundImage?: string;
+    backgroundImage?: User['background_image'];
     followers: number;
     following: number;
-    hasStory: boolean;
     isFollowing?: boolean;
+    isProtected: boolean;
+    hasStory: boolean;
   }
 
-  interface UserDto extends AccountDto, ProfilePayload {
+  interface UserSummaryDto extends AccountDto, Omit<ProfileDto, 'backgroundImage' | 'isProtected'> {
     followedBy?: {
       count: number;
       displayItems: {
@@ -47,7 +48,7 @@ declare module 'api' {
 
   interface MomentPayload {
     id: Moment['id'];
-    user: UserDto;
+    user: UserSummaryDto;
     post: PostPayload;
   }
 
@@ -96,7 +97,7 @@ declare module 'api' {
 
   interface CommentPayload {
     id: Comment['id'];
-    user: UserDto;
+    user: UserSummaryDto;
     content: Comment['content'];
     likes: number;
     isLiked: boolean;
@@ -113,7 +114,7 @@ declare module 'api' {
   interface CommunityNotificationPayload {
     id: string;
     type: 'social';
-    user: UserDto;
+    user: UserSummaryDto;
     createdAt: string;
     information:
       | {
@@ -127,8 +128,8 @@ declare module 'api' {
 
   type NotificationPayload = SecurityNotificationPayload | CommunityNotificationPayload;
 
-  interface PopularProfilePayload
-    extends Omit<ProfilePayload, 'followers' | 'following' | 'hasStory' | 'isFollowing'> {
+  interface PopularProfileDto
+    extends Omit<ProfileDto, 'followers' | 'following' | 'hasStory' | 'isFollowing'> {
     backgroundImage?: string;
   }
 

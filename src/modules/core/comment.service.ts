@@ -35,7 +35,7 @@ export class CommentService {
   }
 
   public async add({ momentId: postId, content }: CommentDto, userId: User['id']) {
-    const user = await this.userService.getUserDto(userId);
+    const user = await this.userService.getUserSummaryDto(userId);
     if (!user) throw new NotFoundException('User not found');
 
     const moment = await this.postService.getById(userId, postId);
