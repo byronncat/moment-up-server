@@ -20,14 +20,18 @@ export class PeopleDiscoveryService {
       const suggestions = await this.getUserSuggestions(userId);
       return suggestions;
     } catch (error) {
-      this.logger.error('Error getting user suggestions:', error);
+      this.logger.error(error, {
+        context: 'PeopleDiscovery',
+        location: 'getUser',
+      });
       return [];
     }
   }
 
   public async getPopular(userId: string): Promise<PopularProfileDto[]> {
     try {
-      const trendingUserIds = await this.getTrendingUserIds(userId, 4);
+      const excludedUserIds = await this.getExcludedUserIds(userId);
+      const trendingUserIds = await this.getTrendingUserIds(userId, 4, excludedUserIds);
       if (trendingUserIds.length === 0) return [];
 
       const users = await this.supabaseService.select<User>('users', {
@@ -43,9 +47,15 @@ export class PeopleDiscoveryService {
         bio: user.bio,
         backgroundImage: undefined,
         isProtected: false,
+        followedBy: null,
+        isMuted: null,
+        isFollowing: null,
       }));
     } catch (error) {
-      this.logger.error('Error getting popular profiles:', error);
+      this.logger.error(error, {
+        context: 'PeopleDiscovery',
+        location: 'getPopular',
+      });
       return [];
     }
   }
@@ -53,12 +63,7 @@ export class PeopleDiscoveryService {
   private async getUserSuggestions(userId: string): Promise<UserSummaryDto[]> {
     const userIds: User['id'][] = [];
 
-    const excludedUserIds = new Set([userId]);
-    const followingData = await this.supabaseService.select('follows', {
-      select: 'following_id',
-      where: { follower_id: userId },
-    });
-    followingData?.forEach((f) => excludedUserIds.add(f.following_id));
+    const excludedUserIds = await this.getExcludedUserIds(userId);
 
     // 1. Mutual connections (followed by people you follow)
     const mutualConnections = await this.getMutualConnections(userId, excludedUserIds);
@@ -86,7 +91,48 @@ export class PeopleDiscoveryService {
     }
 
     const suggestions = userIds.sort(() => Math.random() - 0.5).slice(0, 5);
-    return await this.parseToUserSummaryDto(suggestions);
+    return await this.parseToUserSummaryDto(suggestions, userId);
+  }
+
+  private async getExcludedUserIds(userId: string): Promise<Set<string>> {
+    const excludedUserIds = new Set([userId]);
+
+    try {
+      // Exclude users that the current user is already following
+      const followingData = await this.supabaseService.select('follows', {
+        select: 'following_id',
+        where: { follower_id: userId },
+      });
+      followingData?.forEach((f) => excludedUserIds.add(f.following_id));
+
+      // Exclude users that the current user has blocked
+      const blockedData = await this.supabaseService.select('blocks', {
+        select: 'blocked_id',
+        where: { blocker_id: userId },
+      });
+      blockedData?.forEach((b) => excludedUserIds.add(b.blocked_id));
+
+      // Exclude users that have blocked the current user
+      const blockedByData = await this.supabaseService.select('blocks', {
+        select: 'blocker_id',
+        where: { blocked_id: userId },
+      });
+      blockedByData?.forEach((b) => excludedUserIds.add(b.blocker_id));
+
+      // Exclude users that the current user has muted
+      const mutedData = await this.supabaseService.select('mutes', {
+        select: 'muted_id',
+        where: { muter_id: userId },
+      });
+      mutedData?.forEach((m) => excludedUserIds.add(m.muted_id));
+    } catch (error) {
+      this.logger.error(error, {
+        context: 'PeopleDiscovery',
+        location: 'getExcludedUserIds',
+      });
+    }
+
+    return excludedUserIds;
   }
 
   private async getMutualConnections(
@@ -113,7 +159,10 @@ export class PeopleDiscoveryService {
 
       return mutualData.slice(0, 3).map((item) => item.following_id);
     } catch (error) {
-      this.logger.error('Error getting mutual connections:', error);
+      this.logger.error(error, {
+        context: 'PeopleDiscovery',
+        location: 'getMutualConnections',
+      });
       return [];
     }
   }
@@ -138,7 +187,7 @@ export class PeopleDiscoveryService {
         `
         )
         .eq('user_id', userId)
-        .order('created_at', { ascending: false })
+        .order('last_modified', { ascending: false })
         .limit(10);
 
       if (postsError || userPosts.length === 0) return [];
@@ -192,7 +241,10 @@ export class PeopleDiscoveryService {
 
       return sortedUsers.map((item) => item.userId);
     } catch (error) {
-      this.logger.error('Error getting interest-based users:', error);
+      this.logger.error(error, {
+        context: 'PeopleDiscovery',
+        location: 'getInterestBasedUsers',
+      });
       return [];
     }
   }
@@ -212,7 +264,7 @@ export class PeopleDiscoveryService {
       const { data: recentFollows, error: followsError } = await client
         .from('follows')
         .select('following_id')
-        .gte('created_at', sevenDaysAgo.toISOString())
+        .gte('last_modified', sevenDaysAgo.toISOString())
         .not('following_id', 'in', `(${Array.from(excludeIds).join(',')})`);
 
       if (followsError || recentFollows.length === 0) return [];
@@ -258,7 +310,10 @@ export class PeopleDiscoveryService {
         .slice(0, limit)
         .map((item) => item.userId);
     } catch (error) {
-      this.logger.error('Error getting trending user IDs:', error);
+      this.logger.error(error, {
+        context: 'PeopleDiscovery',
+        location: 'getTrendingUserIds',
+      });
       return [];
     }
   }
@@ -272,9 +327,9 @@ export class PeopleDiscoveryService {
       const { data: activeUsers, error: activeError } = await client
         .from('posts')
         .select('user_id')
-        .gte('created_at', threeDaysAgo.toISOString())
+        .gte('last_modified', threeDaysAgo.toISOString())
         .not('user_id', 'in', `(${Array.from(excludedUserIds).join(',')})`)
-        .order('created_at', { ascending: false })
+        .order('last_modified', { ascending: false })
         .limit(50);
 
       if (activeError || activeUsers.length === 0) return [];
@@ -292,7 +347,10 @@ export class PeopleDiscoveryService {
     }
   }
 
-  private async parseToUserSummaryDto(userIds: string[]): Promise<UserSummaryDto[]> {
+  private async parseToUserSummaryDto(
+    userIds: string[],
+    currentUserId: string
+  ): Promise<UserSummaryDto[]> {
     try {
       if (userIds.length === 0) return [];
 
@@ -301,13 +359,34 @@ export class PeopleDiscoveryService {
         select: 'id, username, email, display_name, avatar, bio',
       });
 
+      const currentUserFollowing = await this.supabaseService.select('follows', {
+        select: 'following_id',
+        where: { follower_id: currentUserId },
+      });
+      const followingIds = currentUserFollowing.map((f) => f.following_id);
+
       const userPayloads = await Promise.all(
         users.map(async (user) => {
-          const [followers, following, followersList] = await Promise.all([
+          const [followers, following, mutualFollowersData] = await Promise.all([
             this.userService.getFollowerCount(user.id),
             this.userService.getFollowingCount(user.id),
-            this.userService.getFollowers(user.id, 3),
+            this.getMutualFollowers(user.id, followingIds, 3),
           ]);
+
+          const { users: mutualFollowers, totalCount } = mutualFollowersData;
+          const remainingCount = Math.max(0, totalCount - mutualFollowers.length);
+
+          const followedBy =
+            mutualFollowers.length > 0
+              ? {
+                  count: remainingCount,
+                  displayItems: mutualFollowers.map((follower) => ({
+                    id: follower.id,
+                    displayName: follower.display_name || follower.username,
+                    avatar: follower.avatar,
+                  })),
+                }
+              : null;
 
           return {
             id: user.id,
@@ -318,15 +397,10 @@ export class PeopleDiscoveryService {
             bio: user.bio,
             followers,
             following,
+            isFollowing: false,
+            isMuted: false,
             hasStory: false, // TODO: Add story query
-            followedBy: {
-              count: followers,
-              displayItems: followersList.map((follower) => ({
-                id: follower.id,
-                displayName: follower.display_name || follower.username,
-                avatar: follower.avatar,
-              })),
-            },
+            followedBy,
           };
         })
       );
@@ -338,6 +412,49 @@ export class PeopleDiscoveryService {
         location: 'parseToUserSummaryDto',
       });
       return [];
+    }
+  }
+
+  private async getMutualFollowers(
+    suggestedUserId: string,
+    currentUserFollowingIds: string[],
+    limit = 3
+  ): Promise<{ users: User[]; totalCount: number }> {
+    try {
+      if (currentUserFollowingIds.length === 0) return { users: [], totalCount: 0 };
+
+      // Get total count of mutual followers
+      const totalMutualFollows = await this.supabaseService.select('follows', {
+        select: 'follower_id',
+        where: { following_id: suggestedUserId },
+        whereIn: { follower_id: currentUserFollowingIds },
+      });
+
+      const totalCount = totalMutualFollows.length;
+      if (totalCount === 0) return { users: [], totalCount: 0 };
+
+      // Get limited number for display
+      const mutualFollowsData = await this.supabaseService.select('follows', {
+        select: 'follower_id',
+        where: { following_id: suggestedUserId },
+        whereIn: { follower_id: currentUserFollowingIds },
+        limit,
+      });
+
+      const mutualFollowerIds = mutualFollowsData.map((f) => f.follower_id);
+
+      const mutualFollowers = await this.supabaseService.select<User>('users', {
+        whereIn: { id: mutualFollowerIds },
+        select: 'id, username, display_name, avatar',
+      });
+
+      return { users: mutualFollowers, totalCount };
+    } catch (error) {
+      this.logger.error(error, {
+        context: 'PeopleDiscovery',
+        location: 'getMutualFollowers',
+      });
+      return { users: [], totalCount: 0 };
     }
   }
 }
