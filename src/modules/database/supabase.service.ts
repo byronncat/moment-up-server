@@ -6,7 +6,7 @@ import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { String } from 'src/common/helpers';
 
 type MainTable = 'users' | 'hashtags' | 'posts' | 'trending_reports';
-type RelationshipTable = 'post_hashtags' | 'follows';
+type RelationshipTable = 'post_hashtags' | 'follows' | 'blocks' | 'mutes';
 type Table = MainTable | RelationshipTable;
 
 export type SelectOptions = {

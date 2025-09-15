@@ -10,24 +10,25 @@ declare module 'api' {
   }
 
   interface ProfileDto extends AccountDto {
-    bio?: User['bio'];
-    backgroundImage?: User['background_image'];
+    bio: User['bio'];
+    backgroundImage: User['background_image'];
     followers: number;
     following: number;
-    isFollowing?: boolean;
+    isFollowing: boolean | null;
+    isMuted: boolean | null;
     isProtected: boolean;
     hasStory: boolean;
   }
 
   interface UserSummaryDto extends AccountDto, Omit<ProfileDto, 'backgroundImage' | 'isProtected'> {
-    followedBy?: {
+    followedBy: {
       count: number;
       displayItems: {
         id: User['id'];
         displayName: User['display_name'];
-        avatar?: User['avatar'];
+        avatar: User['avatar'];
       }[];
-    };
+    } | null;
   }
 
   interface PostPayload {

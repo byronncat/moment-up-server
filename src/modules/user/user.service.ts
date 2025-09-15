@@ -1,7 +1,7 @@
 import { getRandomFile } from 'src/__mocks__/file';
 import { faker } from '@faker-js/faker';
 
-import type { User, Follow } from 'schema';
+import type { User, Follow, Block, Mute } from 'schema';
 import type { ProfileDto, UserSummaryDto } from 'api';
 import type { GoogleUser } from 'library';
 
@@ -119,6 +119,7 @@ export class UserService {
       following: followingCount,
       hasStory: faker.datatype.boolean({ probability: 0.5 }),
       isFollowing,
+      isMuted: null,
       bio: faker.lorem.paragraph(),
       followedBy: {
         count: followerCount,
@@ -138,12 +139,21 @@ export class UserService {
       if (!user) return null;
 
       let isFollowing = false;
-      if (currentUserId) isFollowing = await this.isFollowing(currentUserId, user.id);
+      let isMuted = false;
+      let isBlocked = false;
+      if (currentUserId && currentUserId !== user.id)
+        [isFollowing, isMuted, isBlocked] = await Promise.all([
+          this.isFollowing(currentUserId, user.id),
+          this.isMuted(currentUserId, user.id),
+          this.isBlockedEither(currentUserId, user.id),
+        ]);
 
       const [followerCount, followingCount] = await Promise.all([
         this.getFollowerCount(user.id),
         this.getFollowingCount(user.id),
       ]);
+
+      if (isBlocked) return null;
 
       const profile: ProfileDto = {
         id: user.id,
@@ -152,14 +162,15 @@ export class UserService {
         avatar: user.avatar,
         backgroundImage: faker.datatype.boolean(0.5)
           ? getRandomFile(faker.string.uuid(), '1.91:1')
-          : undefined,
+          : null,
         bio:
           user.bio ||
           (faker.datatype.boolean({ probability: 0.5 }) ? faker.lorem.paragraph() : null),
         followers: followerCount,
         following: followingCount,
         isFollowing,
-        isProtected: isFollowing ? false : user.privacy === ProfileVisibility.PRIVATE,
+        isMuted,
+        isProtected: user.privacy === ProfileVisibility.PRIVATE,
         hasStory: true,
       };
       return profile;
@@ -307,7 +318,7 @@ export class UserService {
     }
   }
 
-  public async getFollowing(userId: User['id'], limit = 10, offset = 0): Promise<User[]> {
+  public async getFollowings(userId: User['id'], limit = 10, offset = 0): Promise<User[]> {
     try {
       const follows = await this.supabaseService.select<Follow>('follows', {
         where: { follower_id: userId },
@@ -321,6 +332,230 @@ export class UserService {
 
       return await this.supabaseService.select<User>('users', {
         whereIn: { id: followingIds },
+        select: 'id, username, display_name, avatar',
+      });
+    } catch (error) {
+      return [];
+    }
+  }
+
+  public async block(currentUserId: User['id'], targetUserId: User['id']) {
+    try {
+      const allUsersExist = await this.supabaseService.existsAll('users', [
+        currentUserId,
+        targetUserId,
+      ]);
+      if (!allUsersExist) throw new NotFoundException('User not found');
+      if (currentUserId === targetUserId) throw new BadRequestException('Cannot block yourself');
+
+      const blockExists = await this.supabaseService.exists('blocks', {
+        where: { blocker_id: currentUserId, blocked_id: targetUserId },
+      });
+      if (blockExists) throw new ConflictException('You have already blocked this user');
+
+      const followingExists = await this.supabaseService.exists('follows', {
+        where: { follower_id: currentUserId, following_id: targetUserId },
+      });
+      if (followingExists)
+        await this.supabaseService.delete<Follow>('follows', {
+          follower_id: currentUserId,
+          following_id: targetUserId,
+        });
+
+      const followerExists = await this.supabaseService.exists('follows', {
+        where: { follower_id: targetUserId, following_id: currentUserId },
+      });
+      if (followerExists)
+        await this.supabaseService.delete<Follow>('follows', {
+          follower_id: targetUserId,
+          following_id: currentUserId,
+        });
+
+      const newBlock = await this.supabaseService.insert<Block>('blocks', {
+        blocker_id: currentUserId,
+        blocked_id: targetUserId,
+      });
+
+      return newBlock[0];
+    } catch (error) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException ||
+        error instanceof ConflictException
+      )
+        throw error;
+
+      throw new BadRequestException('Failed to block user');
+    }
+  }
+
+  public async unblock(currentUserId: User['id'], targetUserId: User['id']) {
+    try {
+      const allUsersExist = await this.supabaseService.existsAll('users', [
+        currentUserId,
+        targetUserId,
+      ]);
+      if (!allUsersExist) throw new NotFoundException('User not found');
+      if (currentUserId === targetUserId) throw new BadRequestException('Cannot unblock yourself');
+
+      const blockExists = await this.supabaseService.exists('blocks', {
+        where: { blocker_id: currentUserId, blocked_id: targetUserId },
+      });
+      if (!blockExists) throw new ConflictException('You have not blocked this user');
+
+      await this.supabaseService.delete<Block>('blocks', {
+        blocker_id: currentUserId,
+        blocked_id: targetUserId,
+      });
+    } catch (error) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException ||
+        error instanceof ConflictException
+      )
+        throw error;
+
+      throw new BadRequestException('Failed to unblock user');
+    }
+  }
+
+  public async isBlocked(currentUserId: User['id'], targetUserId: User['id']): Promise<boolean> {
+    try {
+      return await this.supabaseService.exists('blocks', {
+        where: { blocker_id: currentUserId, blocked_id: targetUserId },
+      });
+    } catch {
+      return false;
+    }
+  }
+
+  public async isBlockedEither(
+    currentUserId: User['id'],
+    targetUserId: User['id']
+  ): Promise<boolean> {
+    try {
+      const [currentBlockedTarget, targetBlockedCurrent] = await Promise.all([
+        this.supabaseService.exists('blocks', {
+          where: { blocker_id: currentUserId, blocked_id: targetUserId },
+        }),
+        this.supabaseService.exists('blocks', {
+          where: { blocker_id: targetUserId, blocked_id: currentUserId },
+        }),
+      ]);
+
+      return currentBlockedTarget || targetBlockedCurrent;
+    } catch {
+      return false;
+    }
+  }
+
+  public async getBlockedUsers(userId: User['id'], limit = 10, offset = 0): Promise<User[]> {
+    try {
+      const blocks = await this.supabaseService.select<Block>('blocks', {
+        where: { blocker_id: userId },
+        limit,
+        offset,
+        orderBy: { column: 'created_at', ascending: false },
+      });
+
+      const blockedUserIds = blocks.map((block) => block.blocked_id);
+      if (blockedUserIds.length === 0) return [];
+
+      return await this.supabaseService.select<User>('users', {
+        whereIn: { id: blockedUserIds },
+        select: 'id, username, display_name, avatar',
+      });
+    } catch (error) {
+      return [];
+    }
+  }
+
+  public async mute(currentUserId: User['id'], targetUserId: User['id']) {
+    try {
+      const allUsersExist = await this.supabaseService.existsAll('users', [
+        currentUserId,
+        targetUserId,
+      ]);
+      if (!allUsersExist) throw new NotFoundException('User not found');
+      if (currentUserId === targetUserId) throw new BadRequestException('Cannot mute yourself');
+
+      const muteExists = await this.supabaseService.exists('mutes', {
+        where: { muter_id: currentUserId, muted_id: targetUserId },
+      });
+      if (muteExists) throw new ConflictException('You have already muted this user');
+
+      const newMute = await this.supabaseService.insert<Mute>('mutes', {
+        muter_id: currentUserId,
+        muted_id: targetUserId,
+      });
+
+      return newMute[0];
+    } catch (error) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException ||
+        error instanceof ConflictException
+      )
+        throw error;
+
+      throw new BadRequestException('Failed to mute user');
+    }
+  }
+
+  public async unmute(currentUserId: User['id'], targetUserId: User['id']) {
+    try {
+      const allUsersExist = await this.supabaseService.existsAll('users', [
+        currentUserId,
+        targetUserId,
+      ]);
+      if (!allUsersExist) throw new NotFoundException('User not found');
+      if (currentUserId === targetUserId) throw new BadRequestException('Cannot unmute yourself');
+
+      const muteExists = await this.supabaseService.exists('mutes', {
+        where: { muter_id: currentUserId, muted_id: targetUserId },
+      });
+      if (!muteExists) throw new ConflictException('You have not muted this user');
+
+      await this.supabaseService.delete<Mute>('mutes', {
+        muter_id: currentUserId,
+        muted_id: targetUserId,
+      });
+    } catch (error) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException ||
+        error instanceof ConflictException
+      )
+        throw error;
+
+      throw new BadRequestException('Failed to unmute user');
+    }
+  }
+
+  public async isMuted(currentUserId: User['id'], targetUserId: User['id']): Promise<boolean> {
+    try {
+      return await this.supabaseService.exists('mutes', {
+        where: { muter_id: currentUserId, muted_id: targetUserId },
+      });
+    } catch {
+      return false;
+    }
+  }
+
+  public async getMutedUsers(userId: User['id'], limit = 10, offset = 0): Promise<User[]> {
+    try {
+      const mutes = await this.supabaseService.select<Mute>('mutes', {
+        where: { muter_id: userId },
+        limit,
+        offset,
+        orderBy: { column: 'created_at', ascending: false },
+      });
+
+      const mutedUserIds = mutes.map((mute) => mute.muted_id);
+      if (mutedUserIds.length === 0) return [];
+
+      return await this.supabaseService.select<User>('users', {
+        whereIn: { id: mutedUserIds },
         select: 'id, username, display_name, avatar',
       });
     } catch (error) {

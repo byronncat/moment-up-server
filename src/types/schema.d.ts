@@ -70,6 +70,18 @@ declare module 'schema' {
     readonly created_at: timestamptz;
   };
 
+  type Mute = {
+    readonly muter_id: User['id'];
+    readonly muted_id: User['id'];
+    readonly created_at: timestamptz;
+  };
+
+  type Block = {
+    readonly blocker_id: User['id'];
+    readonly blocked_id: User['id'];
+    readonly created_at: timestamptz;
+  };
+
   // +++ Ongoing +++
 
   type Comment = {
@@ -90,13 +102,6 @@ declare module 'schema' {
   };
 
   // === Relationships ===
-  type Block = {
-    readonly id: string;
-    readonly userId: User['id'];
-    readonly blockedUserId: User['id'];
-    readonly createdAt: Date | string;
-  };
-
   type MomentLike = {
     readonly id: string;
     readonly userId: User['id'];
