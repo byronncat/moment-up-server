@@ -33,8 +33,8 @@ export class SupabaseService implements OnModuleInit {
   ) {}
 
   onModuleInit() {
-    const supabaseUrl = this.configService.get<string>('db.supabaseUrl');
-    const supabaseKey = this.configService.get<string>('db.supabaseKey');
+    const supabaseUrl = this.configService.get<string>('db.supabase.url');
+    const supabaseKey = this.configService.get<string>('db.supabase.key');
 
     this.supabase = createClient(supabaseUrl!, supabaseKey!, {
       auth: {
@@ -43,7 +43,9 @@ export class SupabaseService implements OnModuleInit {
       },
     });
 
-    this.logger.info('Supabase client initialized successfully');
+    this.logger.info('Supabase client initialized successfully', {
+      context: 'Database',
+    });
   }
 
   public getClient(): SupabaseClient {
@@ -156,7 +158,11 @@ export class SupabaseService implements OnModuleInit {
     }
   }
 
-  public async update<T = any>(table: Table, data: Partial<T>, where: Record<string, any>): Promise<T[]> {
+  public async update<T = any>(
+    table: Table,
+    data: Partial<T>,
+    where: Record<string, any>
+  ): Promise<T[]> {
     try {
       let query = this.supabase.from(table).update(data as any);
 
@@ -179,7 +185,33 @@ export class SupabaseService implements OnModuleInit {
     }
   }
 
-  public async count(table: Table, options?: Omit<SelectOptions, 'select' | 'orderBy' | 'limit' | 'offset'>): Promise<number> {
+  public async delete<T = any>(table: string, where: Record<string, any>): Promise<T[]> {
+    try {
+      let query = this.supabase.from(table).delete();
+
+      Object.entries(where).forEach(([key, value]) => {
+        if (value !== undefined) {
+          query = query.eq(key, value);
+        }
+      });
+
+      const { data: result, error } = await query.select();
+      if (error) throw new Error(`Delete from ${table} failed: ${error.message}`);
+
+      return (result as T[]) || [];
+    } catch (error) {
+      this.logger.error(error, {
+        context: 'Supabase',
+        location: 'Delete',
+      });
+      throw error;
+    }
+  }
+
+  public async count(
+    table: Table,
+    options?: Omit<SelectOptions, 'select' | 'orderBy' | 'limit' | 'offset'>
+  ): Promise<number> {
     try {
       let query = this.supabase.from(table).select('*', { count: 'exact', head: true });
 
@@ -233,7 +265,10 @@ export class SupabaseService implements OnModuleInit {
     }
   }
 
-  public async exists(table: Table, options?: Omit<SelectOptions, 'select' | 'orderBy' | 'limit' | 'offset'>): Promise<boolean> {
+  public async exists(
+    table: Table,
+    options?: Omit<SelectOptions, 'select' | 'orderBy' | 'limit' | 'offset'>
+  ): Promise<boolean> {
     try {
       let query = this.supabase.from(table).select('*').limit(1);
 
@@ -277,7 +312,7 @@ export class SupabaseService implements OnModuleInit {
       const { data, error } = await query;
       if (error) throw new Error(`Exists check on ${table} failed: ${error.message}`);
 
-      return (data && data.length > 0);
+      return data && data.length > 0;
     } catch (error) {
       this.logger.error(error, {
         context: 'Supabase',
@@ -290,11 +325,11 @@ export class SupabaseService implements OnModuleInit {
   public async existsAll(table: Table, ids: string[], column: string = 'id'): Promise<boolean> {
     try {
       if (ids.length === 0) return true;
-      
+
       const count = await this.count(table, {
-        whereIn: { [column]: ids }
+        whereIn: { [column]: ids },
       });
-      
+
       return count === ids.length;
     } catch (error) {
       this.logger.error(error, {
@@ -306,68 +341,6 @@ export class SupabaseService implements OnModuleInit {
   }
 
   // === Ongoing ===
-  public async delete<T = any>(table: string, where: Record<string, any>): Promise<T[]> {
-    try {
-      let query = this.supabase.from(table).delete();
-
-      Object.entries(where).forEach(([key, value]) => {
-        if (value !== undefined) {
-          query = query.eq(key, value);
-        }
-      });
-
-      const { data: result, error } = await query.select();
-
-      if (error) {
-        this.logger.error(`Delete from ${table} failed:`, error);
-        throw new Error(`Delete from ${table} failed: ${error.message}`);
-      }
-
-      return (result as T[]) || [];
-    } catch (error) {
-      this.logger.error(error, {
-        context: 'Supabase',
-        location: 'Delete',
-      });
-      throw error;
-    }
-  }
-
-  /**
-   * Execute operations within a transaction context
-   */
-  async transaction<TResult>(
-    operations: (client: SupabaseClient) => Promise<TResult>
-  ): Promise<TResult> {
-    try {
-      // Supabase doesn't have explicit transactions in the client library
-      // but we can use RPC functions for complex transactions
-      return await operations(this.supabase);
-    } catch (error) {
-      this.logger.error(error, {
-        context: 'Supabase',
-        location: 'Transaction',
-      });
-      throw error;
-    }
-  }
-
-  /**
-   * Check if the database connection is healthy
-   */
-  async healthCheck(): Promise<boolean> {
-    try {
-      const { error } = await this.supabase.from('users').select('id').limit(1);
-      return !error;
-    } catch (error) {
-      this.logger.error(error, {
-        context: 'Supabase',
-        location: 'HealthCheck',
-      });
-      return false;
-    }
-  }
-
   /**
    * Perform upsert operation
    */
@@ -440,81 +413,5 @@ export class SupabaseService implements OnModuleInit {
    */
   async unsubscribe(channel: any) {
     await this.supabase.removeChannel(channel);
-  }
-
-  /**
-   * Find a single record by ID
-   */
-  async findById<T = any>(table: string, id: string): Promise<T | null> {
-    try {
-      const { data, error } = await this.supabase.from(table).select('*').eq('id', id).single();
-
-      if (error) {
-        if (error.code === 'PGRST116') {
-          // No rows returned
-          return null;
-        }
-        this.logger.error(`Find by ID in ${table} failed:`, error);
-        throw new Error(`Find by ID in ${table} failed: ${error.message}`);
-      }
-
-      return data as T;
-    } catch (error) {
-      this.logger.error(error, {
-        context: 'Supabase',
-        location: 'FindById',
-      });
-      throw error;
-    }
-  }
-
-  /**
-   * Find records with pagination
-   */
-  async findWithPagination<T = any>(
-    table: Table,
-    options: {
-      page: number;
-      limit: number;
-      where?: Record<string, any>;
-      caseSensitive?: boolean;
-      orderBy?: { column: string; ascending?: boolean };
-    }
-  ): Promise<{
-    data: T[];
-    total: number;
-    page: number;
-    limit: number;
-    totalPages: number;
-  }> {
-    try {
-      const offset = (options.page - 1) * options.limit;
-
-      // Get total count
-      const total = await this.count(table, {
-        where: options.where,
-        caseSensitive: options.caseSensitive,
-      });
-
-      // Get paginated data
-      const data = await this.select<T>(table, {
-        where: options.where,
-        caseSensitive: options.caseSensitive,
-        orderBy: options.orderBy,
-        limit: options.limit,
-        offset,
-      });
-
-      return {
-        data,
-        total,
-        page: options.page,
-        limit: options.limit,
-        totalPages: Math.ceil(total / options.limit),
-      };
-    } catch (error) {
-      this.logger.error('Pagination operation error:', error);
-      throw error;
-    }
   }
 }

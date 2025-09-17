@@ -2,8 +2,8 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { PassportModule } from '@nestjs/passport';
+import { UserModule } from '../user/user.module';
 import { AuthController } from './auth.controller';
-import { UserService } from '../user/user.service';
 import { AuthService } from './auth.service';
 import { HbsService } from './hbs.service';
 import { GoogleStrategy } from './strategies';
@@ -12,6 +12,7 @@ import * as path from 'path';
 
 @Module({
   imports: [
+    UserModule,
     PassportModule,
     MailerModule.forRootAsync({
       imports: [ConfigModule],
@@ -55,6 +56,6 @@ import * as path from 'path';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, UserService, HbsService, GoogleStrategy],
+  providers: [AuthService, HbsService, GoogleStrategy],
 })
 export class AuthModule {}
