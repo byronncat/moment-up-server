@@ -12,14 +12,23 @@ import {
   NotFoundException,
   BadRequestException,
   ConflictException,
+  Inject,
+  Logger,
 } from '@nestjs/common';
 import { SupabaseService, type SelectOptions } from '../database/supabase.service';
+import { CloudinaryService } from '../database/cloudinary.service';
+import { UpdateProfileDto } from './dto';
 import { Auth, String } from 'src/common/helpers';
 import { AccountExist, ProfileVisibility } from 'src/common/constants';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 
 @Injectable()
 export class UserService {
-  constructor(private readonly supabaseService: SupabaseService) {}
+  constructor(
+    @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
+    private readonly supabaseService: SupabaseService,
+    private readonly cloudinaryService: CloudinaryService
+  ) {}
 
   public async getById(id: UniqueUserId, options?: Pick<SelectOptions, 'select'>) {
     try {
@@ -160,12 +169,8 @@ export class UserService {
         username: user.username,
         displayName: user.display_name,
         avatar: user.avatar,
-        backgroundImage: faker.datatype.boolean(0.5)
-          ? getRandomFile(faker.string.uuid(), '1.91:1')
-          : null,
-        bio:
-          user.bio ||
-          (faker.datatype.boolean({ probability: 0.5 }) ? faker.lorem.paragraph() : null),
+        backgroundImage: user.background_image,
+        bio: user.bio,
         followers: followerCount,
         following: followingCount,
         isFollowing,
@@ -200,6 +205,45 @@ export class UserService {
         { id: userId }
       );
       return user[0];
+    } catch {
+      return null;
+    }
+  }
+
+  public async updateProfile(userId: User['id'], updateData: UpdateProfileDto) {
+    try {
+      const currentUser = await this.getById(userId, {
+        select: 'id, avatar, background_image',
+      });
+      if (!currentUser) return null;
+
+      const updateFields: Partial<User> = {};
+      if (updateData.avatar !== undefined) {
+        if (currentUser.avatar) await this.deleteOldImage(currentUser.avatar);
+        updateFields.avatar = updateData.avatar;
+      }
+
+      if (updateData.backgroundImage !== undefined) {
+        if (currentUser.background_image) await this.deleteOldImage(currentUser.background_image);
+        updateFields.background_image = updateData.backgroundImage;
+      }
+
+      if (updateData.displayName !== undefined) updateFields.display_name = updateData.displayName;
+
+      if (updateData.bio !== undefined) updateFields.bio = updateData.bio;
+
+      const user = await this.supabaseService.update<User>('users', updateFields, { id: userId });
+      if (user.length === 0) return null;
+
+      return {
+        id: user[0].id,
+        username: user[0].username,
+        displayName: user[0].display_name,
+        email: user[0].email,
+        avatar: user[0].avatar,
+        bio: user[0].bio,
+        backgroundImage: user[0].background_image,
+      };
     } catch {
       return null;
     }
@@ -560,6 +604,22 @@ export class UserService {
       });
     } catch (error) {
       return [];
+    }
+  }
+
+  private async deleteOldImage(publicId: string): Promise<void> {
+    try {
+      // TEMPORARY
+      const isHttp = publicId.startsWith('http');
+      if (isHttp) return;
+      // TEMPORARY
+
+      await this.cloudinaryService.destroy(publicId);
+    } catch (error) {
+      this.logger.warn(error, {
+        context: 'UserService',
+        location: 'deleteOldImage',
+      });
     }
   }
 }

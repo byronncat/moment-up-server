@@ -9,16 +9,20 @@ import {
   HttpStatus,
   Param,
   Post,
+  Patch,
+  Body,
   UseGuards,
   NotFoundException,
   BadRequestException,
   Inject,
+  ValidationPipe,
 } from '@nestjs/common';
-import { Logger } from 'winston';
-import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { UserService } from './user.service';
 import { AccessTokenGuard } from 'src/common/guards';
 import { AccessToken } from 'src/common/decorators';
+import { UpdateProfileDto } from './dto';
+import { Logger } from 'winston';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 
 @Controller({
   path: 'users',
@@ -41,6 +45,26 @@ export class UserController {
     if (!profile) throw new NotFoundException('Profile not found');
     return {
       profile,
+    };
+  }
+
+  @Patch(':id')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AccessTokenGuard)
+  async updateProfile(
+    @AccessToken() token: JwtPayload,
+    @Param('id') userId: string,
+    @Body(ValidationPipe) updateData: UpdateProfileDto
+  ) {
+    const currentUserId = token?.sub || '';
+    if (currentUserId !== userId)
+      throw new BadRequestException('You can only update your own profile');
+
+    const updatedUser = await this.userService.updateProfile(userId, updateData);
+    if (!updatedUser) throw new NotFoundException('User not found');
+
+    return {
+      user: updatedUser,
     };
   }
 
