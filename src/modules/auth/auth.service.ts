@@ -1,5 +1,6 @@
 import type { ExpressSession } from 'express-session';
-import type { JwtPayload, GoogleUser } from 'library';
+import type { JwtPayload } from 'jwt-library';
+import type { GoogleUser } from 'passport-library';
 import type { User } from 'schema';
 import type { AccountDto } from 'api';
 

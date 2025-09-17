@@ -1,4 +1,4 @@
-import type { JwtPayload } from 'library';
+import type { JwtPayload } from 'jwt-library';
 
 import { Controller, HttpCode, HttpStatus, Get, UseGuards, Param, Delete } from '@nestjs/common';
 import { StoryService } from './story.service';

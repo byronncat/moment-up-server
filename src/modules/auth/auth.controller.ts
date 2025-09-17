@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
-import type { GoogleUser, JwtPayload } from 'library';
+import type { JwtPayload } from 'jwt-library';
+import type { GoogleUser } from 'passport-library';
 import type { Session as ExpressSession } from 'express-session';
 
 interface AuthRequest extends Request {
@@ -173,5 +174,4 @@ export class AuthController {
     const user = await this.authService.currentUser(session, accessToken);
     return { user };
   }
-
 }

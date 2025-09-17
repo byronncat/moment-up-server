@@ -1,4 +1,4 @@
-import type { JwtPayload } from 'library';
+import type { JwtPayload } from 'jwt-library';
 import { Controller, Get, HttpCode, HttpStatus, Query, UseGuards } from '@nestjs/common';
 import { NotificationService } from './notification.service';
 import { AccessToken } from 'src/common/decorators';

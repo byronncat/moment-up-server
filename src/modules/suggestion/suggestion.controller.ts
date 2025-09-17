@@ -1,4 +1,4 @@
-import type { JwtPayload } from 'library';
+import type { JwtPayload } from 'jwt-library';
 
 import {
   Body,

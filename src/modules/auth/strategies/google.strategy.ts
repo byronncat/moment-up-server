@@ -1,4 +1,4 @@
-import type { GoogleProfile } from 'library';
+import type { GoogleProfile } from 'passport-library';
 
 import { Injectable, Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';

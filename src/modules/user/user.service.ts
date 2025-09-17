@@ -3,7 +3,7 @@ import { faker } from '@faker-js/faker';
 
 import type { User, Follow, Block, Mute } from 'schema';
 import type { ProfileDto, UserSummaryDto } from 'api';
-import type { GoogleUser } from 'library';
+import type { GoogleUser } from 'passport-library';
 
 type UniqueUserId = User['id'] | User['email'] | User['username'];
 

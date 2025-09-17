@@ -1,4 +1,4 @@
-import type { AuthRequest } from 'library';
+import type { AuthRequest } from 'jwt-library';
 import type { ExpressSession } from 'express-session';
 
 import {
