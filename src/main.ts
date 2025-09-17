@@ -57,10 +57,10 @@ async function bootstrap() {
   const allowedOrigin = configService.get<string>('http.allowedOrigin')!;
 
   const sessionSecret = configService.get<string>('security.sessionSecret');
-  const redisUsername = configService.get<string>('db.redisUsername');
-  const redisPassword = configService.get<string>('db.redisPassword');
-  const redisHost = configService.get<string>('db.redisHost');
-  const redisPort = configService.get<number>('db.redisPort');
+  const redisUsername = configService.get<string>('db.redis.username');
+  const redisPassword = configService.get<string>('db.redis.password');
+  const redisHost = configService.get<string>('db.redis.host');
+  const redisPort = configService.get<number>('db.redis.port');
 
   // === Session ===
   const redisClient = createClient({
