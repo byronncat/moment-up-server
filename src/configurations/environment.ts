@@ -18,12 +18,21 @@ export const load = () => ({
     hashSaltRounds: parseInt(process.env.HASH_SALT_ROUNDS || '10'),
   },
   db: {
-    supabaseUrl: process.env.SUPABASE_URL,
-    supabaseKey: process.env.SUPABASE_KEY,
-    redisUsername: process.env.REDIS_USERNAME,
-    redisPassword: process.env.REDIS_PASSWORD,
-    redisHost: process.env.REDIS_HOST,
-    redisPort: process.env.REDIS_PORT,
+    supabase: {
+      url: process.env.SUPABASE_URL,
+      key: process.env.SUPABASE_KEY,
+    },
+    redis: {
+      username: process.env.REDIS_USERNAME,
+      password: process.env.REDIS_PASSWORD,
+      host: process.env.REDIS_HOST,
+      port: process.env.REDIS_PORT,
+    },
+    cloudinary: {
+      cloudName: process.env.CLOUDINARY_CLOUD_NAME,
+      apiKey: process.env.CLOUDINARY_API_KEY,
+      apiSecret: process.env.CLOUDINARY_API_SECRET,
+    },
   },
   email: {
     host: process.env.EMAIL_HOST,
@@ -54,6 +63,9 @@ export const schema = Joi.object({
   REDIS_PASSWORD: Joi.string().required(),
   REDIS_HOST: Joi.string().hostname().required(),
   REDIS_PORT: Joi.number().port().required(),
+  CLOUDINARY_CLOUD_NAME: Joi.string().required(),
+  CLOUDINARY_API_KEY: Joi.string().required(),
+  CLOUDINARY_API_SECRET: Joi.string().required(),
   EMAIL_HOST: Joi.string().required(),
   EMAIL_PORT: Joi.number().required(),
   EMAIL_SECURE: Joi.boolean().required(),
