@@ -1,4 +1,4 @@
-declare module 'library' {
+declare module 'jwt-library' {
   import type { Request } from 'express';
 
   type JwtPayload = {
@@ -9,7 +9,9 @@ declare module 'library' {
   interface AuthRequest extends Request {
     accessToken?: JwtPayload;
   }
+}
 
+declare module 'passport-library' {
   type GoogleUser = {
     googleId: string;
     email: string;
