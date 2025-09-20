@@ -1,6 +1,6 @@
 import { createMockSearches } from 'src/__mocks__/search';
 import { mockMoments } from 'src/__mocks__/moment';
-import type { AccountDto, HashtagDto, MomentPayload, PaginationPayload } from 'api';
+import type { AccountDto, HashtagDto, MomentPayload, PaginationDto } from 'api';
 import { SearchItemType } from 'src/common/constants';
 
 export interface UserSearchData extends AccountDto {
@@ -94,7 +94,7 @@ export class SearchService {
     const sortedResults = order ? this.sortSearchResults(results, order) : results;
 
     // Handle pagination
-    let result: PaginationPayload<SearchPayload>;
+    let result: PaginationDto<SearchPayload>;
     if (type && type.includes('&')) {
       const postCount = sortedResults.filter((item) => item.type === SearchItemType.POST).length;
       const hasNextPage = page === 1 ? postCount > limit : postCount > (page - 1) * limit;

@@ -28,6 +28,8 @@ function createRandomUser() {
     isFollowing: faker.datatype.boolean(),
     hasStory: faker.datatype.boolean(),
     bio: faker.lorem.sentence(),
+    followedBy: null,
+    isMuted: null,
   };
 }
 
@@ -37,8 +39,7 @@ function createRandomPost(
   mediaFiles: Array<{
     id: string;
     type: 'image' | 'video';
-    url: string;
-    aspectRatio: '4:5' | '1.91:1' | '4:5' | '9:16' | '1:1';
+    aspectRatio: '4:5' | '1.91:1' | '1:1';
   }> = []
 ) {
   const hasMedia = !forceTextOnly && mediaFiles.length > 0;
@@ -48,20 +49,22 @@ function createRandomPost(
   const shouldIncludeText = hasText || (!hasMedia && forceTextOnly);
 
   return {
-    ...(shouldIncludeText && {
-      text: faker.helpers.arrayElement([
-        faker.lorem.sentence(),
-        faker.lorem.paragraph(),
-        `${faker.hacker.phrase()} #${faker.food.meat().toLowerCase().replace(' ', '')} #${faker.music.genre().toLowerCase().replace(' ', '')}`,
-        `Just ${faker.hacker.ingverb()} with ${faker.food.dish().toLowerCase()} and ${faker.animal.type().toLowerCase()}! 🔥`,
-        `${faker.company.buzzPhrase()} #${faker.color.human().toLowerCase()} #${faker.vehicle.type().toLowerCase().replace(' ', '')}`,
-      ]),
-    }),
-    ...(hasMedia && { files: mediaFiles }),
+    ...(shouldIncludeText
+      ? {
+          text: faker.helpers.arrayElement([
+            faker.lorem.sentence(),
+            faker.lorem.paragraph(),
+            `${faker.hacker.phrase()} #${faker.food.meat().toLowerCase().replace(' ', '')} #${faker.music.genre().toLowerCase().replace(' ', '')}`,
+            `Just ${faker.hacker.ingverb()} with ${faker.food.dish().toLowerCase()} and ${faker.animal.type().toLowerCase()}! 🔥`,
+            `${faker.company.buzzPhrase()} #${faker.color.human().toLowerCase()} #${faker.vehicle.type().toLowerCase().replace(' ', '')}`,
+          ]),
+        }
+      : { text: null }),
+    ...(hasMedia ? { files: mediaFiles } : { files: null }),
     likes: faker.number.int({ max: MAX_LIKE_NUM }),
     comments: faker.number.int({ max: MAX_COMMENT_NUM }),
     reposts: faker.number.int({ max: MAX_REPOST_NUM }),
-    updatedAt: faker.date.past(),
+    lastModified: faker.date.past(),
     isLiked: faker.datatype.boolean({ probability: 0.3 }),
     isBookmarked: faker.datatype.boolean({ probability: 0.2 }),
   };
@@ -80,9 +83,8 @@ export const mockMoments: MomentPayload[] = (() => {
     for (let i = 0; i < filesPerPost && mediaIndex < allMedia.length; i++) {
       const media = allMedia[mediaIndex];
       mediaFilesForPost.push({
-        id: i.toString(),
+        id: media.url,
         type: media.url.includes('.mp4') ? ('video' as const) : ('image' as const),
-        url: media.url,
         aspectRatio: media.aspectRatio,
       });
       mediaIndex++;

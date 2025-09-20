@@ -1,4 +1,4 @@
-import type { NotificationPayload, PaginationPayload } from 'api';
+import type { NotificationPayload, PaginationDto } from 'api';
 import { Injectable } from '@nestjs/common';
 import { generateNotifications } from 'src/__mocks__/notifications';
 import { NotificationsDto } from './dto/notifications';
@@ -26,7 +26,7 @@ export class NotificationService {
         return false;
       })
       .slice((page - 1) * limit, page * limit);
-    const pagination: PaginationPayload<NotificationPayload> = {
+    const pagination: PaginationDto<NotificationPayload> = {
       total: this.notifications.length,
       page,
       limit,

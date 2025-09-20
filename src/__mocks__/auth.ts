@@ -17,7 +17,8 @@ export const accounts: User[] = [
     blocked: false,
     privacy: ProfileVisibility.PUBLIC,
     last_modified: new Date('2024-01-01'),
-    createdAt: new Date('2024-01-01'),
+    created_at: new Date('2024-01-01'),
+    deleted_at: null,
   },
   {
     id: '1ba21a53-e9cc-4629-8481-00c7f3dd9f63',
@@ -32,7 +33,8 @@ export const accounts: User[] = [
     verified: true,
     privacy: ProfileVisibility.PRIVATE,
     last_modified: new Date('2024-01-02'),
-    createdAt: new Date('2024-01-02'),
+    created_at: new Date('2024-01-02'),
+    deleted_at: null,
   },
   {
     id: '272632b6-0b5a-406a-ad30-88629fd3eabc',
@@ -47,6 +49,7 @@ export const accounts: User[] = [
     blocked: true,
     privacy: ProfileVisibility.PUBLIC,
     last_modified: new Date('2024-01-03'),
-    createdAt: new Date('2024-01-03'),
+    created_at: new Date('2024-01-03'),
+    deleted_at: null,
   },
 ];

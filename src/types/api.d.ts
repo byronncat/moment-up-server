@@ -144,8 +144,8 @@ declare module 'api' {
     backgroundImage?: string;
   }
 
-  interface PaginationPayload<T> {
-    total: number;
+  interface PaginationDto<T> {
+    total?: number;
     page: number;
     limit: number;
     hasNextPage: boolean;

@@ -1,5 +1,5 @@
 import { createMockComments } from 'src/__mocks__/comment';
-import type { PaginationPayload, CommentPayload } from 'api';
+import type { PaginationDto, CommentPayload } from 'api';
 import type { User, Post, Comment } from 'schema';
 
 import { Injectable, NotFoundException } from '@nestjs/common';
@@ -24,7 +24,7 @@ export class CommentService {
     this.comments = [...ownComments, ...otherComments];
 
     const comments = this.comments.slice((page - 1) * limit, page * limit);
-    const pagination: PaginationPayload<CommentPayload> = {
+    const pagination: PaginationDto<CommentPayload> = {
       total: this.comments.length,
       page,
       limit,

@@ -37,6 +37,13 @@ export class DevelopmentController {
     return await this.developmentService.generateFollowRelationships(maxFollows);
   }
 
+  @Post('generate-posts')
+  @HttpCode(HttpStatus.CREATED)
+  async generatePosts(@Query('count') count?: string) {
+    const postCount = count ? parseInt(count, 10) : 50;
+    return await this.developmentService.generatePosts(postCount);
+  }
+
   @Get('media-info')
   @HttpCode(HttpStatus.OK)
   async getMediaInfo(

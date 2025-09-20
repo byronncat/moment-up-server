@@ -1,11 +1,11 @@
-import type { User } from 'schema';
+import type { User, Post } from 'schema';
 
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { SupabaseService } from '../database/supabase.service';
 import { CloudinaryService } from '../database/cloudinary.service';
-import { getRandomFile } from 'src/__mocks__/file';
+import { getRandomFile, imageUrls, videoUrls } from 'src/__mocks__/file';
 import { faker } from '@faker-js/faker';
-import { ProfileVisibility } from 'src/common/constants';
+import { ProfileVisibility, ContentPrivacy } from 'src/common/constants';
 import { Auth } from 'src/common/helpers';
 
 const DEFAULT_PASSWORD = '1';
@@ -186,6 +186,113 @@ export class DevelopmentService {
       };
     } catch (error) {
       throw new BadRequestException('Failed to create follow relationships');
+    }
+  }
+
+  public async generatePosts(count: number = 50) {
+    if (count <= 0) {
+      throw new BadRequestException('Count must be greater than 0');
+    }
+
+    if (count > 500) {
+      throw new BadRequestException('Count cannot exceed 500 posts at once');
+    }
+
+    try {
+      // Get all existing users from the database
+      const users = await this.supabaseService.select<User>('users', {
+        select: 'id, username, display_name',
+        where: { blocked: false },
+      });
+
+      if (users.length === 0) {
+        return {
+          message: 'No users found in database. Please create users first.',
+          insertedCount: 0,
+          posts: [],
+        };
+      }
+
+      // Combine all media files
+      const allMedia = [...imageUrls, ...videoUrls].sort(() => Math.random() - 0.5);
+      const postsToInsert: Omit<Post, 'id' | 'created_at' | 'last_modified'>[] = [];
+
+      let mediaIndex = 0;
+
+      for (let i = 0; i < count; i++) {
+        // Pick a random user
+        const randomUser = faker.helpers.arrayElement(users);
+
+        // Decide if post should have media (70% chance)
+        const hasMedia = faker.datatype.boolean({ probability: 0.7 });
+        const hasText = faker.datatype.boolean({ probability: 0.8 });
+
+        // Ensure post has at least text or media
+        const shouldIncludeText = hasText || !hasMedia;
+
+        let attachments = null;
+
+        if (hasMedia && mediaIndex < allMedia.length) {
+          // Decide how many media files for this post (1-4)
+          const filesPerPost = faker.number.int({ min: 1, max: 4 });
+          const mediaFilesForPost = [];
+
+          for (let j = 0; j < filesPerPost && mediaIndex < allMedia.length; j++) {
+            const media = allMedia[mediaIndex];
+            mediaFilesForPost.push({
+              id: media.url, // Use the HTTP URL as ID for mock data
+              type: media.url.includes('.mp4') ? ('video' as const) : ('image' as const),
+            });
+            mediaIndex++;
+          }
+
+          attachments = mediaFilesForPost;
+
+          // Reset mediaIndex if we've used all media
+          if (mediaIndex >= allMedia.length) {
+            mediaIndex = 0;
+          }
+        }
+
+        const postData: Omit<Post, 'id' | 'created_at' | 'last_modified'> = {
+          user_id: randomUser.id,
+          text: shouldIncludeText
+            ? faker.helpers.arrayElement([
+                faker.lorem.sentence(),
+                faker.lorem.paragraph(),
+                `${faker.hacker.phrase()} #${faker.food.meat().toLowerCase().replace(' ', '')} #${faker.music.genre().toLowerCase().replace(' ', '')}`,
+                `Just ${faker.hacker.ingverb()} with ${faker.food.dish().toLowerCase()} and ${faker.animal.type().toLowerCase()}! 🔥`,
+                `${faker.company.buzzPhrase()} #${faker.color.human().toLowerCase()} #${faker.vehicle.type().toLowerCase().replace(' ', '')}`,
+              ])
+            : null,
+          attachments,
+          privacy: faker.helpers.arrayElement([
+            ContentPrivacy.PUBLIC,
+            ContentPrivacy.FOLLOWERS,
+            ContentPrivacy.PRIVATE,
+          ]),
+        };
+
+        postsToInsert.push(postData);
+      }
+
+      // Insert all posts
+      const insertedPosts = await this.supabaseService.insert<Post>('posts', postsToInsert);
+
+      return {
+        message: `Successfully created ${insertedPosts.length} posts`,
+        insertedCount: insertedPosts.length,
+        posts: insertedPosts.map((post) => ({
+          id: post.id,
+          user_id: post.user_id,
+          text: post.text,
+          attachments: post.attachments,
+          privacy: post.privacy,
+          created_at: post.created_at,
+        })),
+      };
+    } catch (error) {
+      throw new BadRequestException(`Failed to generate posts: ${error.message}`);
     }
   }
 
