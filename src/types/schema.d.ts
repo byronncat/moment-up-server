@@ -1,7 +1,14 @@
 declare module 'schema' {
-  import type { ProfileVisibility, StoryBackground, TrendingReportType } from 'common/constants';
+  import type {
+    ContentPrivacy,
+    ProfileVisibility,
+    StoryBackground,
+    TrendingReportType,
+  } from 'common/constants';
 
   type uuid = string;
+  type snowflake = number;
+  type serial = number;
   type timestamptz = Date | string;
 
   // === Main ===
@@ -23,11 +30,18 @@ declare module 'schema' {
   };
 
   type Post = {
-    readonly id: string;
+    readonly id: snowflake;
     readonly user_id: User['id'];
     text: string | null;
+    attachments: Attachment[] | null;
+    privacy: ContentPrivacy;
     last_modified: timestamptz;
     readonly created_at: timestamptz;
+  };
+
+  type Attachment = {
+    readonly id: string;
+    readonly type: 'image' | 'video';
   };
 
   type Story = {
@@ -45,13 +59,13 @@ declare module 'schema' {
   }
 
   type Hashtag = {
-    readonly id: number;
+    readonly id: serial;
     readonly name: string;
     readonly created_at: timestamptz;
   };
 
   type TrendingReport = {
-    readonly id: number;
+    readonly id: serial;
     readonly hashtag_id: Hashtag['id'];
     readonly user_id: User['id'];
     readonly type: TrendingReportType;

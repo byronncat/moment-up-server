@@ -1,3 +1,4 @@
+import type { User, Post as PostSchema } from 'schema';
 import type { JwtPayload } from 'jwt-library';
 
 import {
@@ -12,19 +13,20 @@ import {
   Delete,
   Body,
   ForbiddenException,
-  BadRequestException,
+  InternalServerErrorException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { PostService } from './post.service';
 import { AccessTokenGuard } from 'src/common/guards';
 import { AccessToken } from 'src/common/decorators';
-import { RepostDto, ExploreDto, ProfileMomentDto, PaginationDto } from './dto';
+import { RepostDto, ExploreDto, ProfileMomentDto, PaginationDto, CreatePostDto } from './dto';
 import { INITIAL_PAGE } from 'src/common/constants';
 
 @Controller({
   path: 'posts',
   version: '1',
 })
-export class MomentController {
+export class PostController {
   constructor(private readonly postService: PostService) {}
 
   @Get('home')
@@ -46,7 +48,7 @@ export class MomentController {
   @Get('user/:id')
   @HttpCode(HttpStatus.OK)
   async getUserMoments(
-    @Param('id') id: string,
+    @Param('id') id: User['id'],
     @Query() { page, limit }: ProfileMomentDto,
     @AccessToken() accessToken?: JwtPayload
   ) {
@@ -60,17 +62,30 @@ export class MomentController {
 
   @Get(':id')
   @HttpCode(HttpStatus.OK)
-  async getMoment(@AccessToken() token: JwtPayload, @Param('id') id: string) {
+  async getMoment(@AccessToken() token: JwtPayload, @Param('id') id: PostSchema['id']) {
     const userId = token?.sub || '';
     return {
       moment: await this.postService.getById(userId, id),
     };
   }
 
+  @Post()
+  @HttpCode(HttpStatus.CREATED)
+  @UseGuards(AccessTokenGuard)
+  async createPost(@AccessToken() token: JwtPayload, @Body() createPostDto: CreatePostDto) {
+    const userId = token?.sub || '';
+    if (!userId) throw new UnauthorizedException('User not found');
+    const post = await this.postService.create(userId, createPostDto);
+    if (!post) throw new InternalServerErrorException('Failed to create post');
+    return {
+      post,
+    };
+  }
+
   @Post(':id/like')
   @HttpCode(HttpStatus.CREATED)
   @UseGuards(AccessTokenGuard)
-  async likeMoment(@AccessToken() token: JwtPayload, @Param('id') id: string) {
+  async likeMoment(@AccessToken() token: JwtPayload, @Param('id') id: PostSchema['id']) {
     const userId = token?.sub || '';
     return {
       like: await this.postService.like(userId, id),
@@ -80,7 +95,7 @@ export class MomentController {
   @Delete(':id/unlike')
   @HttpCode(HttpStatus.NO_CONTENT)
   @UseGuards(AccessTokenGuard)
-  async unlikeMoment(@AccessToken() token: JwtPayload, @Param('id') id: string) {
+  async unlikeMoment(@AccessToken() token: JwtPayload, @Param('id') id: PostSchema['id']) {
     const userId = token?.sub || '';
     await this.postService.unlike(userId, id);
   }
@@ -88,7 +103,7 @@ export class MomentController {
   @Post(':id/bookmark')
   @HttpCode(HttpStatus.CREATED)
   @UseGuards(AccessTokenGuard)
-  async bookmarkMoment(@AccessToken() token: JwtPayload, @Param('id') id: string) {
+  async bookmarkMoment(@AccessToken() token: JwtPayload, @Param('id') id: PostSchema['id']) {
     const userId = token?.sub || '';
     return {
       bookmark: await this.postService.bookmark(userId, id),
@@ -98,7 +113,7 @@ export class MomentController {
   @Delete(':id/unbookmark')
   @HttpCode(HttpStatus.NO_CONTENT)
   @UseGuards(AccessTokenGuard)
-  async unbookmarkMoment(@AccessToken() token: JwtPayload, @Param('id') id: string) {
+  async unbookmarkMoment(@AccessToken() token: JwtPayload, @Param('id') id: PostSchema['id']) {
     const userId = token?.sub || '';
     await this.postService.unbookmark(userId, id);
   }
@@ -108,7 +123,7 @@ export class MomentController {
   @UseGuards(AccessTokenGuard)
   async repostMoment(
     @AccessToken() token: JwtPayload,
-    @Param('id') id: string,
+    @Param('id') id: PostSchema['id'],
     @Body() repostDto: RepostDto
   ) {
     const userId = token?.sub || '';

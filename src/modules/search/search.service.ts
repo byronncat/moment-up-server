@@ -221,7 +221,7 @@ export class SearchService {
           // For posts (including those treated as media), use post.updatedAt
           if (item.type === SearchItemType.POST) {
             const moment = item as MomentData;
-            return moment.post?.updatedAt ? new Date(moment.post.updatedAt).getTime() : 0;
+            return moment.post?.lastModified ? new Date(moment.post.lastModified).getTime() : 0;
           }
           // For other types, keep current order (return same timestamp)
           return 0;

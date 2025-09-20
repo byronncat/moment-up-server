@@ -1,4 +1,12 @@
-import { Controller, Get, HttpCode, HttpStatus, Post, Query } from '@nestjs/common';
+import {
+  BadRequestException,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { DevelopmentService } from './development.service';
 import { TrendingService } from '../suggestion/trending.service';
 
@@ -27,5 +35,18 @@ export class DevelopmentController {
   async generateFollowRelationships(@Query('maxFollowsPerUser') maxFollowsPerUser?: string) {
     const maxFollows = maxFollowsPerUser ? parseInt(maxFollowsPerUser, 10) : 5;
     return await this.developmentService.generateFollowRelationships(maxFollows);
+  }
+
+  @Get('media-info')
+  @HttpCode(HttpStatus.OK)
+  async getMediaInfo(
+    @Query('id') publicId?: string,
+    @Query('ids') ids?: string,
+    @Query('format') format?: string
+  ) {
+    if (format !== 'image' && format !== 'video' && format !== 'raw') {
+      throw new BadRequestException('Invalid format');
+    }
+    return await this.developmentService.getMediaInfo(publicId, ids, format);
   }
 }

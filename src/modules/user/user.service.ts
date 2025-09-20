@@ -1,6 +1,3 @@
-import { getRandomFile } from 'src/__mocks__/file';
-import { faker } from '@faker-js/faker';
-
 import type { User, Follow, Block, Mute } from 'schema';
 import type { ProfileDto, UserSummaryDto } from 'api';
 import type { GoogleUser } from 'passport-library';
@@ -103,43 +100,60 @@ export class UserService {
     return newUser[0];
   }
 
-  public async getUserSummaryDto(userId: User['id'], currentUserId?: User['id']) {
-    const user = await this.getById(userId);
-    if (!user) return null;
+  public async getUserSummary(userId: User['id'], currentUserId?: User['id']) {
+    try {
+      const user = await this.getById(userId);
+      if (!user) return null;
 
-    // Get real follower/following counts
-    const [followerCount, followingCount] = await Promise.all([
-      this.getFollowerCount(userId),
-      this.getFollowingCount(userId),
-    ]);
+      let isFollowing = null;
+      if (currentUserId && currentUserId !== user.id)
+        isFollowing = await this.isFollowing(currentUserId, user.id);
 
-    // Check if current user is following this user
-    const isFollowing = currentUserId ? await this.isFollowing(currentUserId, userId) : false;
+      const currentUserFollowing = currentUserId 
+        ? await this.supabaseService.select('follows', {
+            select: 'following_id',
+            where: { follower_id: currentUserId },
+          })
+        : [];
+      const followingIds = currentUserFollowing.map((f) => f.following_id);
 
-    // Get some followers for display
-    const followers = await this.getFollowers(userId, 3);
+      const [followerCount, followingCount, mutualFollowersData] = await Promise.all([
+        this.getFollowerCount(user.id),
+        this.getFollowingCount(user.id),
+        this.getMutualFollowers(user.id, followingIds, 3),
+      ]);
 
-    const payload: UserSummaryDto = {
-      id: user.id,
-      username: user.username,
-      displayName: user.display_name,
-      avatar: user.avatar,
-      followers: followerCount,
-      following: followingCount,
-      hasStory: faker.datatype.boolean({ probability: 0.5 }),
-      isFollowing,
-      isMuted: null,
-      bio: faker.lorem.paragraph(),
-      followedBy: {
-        count: followerCount,
-        displayItems: followers.map((follower) => ({
-          id: follower.id,
-          displayName: follower.display_name || follower.username,
-          avatar: follower.avatar || getRandomFile(follower.username),
-        })),
-      },
-    };
-    return payload;
+      const { users: mutualFollowers, totalCount } = mutualFollowersData;
+      const remainingCount = Math.max(0, totalCount - mutualFollowers.length);
+
+      const followedBy =
+        mutualFollowers.length > 0
+          ? {
+              remainingCount,
+              displayItems: mutualFollowers.map((follower) => ({
+                id: follower.id,
+                displayName: follower.display_name || follower.username,
+                avatar: follower.avatar,
+              })),
+            }
+          : null;
+
+      const payload: UserSummaryDto = {
+        id: user.id,
+        username: user.username,
+        displayName: user.display_name,
+        avatar: user.avatar,
+        bio: user.bio,
+        followers: followerCount,
+        following: followingCount,
+        isFollowing,
+        hasStory: true, // TODO: Implement real story checking logic
+        followedBy,
+      };
+      return payload;
+    } catch {
+      return null;
+    }
   }
 
   public async getProfileByUsername(username: User['username'], currentUserId?: User['id']) {
@@ -604,6 +618,47 @@ export class UserService {
       });
     } catch (error) {
       return [];
+    }
+  }
+
+  public async getMutualFollowers(
+    targetUserId: User['id'],
+    viewerFollowingIds: User['id'][],
+    displayLimit = 3
+  ): Promise<{ users: User[]; totalCount: number }> {
+    try {
+      if (viewerFollowingIds.length === 0) return { users: [], totalCount: 0 };
+
+      const totalMutualFollows = await this.supabaseService.select('follows', {
+        select: 'follower_id',
+        where: { following_id: targetUserId },
+        whereIn: { follower_id: viewerFollowingIds },
+      });
+
+      const totalCount = totalMutualFollows.length;
+      if (totalCount === 0) return { users: [], totalCount: 0 };
+
+      const mutualFollowsData = await this.supabaseService.select('follows', {
+        select: 'follower_id',
+        where: { following_id: targetUserId },
+        whereIn: { follower_id: viewerFollowingIds },
+        limit: displayLimit,
+      });
+
+      const mutualFollowerIds = mutualFollowsData.map((f) => f.follower_id);
+
+      const mutualFollowers = await this.supabaseService.select<User>('users', {
+        whereIn: { id: mutualFollowerIds },
+        select: 'id, username, display_name, avatar',
+      });
+
+      return { users: mutualFollowers, totalCount };
+    } catch (error) {
+      this.logger.warn(error, {
+        context: 'UserService',
+        location: 'getMutualFollowers',
+      });
+      return { users: [], totalCount: 0 };
     }
   }
 

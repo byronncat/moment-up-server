@@ -1,6 +1,6 @@
 import { Type } from 'class-transformer';
 import { IsEnum, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
-import { Audience } from 'src/common/constants';
+import { ContentPrivacy } from 'src/common/constants';
 
 export class RepostDto {
   @MaxLength(500, { message: 'Comment cannot exceed 500 characters' })
@@ -9,7 +9,7 @@ export class RepostDto {
   comment?: string;
 
   @Type(() => Number)
-  @IsEnum(Audience, { message: 'Audience must be a valid enum value' })
-  @IsNotEmpty({ message: 'Audience is required' })
-  audience: Audience;
+  @IsEnum(ContentPrivacy, { message: 'Content privacy must be a valid enum value' })
+  @IsNotEmpty({ message: 'Content privacy is required' })
+  audience: ContentPrivacy;
 }

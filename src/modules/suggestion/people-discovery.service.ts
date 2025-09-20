@@ -370,7 +370,7 @@ export class PeopleDiscoveryService {
           const [followers, following, mutualFollowersData] = await Promise.all([
             this.userService.getFollowerCount(user.id),
             this.userService.getFollowingCount(user.id),
-            this.getMutualFollowers(user.id, followingIds, 3),
+            this.userService.getMutualFollowers(user.id, followingIds, 3),
           ]);
 
           const { users: mutualFollowers, totalCount } = mutualFollowersData;
@@ -379,7 +379,7 @@ export class PeopleDiscoveryService {
           const followedBy =
             mutualFollowers.length > 0
               ? {
-                  count: remainingCount,
+                  remainingCount,
                   displayItems: mutualFollowers.map((follower) => ({
                     id: follower.id,
                     displayName: follower.display_name || follower.username,
@@ -412,49 +412,6 @@ export class PeopleDiscoveryService {
         location: 'parseToUserSummaryDto',
       });
       return [];
-    }
-  }
-
-  private async getMutualFollowers(
-    suggestedUserId: string,
-    currentUserFollowingIds: string[],
-    limit = 3
-  ): Promise<{ users: User[]; totalCount: number }> {
-    try {
-      if (currentUserFollowingIds.length === 0) return { users: [], totalCount: 0 };
-
-      // Get total count of mutual followers
-      const totalMutualFollows = await this.supabaseService.select('follows', {
-        select: 'follower_id',
-        where: { following_id: suggestedUserId },
-        whereIn: { follower_id: currentUserFollowingIds },
-      });
-
-      const totalCount = totalMutualFollows.length;
-      if (totalCount === 0) return { users: [], totalCount: 0 };
-
-      // Get limited number for display
-      const mutualFollowsData = await this.supabaseService.select('follows', {
-        select: 'follower_id',
-        where: { following_id: suggestedUserId },
-        whereIn: { follower_id: currentUserFollowingIds },
-        limit,
-      });
-
-      const mutualFollowerIds = mutualFollowsData.map((f) => f.follower_id);
-
-      const mutualFollowers = await this.supabaseService.select<User>('users', {
-        whereIn: { id: mutualFollowerIds },
-        select: 'id, username, display_name, avatar',
-      });
-
-      return { users: mutualFollowers, totalCount };
-    } catch (error) {
-      this.logger.error(error, {
-        context: 'PeopleDiscovery',
-        location: 'getMutualFollowers',
-      });
-      return { users: [], totalCount: 0 };
     }
   }
 }

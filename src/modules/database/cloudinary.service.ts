@@ -1,13 +1,13 @@
-import { Injectable, OnModuleInit, Inject } from '@nestjs/common';
+import { Injectable, OnModuleInit, Inject, HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { v2 as cloudinary, UploadApiResponse } from 'cloudinary';
+import { v2 as cloudinary, UploadApiResponse, type ResourceApiResponse } from 'cloudinary';
 import { Logger } from 'winston';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 
 export interface CloudinaryUploadOptions {
   folder?: string;
   public_id?: string;
-  resource_type?: 'image' | 'video' | 'raw' | 'auto';
+  resource_type?: 'image' | 'video' | 'raw';
   format?: string;
   transformation?: any[];
   tags?: string[];
@@ -23,6 +23,52 @@ export interface CloudinarySearchOptions {
   max_results?: number;
   next_cursor?: string;
   with_field?: string[];
+}
+
+interface CloudinaryDestroy {
+  result: 'ok' | 'not found' | 'error';
+}
+
+interface CloudinaryResourceError {
+  message: string;
+  http_code: number;
+}
+
+interface CloudinaryResource {
+  asset_id: string;
+  public_id: string;
+  format: string;
+  version: number;
+  resource_type: string;
+  type: string;
+  created_at: string;
+  bytes: number;
+  width: number;
+  height: number;
+  folder: string;
+  access_mode: string;
+  url: string;
+  secure_url: string;
+}
+
+interface CloudinaryRateLimit {
+  rate_limit_allowed: number;
+  rate_limit_reset_at: string;
+  rate_limit_remaining: number;
+}
+
+export interface CloudinaryGetResource extends CloudinaryResource, CloudinaryRateLimit {
+  next_cursor: string;
+  derived: Array<{
+    transformation: string;
+    transformation_signature: string;
+    format: string;
+    bytes: number;
+    id: string;
+    url: string;
+    secure_url: string;
+    extension: string;
+  }>;
 }
 
 @Injectable()
@@ -60,7 +106,7 @@ export class CloudinaryService implements OnModuleInit {
       const result = await cloudinary.uploader.upload(file as string, {
         folder: options?.folder,
         public_id: options?.public_id,
-        resource_type: options?.resource_type || 'auto',
+        resource_type: options?.resource_type,
         format: options?.format,
         transformation: options?.transformation,
         tags: options?.tags,
@@ -97,9 +143,9 @@ export class CloudinaryService implements OnModuleInit {
     }
   }
 
-  public async destroy(publicId: string, resourceType?: 'image' | 'video' | 'raw'): Promise<any> {
+  public async destroy(publicId: string, resourceType?: 'image' | 'video' | 'raw') {
     try {
-      const result = await cloudinary.uploader.destroy(publicId, {
+      const result: CloudinaryDestroy = await cloudinary.uploader.destroy(publicId, {
         resource_type: resourceType || 'image',
       });
 
@@ -135,22 +181,38 @@ export class CloudinaryService implements OnModuleInit {
     }
   }
 
-  public async getResource(
-    publicId: string,
-    resourceType?: 'image' | 'video' | 'raw'
-  ): Promise<any> {
+  public async getResource(publicId: string, resourceType?: 'image' | 'video' | 'raw') {
     try {
-      const result = await cloudinary.api.resource(publicId, {
-        resource_type: resourceType || 'image',
+      const result: CloudinaryGetResource = await cloudinary.api.resource(publicId, {
+        resource_type: resourceType,
+      });
+
+      return result;
+    } catch (result: any) {
+      console.log(result);
+      const error = result.error as CloudinaryResourceError;
+      if (error.http_code === HttpStatus.NOT_FOUND) return null;
+      this.logger.error(error.message, {
+        context: 'Cloudinary',
+        location: 'GetResource',
+      });
+      throw new Error(`Get resource failed: ${result.error.message}`);
+    }
+  }
+
+  public async getResources(publicIds: string[], resourceType?: 'image' | 'video' | 'raw') {
+    try {
+      const result: ResourceApiResponse = await cloudinary.api.resources_by_ids(publicIds, {
+        resource_type: resourceType,
       });
 
       return result;
     } catch (error) {
       this.logger.error(error, {
         context: 'Cloudinary',
-        location: 'GetResource',
+        location: 'GetResources',
       });
-      throw new Error(`Get resource failed: ${error.message}`);
+      throw new Error(`Get resources failed: ${error.message}`);
     }
   }
 

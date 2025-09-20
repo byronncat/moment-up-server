@@ -1,7 +1,8 @@
 import type { User } from 'schema';
 
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { SupabaseService } from '../database/supabase.service';
+import { CloudinaryService } from '../database/cloudinary.service';
 import { getRandomFile } from 'src/__mocks__/file';
 import { faker } from '@faker-js/faker';
 import { ProfileVisibility } from 'src/common/constants';
@@ -11,7 +12,10 @@ const DEFAULT_PASSWORD = '1';
 
 @Injectable()
 export class DevelopmentService {
-  constructor(private readonly supabaseService: SupabaseService) {}
+  constructor(
+    private readonly supabaseService: SupabaseService,
+    private readonly cloudinaryService: CloudinaryService
+  ) {}
 
   public async generateUsers(count: number = 10) {
     if (count <= 0) {
@@ -103,14 +107,14 @@ export class DevelopmentService {
       // Get all users from the database
       const users = await this.supabaseService.select<User>('users', {
         select: 'id, username, display_name',
-        where: { blocked: false }
+        where: { blocked: false },
       });
 
       if (users.length < 2) {
         return {
           message: 'Need at least 2 users to create follow relationships',
           relationshipsCreated: 0,
-          relationships: []
+          relationships: [],
         };
       }
 
@@ -118,30 +122,33 @@ export class DevelopmentService {
       const existingRelationships = new Set<string>();
 
       // Get existing follow relationships to avoid duplicates
-      const existingFollows = await this.supabaseService.select<{ follower_id: string; following_id: string }>('follows', {
-        select: 'follower_id, following_id'
+      const existingFollows = await this.supabaseService.select<{
+        follower_id: string;
+        following_id: string;
+      }>('follows', {
+        select: 'follower_id, following_id',
       });
 
-      existingFollows.forEach(follow => {
+      existingFollows.forEach((follow) => {
         existingRelationships.add(`${follow.follower_id}-${follow.following_id}`);
       });
 
       // Generate follow relationships
       for (const user of users) {
         const followCount = faker.number.int({ min: 1, max: maxFollowsPerUser });
-        const potentialFollows = users.filter(u => u.id !== user.id);
-        
+        const potentialFollows = users.filter((u) => u.id !== user.id);
+
         // Shuffle and take random users to follow
         const shuffledFollows = faker.helpers.shuffle(potentialFollows);
         const usersToFollow = shuffledFollows.slice(0, followCount);
 
         for (const userToFollow of usersToFollow) {
           const relationshipKey = `${user.id}-${userToFollow.id}`;
-          
+
           if (!existingRelationships.has(relationshipKey)) {
             relationshipsToInsert.push({
               follower_id: user.id,
-              following_id: userToFollow.id
+              following_id: userToFollow.id,
             });
             existingRelationships.add(relationshipKey);
           }
@@ -150,31 +157,51 @@ export class DevelopmentService {
 
       if (relationshipsToInsert.length === 0) {
         return {
-          message: 'No new follow relationships to create. All possible relationships already exist.',
+          message:
+            'No new follow relationships to create. All possible relationships already exist.',
           relationshipsCreated: 0,
-          relationships: []
+          relationships: [],
         };
       }
 
       // Insert the follow relationships
-      const insertedRelationships = await this.supabaseService.insert<{ follower_id: string; following_id: string }>('follows', relationshipsToInsert);
+      const insertedRelationships = await this.supabaseService.insert<{
+        follower_id: string;
+        following_id: string;
+      }>('follows', relationshipsToInsert);
 
       return {
         message: `Successfully created ${insertedRelationships.length} follow relationships`,
         relationshipsCreated: insertedRelationships.length,
-        relationships: insertedRelationships.map(rel => {
-          const follower = users.find(u => u.id === rel.follower_id);
-          const following = users.find(u => u.id === rel.following_id);
+        relationships: insertedRelationships.map((rel) => {
+          const follower = users.find((u) => u.id === rel.follower_id);
+          const following = users.find((u) => u.id === rel.following_id);
           return {
             follower_id: rel.follower_id,
             following_id: rel.following_id,
             follower_username: follower?.username,
-            following_username: following?.username
+            following_username: following?.username,
           };
-        })
+        }),
       };
     } catch (error) {
       throw new BadRequestException('Failed to create follow relationships');
     }
+  }
+
+  public async getMediaInfo(mediaId?: string, ids?: string, format?: 'image' | 'video' | 'raw') {
+    if (ids) {
+      const media = await this.cloudinaryService.getResources(ids.split(','), format);
+      if (!media) throw new NotFoundException('Media not found');
+      return media;
+    }
+
+    if (mediaId) {
+      const media = await this.cloudinaryService.getResource(mediaId, format);
+      if (!media) throw new NotFoundException('Media not found');
+      return media;
+    }
+
+    return null;
   }
 }

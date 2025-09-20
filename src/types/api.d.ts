@@ -1,5 +1,14 @@
 declare module 'api' {
-  import type { User, Moment, CloudinaryFile, Hashtag, Story, Comment } from 'schema';
+  import type {
+    User,
+    Post,
+    Moment,
+    CloudinaryFile,
+    Hashtag,
+    Story,
+    Comment,
+    Attachment,
+  } from 'schema';
   import type { StoryBackground } from 'common/constants';
 
   interface AccountDto {
@@ -20,9 +29,11 @@ declare module 'api' {
     hasStory: boolean;
   }
 
-  interface UserSummaryDto extends AccountDto, Omit<ProfileDto, 'backgroundImage' | 'isProtected'> {
+  interface UserSummaryDto
+    extends AccountDto,
+      Omit<ProfileDto, 'backgroundImage' | 'isMuted' | 'isProtected'> {
     followedBy: {
-      count: number;
+      remainingCount: number;
       displayItems: {
         id: User['id'];
         displayName: User['display_name'];
@@ -31,26 +42,25 @@ declare module 'api' {
     } | null;
   }
 
-  interface PostPayload {
-    text?: Moment['text'];
-    files?: {
-      id: string;
-      type: CloudinaryFile['type'];
-      url: string;
-      aspectRatio: '1:1' | '9:16' | '4:5' | '1.91:1';
-    }[];
+  interface PostDto {
+    text: Post['text'];
+    files: Array<{
+      id: Attachment['id'];
+      type: 'image' | 'video';
+      aspectRatio: '1:1' | '4:5' | '1.91:1';
+    }> | null;
     likes: number;
     comments: number;
     reposts: number;
     isLiked: boolean;
     isBookmarked: boolean;
-    updatedAt: Moment['updatedAt'];
+    lastModified: Post['last_modified'];
   }
 
   interface MomentPayload {
     id: Moment['id'];
     user: UserSummaryDto;
-    post: PostPayload;
+    post: PostDto;
   }
 
   interface HashtagDto {
