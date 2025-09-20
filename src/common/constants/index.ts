@@ -14,6 +14,9 @@ export const Cookie = {
 };
 
 export const TOKEN_ID_LENGTH = 10;
+export const MAX_NAME_LENGTH = 50;
+export const MAX_BIO_LENGTH = 160;
+export const MAX_TEXT_CONTENT_LENGTH = 2000;
 
 export const Url = {
   CONTACT: 'https://docs.google.com/forms/d/1oUM87A2Kkv7ME9OhRtNDZ_HyMsoKzJR_lOCwna4T_rU/',
@@ -36,12 +39,10 @@ export enum ProfileVisibility {
   PRIVATE,
 }
 
-export enum Audience {
+export enum ContentPrivacy {
   PUBLIC,
   FOLLOWERS,
-  FRIENDS,
-  VERIFIED,
-  ONLY_ME,
+  PRIVATE,
 }
 
 export enum TrendingReportType {

@@ -25,17 +25,17 @@ import { CommentDto } from './dto/comment';
 export class CommentController {
   constructor(private readonly commentService: CommentService) {}
 
-  @Get('moment/:momentId')
-  @HttpCode(HttpStatus.OK)
-  @UseGuards(AccessTokenGuard)
-  async getComments(
-    @Param('momentId') momentId: string,
-    @Query() paginationDto: PaginationDto,
-    @AccessToken() token: JwtPayload
-  ) {
-    const userId = token?.sub || '';
-    return await this.commentService.get(momentId, userId, paginationDto);
-  }
+  // @Get('moment/:momentId')
+  // @HttpCode(HttpStatus.OK)
+  // @UseGuards(AccessTokenGuard)
+  // async getComments(
+  //   @Param('momentId') momentId: string,
+  //   @Query() paginationDto: PaginationDto,
+  //   @AccessToken() token: JwtPayload
+  // ) {
+  //   const userId = token?.sub || '';
+  //   return await this.commentService.get(momentId, userId, paginationDto);
+  // }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)

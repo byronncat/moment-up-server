@@ -8,6 +8,7 @@ import {
   Validate,
   MaxLength,
 } from 'class-validator';
+import { MAX_NAME_LENGTH } from '../../../common/constants';
 
 @ValidatorConstraint({ name: 'passwordStrength', async: false })
 export class PasswordStrengthValidator implements ValidatorConstraintInterface {
@@ -32,7 +33,9 @@ export class RegisterDto {
   @Matches(/^[a-zA-Z0-9._-]+$/, {
     message: 'Only letters, numbers, dots, underscores, and hyphens are allowed',
   })
-  @MaxLength(50, { message: 'Username must be less than 50 characters' })
+  @MaxLength(MAX_NAME_LENGTH, {
+    message: `Username must be less than ${MAX_NAME_LENGTH} characters`,
+  })
   @MinLength(2, { message: 'Username must be at least 2 characters' })
   @IsNotEmpty({ message: 'Username is required' })
   username: string;

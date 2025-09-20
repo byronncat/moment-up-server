@@ -35,26 +35,26 @@ export class CommentService {
   }
 
   public async add({ momentId: postId, content }: CommentDto, userId: User['id']) {
-    const user = await this.userService.getUserSummaryDto(userId);
-    if (!user) throw new NotFoundException('User not found');
+    // const user = await this.userService.getUserSummaryDto(userId);
+    // if (!user) throw new NotFoundException('User not found');
 
-    const moment = await this.postService.getById(userId, postId);
-    if (!moment) throw new NotFoundException('Moment not found');
+    // const moment = await this.postService.getById(userId, postId);
+    // if (!moment) throw new NotFoundException('Moment not found');
 
     // save comment to database
     // const comment = ...
 
-    const commentPayload: CommentPayload = {
-      id: Auth.generateId('uuid'),
-      user,
-      content,
-      likes: 0,
-      isLiked: false,
-      updatedAt: new Date().toISOString(),
-    };
-    this.comments.push(commentPayload);
+    // const commentPayload: CommentPayload = {
+    //   id: Auth.generateId('uuid'),
+    //   user,
+    //   content,
+    //   likes: 0,
+    //   isLiked: false,
+    //   updatedAt: new Date().toISOString(),
+    // };
+    // this.comments.push(commentPayload);
 
-    return commentPayload;
+    // return commentPayload;
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
