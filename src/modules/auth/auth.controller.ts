@@ -1,3 +1,4 @@
+// === Type ===
 import type { Request, Response } from 'express';
 import type { JwtPayload } from 'jwt-library';
 import type { GoogleUser } from 'passport-library';
@@ -12,6 +13,7 @@ interface GoogleAuthRequest extends Request {
   user: GoogleUser;
 }
 
+// === Controller ===
 import {
   Controller,
   Post,
@@ -25,11 +27,12 @@ import {
   Res,
   UseGuards,
 } from '@nestjs/common';
-import { AccessToken } from 'src/common/decorators';
 import { ValidationPipe } from '@nestjs/common/pipes/validation.pipe';
-import { ConfigService } from '@nestjs/config';
-import { Cookie } from 'src/common/constants';
 import { AuthService } from './auth.service';
+import { ConfigService } from '@nestjs/config';
+import { AccessToken } from 'src/common/decorators';
+import { AccessTokenGuard } from 'src/common/guards';
+import { GoogleOAuthGuard } from './guards';
 import {
   LoginDto,
   IdentityDto,
@@ -38,9 +41,7 @@ import {
   VerifyDto,
   SwitchAccountDto,
 } from './dto';
-import { GoogleOAuthGuard } from './guards';
-import { AccessTokenGuard } from 'src/common/guards';
-import { SocialAuthError } from 'src/common/constants';
+import { Cookie, SocialAuthError } from 'src/common/constants';
 
 @Controller({
   path: 'auth',
@@ -77,10 +78,7 @@ export class AuthController {
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  async login(
-    @Body(ValidationPipe) loginDto: LoginDto,
-    @Session() session: AppSession
-  ) {
+  async login(@Body(ValidationPipe) loginDto: LoginDto, @Session() session: AppSession) {
     return await this.authService.login(loginDto, session);
   }
 
@@ -170,7 +168,10 @@ export class AuthController {
   @Post('google/add-account')
   @HttpCode(HttpStatus.OK)
   @UseGuards(AccessTokenGuard)
-  async addGoogleAccount(@AccessToken() accessToken: JwtPayload, @Session() session: AppSessionData) {
+  async addGoogleAccount(
+    @AccessToken() accessToken: JwtPayload,
+    @Session() session: AppSessionData
+  ) {
     const user = await this.authService.currentUser(session, accessToken);
     return { user };
   }

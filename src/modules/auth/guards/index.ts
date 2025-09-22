@@ -1,1 +1,1 @@
-export { GoogleOAuthGuard } from './google-oauth.guard';
+export { GoogleOAuthGuard } from './google-oauth';

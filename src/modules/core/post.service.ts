@@ -10,8 +10,8 @@ import { UserService } from '../user/user.service';
 import { Auth } from 'src/common/helpers';
 import { RepostDto, ExploreDto, ProfileMomentDto, CreatePostDto } from './dto';
 
-import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 
 // +++ TODO: Ongoing +++
 type PaginationDto = any;
@@ -55,7 +55,7 @@ export class PostService {
         where: { follower_id: userId },
       });
       const followingIds = followingUsers.map((f) => f.following_id);
-      
+
       // Include the current user's own posts
       const userIds = [...followingIds, userId];
 
@@ -87,14 +87,14 @@ export class PostService {
       });
 
       // Get user summaries for all unique user IDs in the posts
-      const uniqueUserIds = [...new Set(posts.map(post => post.user_id))];
+      const uniqueUserIds = [...new Set(posts.map((post) => post.user_id))];
       const userSummaries = await Promise.all(
         uniqueUserIds.map(async (uid) => ({
           id: uid,
-          summary: await this.userService.getUserSummary(uid)
+          summary: await this.userService.getUserSummary(uid),
         }))
       );
-      
+
       // Create a map for quick user lookup
       const userMap = new Map();
       userSummaries.forEach(({ id, summary }) => {
@@ -131,7 +131,7 @@ export class PostService {
       );
 
       // Filter out null results
-      const validMomentItems = momentItems.filter(item => item !== null);
+      const validMomentItems = momentItems.filter((item) => item !== null);
 
       const pagination: PaginationApi<MomentDto> = {
         total: totalCount,
@@ -149,7 +149,7 @@ export class PostService {
         error: error.message,
         userId,
       });
-      
+
       // Return empty pagination on error
       return {
         total: 0,
@@ -169,7 +169,7 @@ export class PostService {
         where: { follower_id: userId },
       });
       const followingIds = followingUsers.map((f) => f.following_id);
-      
+
       // Exclude the current user and users they're following
       const excludedUserIds = [...followingIds, userId];
 
@@ -197,19 +197,20 @@ export class PostService {
       const posts = await this.supabaseService.select<Post>('posts', selectOptions);
 
       // Filter posts with media if type is 'media' (additional client-side filter for safety)
-      const filteredPosts = type === 'media' 
-        ? posts.filter(post => post.attachments && post.attachments.length > 0)
-        : posts;
+      const filteredPosts =
+        type === 'media'
+          ? posts.filter((post) => post.attachments && post.attachments.length > 0)
+          : posts;
 
       // Get user summaries for all unique user IDs in the posts
-      const uniqueUserIds = [...new Set(filteredPosts.map(post => post.user_id))];
+      const uniqueUserIds = [...new Set(filteredPosts.map((post) => post.user_id))];
       const userSummaries = await Promise.all(
         uniqueUserIds.map(async (uid) => ({
           id: uid,
-          summary: await this.userService.getUserSummary(uid)
+          summary: await this.userService.getUserSummary(uid),
         }))
       );
-      
+
       // Create a map for quick user lookup
       const userMap = new Map();
       userSummaries.forEach(({ id, summary }) => {
@@ -246,7 +247,7 @@ export class PostService {
       );
 
       // Filter out null results
-      const validMomentItems = momentItems.filter(item => item !== null);
+      const validMomentItems = momentItems.filter((item) => item !== null);
 
       const pagination: PaginationApi<MomentDto> = {
         total: totalCount,
@@ -265,7 +266,7 @@ export class PostService {
         userId,
         type,
       });
-      
+
       // Return empty pagination on error
       return {
         total: 0,
@@ -281,9 +282,9 @@ export class PostService {
     try {
       // Build query options based on filter
       let countOptions: any = {
-        where: { user_id: userId }
+        where: { user_id: userId },
       };
-      
+
       let selectOptions: any = {
         where: { user_id: userId },
         orderBy: {
@@ -305,15 +306,15 @@ export class PostService {
       const posts = await this.supabaseService.select<Post>('posts', selectOptions);
 
       // Apply client-side filtering for media posts
-      const filteredPosts = filter === 'media' 
-        ? posts.filter(post => post.attachments && post.attachments.length > 0)
-        : posts;
+      const filteredPosts =
+        filter === 'media'
+          ? posts.filter((post) => post.attachments && post.attachments.length > 0)
+          : posts;
 
       // Get user summary for the posts
       const userSummary = await this.userService.getUserSummary(userId);
       if (!userSummary) {
         return {
-          total: 0,
           page,
           limit,
           hasNextPage: false,
@@ -356,7 +357,9 @@ export class PostService {
           where: { user_id: userId },
           select: 'attachments',
         });
-        adjustedTotal = allUserPosts.filter(post => post.attachments && post.attachments.length > 0).length;
+        adjustedTotal = allUserPosts.filter(
+          (post) => post.attachments && post.attachments.length > 0
+        ).length;
       }
 
       const pagination: PaginationApi<MomentDto> = {
@@ -376,10 +379,9 @@ export class PostService {
         userId,
         filter,
       });
-      
+
       // Return empty pagination on error
       return {
-        total: 0,
         page,
         limit,
         hasNextPage: false,

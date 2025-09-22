@@ -41,34 +41,34 @@ const REFRESH_TOKEN_MAX_AGE = 365 * 24 * 60 * 60 * 1000; // 1 year
 const ACCESS_TOKEN_MAX_AGE = '2h';
 
 const Message = {
-  NotAuthenticated: 'User not authenticated',
+  NotAuthenticated: 'You must be logged in to continue.',
   Account: {
-    Blocked: 'Account is blocked',
-    NotVerified: 'Email not verified',
-    NotFound: 'Account not found, the account may have been deleted',
+    Blocked: 'This account has been blocked.',
+    NotVerified: 'Your email address is not verified.',
+    NotFound: 'Account not found. It may have been deleted.',
   },
   Login: {
-    Success: 'Login successful',
-    InvalidCredentials: 'Invalid credentials',
+    Success: 'Logged in successfully.',
+    InvalidCredentials: 'Incorrect credentials.',
   },
   Register: {
-    Success: 'Register successful',
-    UsernameConflict: 'Username already taken',
-    EmailConflict: 'User with this email already exists',
-    Failed: 'Failed to create user account',
+    Success: 'Account created successfully.',
+    UsernameConflict: 'This username is already taken.',
+    EmailConflict: 'An account with this email already exists.',
+    Failed: 'Unable to create account. Please try again.',
   },
   Verify: {
-    SendEmail: 'Email not verified, a new verification email has been sent',
-    Success: 'Email verified',
-    InvalidToken: 'Invalid verification token, the link may be corrupted or malformed',
-    Failed: 'Email verification failed, please try again later',
-    SendFailed: 'Failed to send verification email',
+    SendEmail: 'Email not verified. A new verification email has been sent.',
+    Success: 'Your email has been verified.',
+    InvalidToken: 'Invalid or corrupted verification link.',
+    Failed: 'Email verification failed. Please try again.',
+    SendFailed: 'Unable to send verification email.',
   },
   RecoverPassword: {
-    Success: 'Password recovered',
-    Mismatch: 'Passwords do not match',
-    Expired: 'OTP expired, please request a new one',
-    Failed: 'Failed to recover password',
+    Success: 'Password has been reset successfully.',
+    Mismatch: 'Passwords do not match.',
+    Expired: 'OTP has expired. Please request a new one.',
+    Failed: 'Unable to reset password. Please try again.',
   },
 };
 
@@ -307,7 +307,7 @@ export class AuthService {
       };
     } catch (error) {
       this.logger.error(`Google login failed: ${error.message}`, {
-        location: 'AuthService.googleLogin',
+        location: 'googleLogin',
         context: 'OAuth',
       });
       throw error;
@@ -356,7 +356,7 @@ export class AuthService {
       );
     } catch (error) {
       this.logger.error(error, {
-        location: 'AuthService.sendVerificationEmail',
+        location: 'sendVerificationEmail',
         context: 'Email',
       });
       throw new InternalServerErrorException(Message.Verify.SendFailed);
@@ -378,8 +378,8 @@ export class AuthService {
       );
     } catch (error) {
       this.logger.error(error, {
-        location: 'AuthService.googleLogin',
-        context: 'Welcome Email',
+        location: 'sendWelcomeEmail',
+        context: 'Email',
       });
     }
   }
@@ -409,7 +409,7 @@ export class AuthService {
       });
     } catch (error) {
       this.logger.error(error.message, {
-        location: 'AuthService.sendEmail',
+        location: 'sendEmail',
         context: 'Email',
       });
       throw new InternalServerErrorException('Failed to send email');
@@ -432,7 +432,7 @@ export class AuthService {
       return payload;
     } catch (error) {
       this.logger.info(error, {
-        location: 'AuthService.verifyJwtToken',
+        location: 'verifyJwtToken',
         context: 'JWT',
       });
       return null;

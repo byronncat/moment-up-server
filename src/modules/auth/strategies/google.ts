@@ -11,24 +11,19 @@ import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
   constructor(
     @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
-    private readonly configService: ConfigService
+    configService: ConfigService
   ) {
-    const clientId = configService.get('google.clientId');
-    const clientSecret = configService.get('google.clientSecret');
-    const baseUrl = configService.get('app.baseUrl');
-    const callbackURL = `${baseUrl}/v1/auth/google/callback`;
-
     super({
-      clientID: clientId,
-      clientSecret: clientSecret,
-      callbackURL,
+      clientID: configService.get<string>('google.clientId')!,
+      clientSecret: configService.get<string>('google.clientSecret')!,
+      callbackURL: `${configService.get<string>('app.baseUrl')}/v1/auth/google/callback`,
       scope: ['email', 'profile'],
     });
   }
 
   async validate(
     accessToken: string,
-    refreshToken: string,
+    _refreshToken: string,
     profile: GoogleProfile,
     done: VerifyCallback
   ) {

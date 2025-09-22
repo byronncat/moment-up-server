@@ -8,7 +8,6 @@ import { v2 as cloudinary } from 'cloudinary';
 
 @Global()
 @Module({
-  imports: [ConfigModule],
   providers: [
     {
       provide: 'REDIS_CLIENT',

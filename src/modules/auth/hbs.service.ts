@@ -1,11 +1,11 @@
+type TemplateType = 'success' | 'failure';
+
 import { Injectable, InternalServerErrorException, HttpStatus, Inject } from '@nestjs/common';
 import { Logger } from 'winston';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import * as handlebars from 'handlebars';
 import * as fs from 'fs';
 import * as path from 'path';
-
-type TemplateType = 'success' | 'failure';
 
 @Injectable()
 export class HbsService {
@@ -35,8 +35,8 @@ export class HbsService {
       handlebars.registerPartial('failure-verification', failurePartialContent);
     } catch (error) {
       this.logger.error(error, {
-        location: 'HbsService.initializeHandlebars',
-        context: 'Handlebars Initialization',
+        location: 'initializeHandlebars',
+        context: 'HbsService',
       });
       throw new InternalServerErrorException('Failed to initialize Handlebars');
     }
@@ -68,8 +68,8 @@ export class HbsService {
       };
     } catch (error) {
       this.logger.error(error, {
-        location: 'HbsService.renderTemplate',
-        context: 'Template Rendering',
+        location: 'renderTemplate',
+        context: 'HbsService',
       });
       throw new InternalServerErrorException('Failed to render template');
     }

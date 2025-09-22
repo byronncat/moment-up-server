@@ -23,7 +23,6 @@ import { RateLimit } from './common/constants';
 @Module({
   imports: [
     WinstonModule.forRootAsync({
-      imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => {
         const nodeEnv = configService.get<string>('nodeEnv');
         const isDevelopment = nodeEnv === 'development';
@@ -49,7 +48,6 @@ import { RateLimit } from './common/constants';
     }),
     JwtModule.registerAsync({
       global: true,
-      imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
         secret: configService.get<string>('security.jwtSecret'),
         signOptions: { expiresIn: '15m' },

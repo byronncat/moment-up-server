@@ -1,5 +1,5 @@
 import { IsOptional, IsString, ValidateIf, MaxLength } from 'class-validator';
-import { MAX_NAME_LENGTH, MAX_BIO_LENGTH } from '../../../common/constants';
+import { MAX_NAME_LENGTH, MAX_BIO_LENGTH } from 'src/common/constants';
 
 export class UpdateProfileDto {
   @ValidateIf((_, value) => value !== null)
