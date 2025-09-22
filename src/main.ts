@@ -14,9 +14,9 @@ import * as cookieParser from 'cookie-parser';
 import { RedisStore } from 'connect-redis';
 import { createClient } from 'redis';
 import * as session from 'express-session';
+
 import * as fs from 'fs';
 import * as path from 'path';
-
 import * as winston from 'winston';
 import { createWinstonTransports } from './configurations';
 
@@ -39,6 +39,8 @@ async function bootstrap() {
       httpsOptions,
     });
   } else app = await NestFactory.create(AppModule);
+
+  // === For Render deployment ===
   app.set('trust proxy', 1);
 
   // === Global Pipes ===
@@ -148,7 +150,7 @@ async function bootstrap() {
   });
 
   await app.listen(port!, () => {
-    logger.info(`Server is running on http://localhost:${port}${prefix ? `/${prefix}` : ''}`);
+    logger.info(`Server is running on ${https ? 'https' : 'http'}://localhost:${port}${prefix ? `/${prefix}` : ''}`);
   });
 }
 bootstrap();

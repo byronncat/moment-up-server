@@ -1,10 +1,10 @@
 import type { Request, Response } from 'express';
 import type { JwtPayload } from 'jwt-library';
 import type { GoogleUser } from 'passport-library';
-import type { Session as ExpressSession } from 'express-session';
+import type { AppSession, AppSessionData } from 'app-session';
 
 interface AuthRequest extends Request {
-  session: ExpressSession;
+  session: AppSession;
   csrfToken(): string;
 }
 
@@ -54,7 +54,7 @@ export class AuthController {
 
   @Get('refresh')
   @HttpCode(HttpStatus.OK)
-  async refresh(@Session() session: ExpressSession) {
+  async refresh(@Session() session: AppSession) {
     return {
       accessToken: await this.authService.refresh(session),
     };
@@ -62,7 +62,7 @@ export class AuthController {
 
   @Get('me')
   @HttpCode(HttpStatus.OK)
-  async me(@Session() session: ExpressSession, @AccessToken() accessToken?: JwtPayload) {
+  async me(@Session() session: AppSessionData, @AccessToken() accessToken?: JwtPayload) {
     return { user: await this.authService.currentUser(session, accessToken) };
   }
 
@@ -77,7 +77,10 @@ export class AuthController {
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  async login(@Body(ValidationPipe) loginDto: LoginDto, @Session() session: ExpressSession) {
+  async login(
+    @Body(ValidationPipe) loginDto: LoginDto,
+    @Session() session: AppSession
+  ) {
     return await this.authService.login(loginDto, session);
   }
 
@@ -86,7 +89,7 @@ export class AuthController {
   @UseGuards(AccessTokenGuard)
   async switchAccount(
     @Body(ValidationPipe) switchAccountDto: SwitchAccountDto,
-    @Session() session: ExpressSession
+    @Session() session: AppSession
   ) {
     return await this.authService.switchAccount(switchAccountDto, session);
   }
@@ -100,13 +103,13 @@ export class AuthController {
   @Post('logout')
   @HttpCode(HttpStatus.NO_CONTENT)
   @UseGuards(AccessTokenGuard)
-  async logout(@Session() session: ExpressSession) {
+  async logout(@Session() session: AppSession) {
     this.authService.logout(session);
   }
 
   @Get('csrf')
   @HttpCode(HttpStatus.OK)
-  getCsrfToken(@Req() request: AuthRequest, @Session() session: ExpressSession) {
+  getCsrfToken(@Req() request: AuthRequest, @Session() session: AppSession) {
     session.cookie.maxAge = Cookie.MaxAge.DEFAULT;
     const csrfToken = request.csrfToken();
     return { csrfToken };
@@ -116,7 +119,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async sendOtpEmail(
     @Body(ValidationPipe) identityDto: IdentityDto,
-    @Session() session: ExpressSession
+    @Session() session: AppSessionData
   ) {
     await this.authService.sendOtpEmail(identityDto, session);
     return {
@@ -128,7 +131,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async recoverPassword(
     @Body(ValidationPipe) changePasswordDto: ChangePasswordDto,
-    @Session() session: ExpressSession
+    @Session() session: AppSessionData
   ) {
     await this.authService.recoverPassword(changePasswordDto, session);
     return {
@@ -150,7 +153,7 @@ export class AuthController {
   async googleAuthCallback(
     @Req() req: GoogleAuthRequest,
     @Res() res: Response,
-    @Session() session: ExpressSession
+    @Session() session: AppSession
   ) {
     const clientUrl = this.configService.get('http.allowedOrigin');
     try {
@@ -167,10 +170,7 @@ export class AuthController {
   @Post('google/add-account')
   @HttpCode(HttpStatus.OK)
   @UseGuards(AccessTokenGuard)
-  async addGoogleAccount(
-    @AccessToken() accessToken: JwtPayload,
-    @Session() session: ExpressSession
-  ) {
+  async addGoogleAccount(@AccessToken() accessToken: JwtPayload, @Session() session: AppSessionData) {
     const user = await this.authService.currentUser(session, accessToken);
     return { user };
   }

@@ -1,18 +1,19 @@
-import 'express-session';
+declare module 'app-session' {
+  import type { Session, SessionData as BaseSessionData } from 'express-session';
 
-interface OtpData {
-  code: string;
-  expiresAt: number;
-  purpose: 'password-reset' | 'email-verification' | 'account-verification';
-  uid: string;
-}
-
-declare module 'express-session' {
-  interface SessionData {
-    user?: { sub: string; jti: string };
-    otp?: OtpData;
-    csrfToken: string;
+  interface OtpPayload {
+    code: string;
+    expiresAt: number;
+    purpose: 'password-reset' | 'email-verification' | 'account-verification';
+    uid: string;
   }
 
-  type ExpressSession = Session & SessionData;
+  interface AppSessionData {
+    user?: { sub: string; jti: string };
+    otp?: OtpPayload;
+    csrfToken?: string;
+  }
+
+  type ExpressSession = Session & BaseSessionData;
+  type AppSession = ExpressSession & AppSessionData;
 }

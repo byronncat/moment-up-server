@@ -11,6 +11,7 @@ declare module 'api' {
   } from 'schema';
   import type { StoryBackground } from 'common/constants';
 
+  // === User ===
   interface AccountDto {
     id: User['id'];
     username: User['username'];
@@ -42,6 +43,7 @@ declare module 'api' {
     } | null;
   }
 
+  // === Core ===
   interface PostDto {
     text: Post['text'];
     files: Array<{
@@ -57,8 +59,8 @@ declare module 'api' {
     lastModified: Post['last_modified'];
   }
 
-  interface MomentPayload {
-    id: Moment['id'];
+  interface MomentDto {
+    id: Post['id'];
     user: UserSummaryDto;
     post: PostDto;
   }
@@ -68,6 +70,7 @@ declare module 'api' {
     count: number;
   }
 
+  // +++ TODO: Ongoing +++
   interface StoryNotificationPayload {
     id: Story['id'];
     userId: User['id'];

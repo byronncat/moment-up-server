@@ -1,1 +1,1 @@
-export { AccessTokenMiddleware } from './access-token.middleware';
+export { AccessTokenMiddleware } from './access-token';

@@ -1,5 +1,5 @@
 import { mockMoments } from 'src/__mocks__/moment';
-import type { PaginationDto as PaginationApi, MomentPayload } from 'api';
+import type { PaginationDto as PaginationApi, MomentDto } from 'api';
 import type { Bookmark, MomentLike, Post, Repost, User } from 'schema';
 
 import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
@@ -9,10 +9,12 @@ import { CloudinaryService } from '../database/cloudinary.service';
 import { UserService } from '../user/user.service';
 import { Auth } from 'src/common/helpers';
 import { RepostDto, ExploreDto, ProfileMomentDto, CreatePostDto } from './dto';
-import { PaginationDto } from 'src/common/validators';
 
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
+
+// +++ TODO: Ongoing +++
+type PaginationDto = any;
 
 @Injectable()
 export class PostService {
@@ -33,7 +35,7 @@ export class PostService {
     type: 'home' | 'explore' | 'user',
     userId: User['id'],
     dto: PaginationDto | ExploreDto | ProfileMomentDto
-  ): Promise<PaginationApi<MomentPayload>> {
+  ): Promise<PaginationApi<MomentDto>> {
     switch (type) {
       case 'home':
         return this.geHometMoments(userId, dto as PaginationDto);
@@ -99,7 +101,7 @@ export class PostService {
         if (summary) userMap.set(id, summary);
       });
 
-      // Convert posts to MomentPayload with mock interaction data
+      // Convert posts to MomentDto with mock interaction data
       const momentItems = await Promise.all(
         posts.map(async (post) => {
           const userSummary = userMap.get(post.user_id);
@@ -131,7 +133,7 @@ export class PostService {
       // Filter out null results
       const validMomentItems = momentItems.filter(item => item !== null);
 
-      const pagination: PaginationApi<MomentPayload> = {
+      const pagination: PaginationApi<MomentDto> = {
         total: totalCount,
         page,
         limit,
@@ -214,7 +216,7 @@ export class PostService {
         if (summary) userMap.set(id, summary);
       });
 
-      // Convert posts to MomentPayload with mock interaction data
+      // Convert posts to MomentDto with mock interaction data
       const momentItems = await Promise.all(
         filteredPosts.map(async (post) => {
           const userSummary = userMap.get(post.user_id);
@@ -246,7 +248,7 @@ export class PostService {
       // Filter out null results
       const validMomentItems = momentItems.filter(item => item !== null);
 
-      const pagination: PaginationApi<MomentPayload> = {
+      const pagination: PaginationApi<MomentDto> = {
         total: totalCount,
         page,
         limit,
@@ -319,7 +321,7 @@ export class PostService {
         };
       }
 
-      // Convert posts to MomentPayload with mock interaction data
+      // Convert posts to MomentDto with mock interaction data
       const momentItems = await Promise.all(
         filteredPosts.map(async (post) => {
           // Generate mock interaction data
@@ -357,7 +359,7 @@ export class PostService {
         adjustedTotal = allUserPosts.filter(post => post.attachments && post.attachments.length > 0).length;
       }
 
-      const pagination: PaginationApi<MomentPayload> = {
+      const pagination: PaginationApi<MomentDto> = {
         total: adjustedTotal,
         page,
         limit,

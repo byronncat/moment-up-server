@@ -1,6 +1,6 @@
 import { createMockSearches } from 'src/__mocks__/search';
 import { mockMoments } from 'src/__mocks__/moment';
-import type { AccountDto, HashtagDto, MomentPayload, PaginationDto } from 'api';
+import type { AccountDto, HashtagDto, MomentDto, PaginationDto } from 'api';
 import { SearchItemType } from 'src/common/constants';
 
 export interface UserSearchData extends AccountDto {
@@ -16,11 +16,11 @@ export interface HashtagSearchData extends HashtagDto {
   type: SearchItemType.HASHTAG;
 }
 
-export interface MomentData extends MomentPayload {
+export interface MomentData extends MomentDto {
   type: SearchItemType.POST;
 }
 
-export interface MediaSearchData extends MomentPayload {
+export interface MediaSearchData extends MomentDto {
   type: SearchItemType.MEDIA;
 }
 

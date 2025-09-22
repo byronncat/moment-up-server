@@ -1,5 +1,5 @@
 import { createMockComments } from 'src/__mocks__/comment';
-import type { PaginationDto, CommentPayload } from 'api';
+import type { PaginationDto as PaginationDtoApi, CommentPayload } from 'api';
 import type { User, Post, Comment } from 'schema';
 
 import { Injectable, NotFoundException } from '@nestjs/common';
@@ -7,7 +7,9 @@ import { UserService } from '../user/user.service';
 import { PostService } from './post.service';
 import { Auth } from 'src/common/helpers';
 import { CommentDto } from './dto';
-import { PaginationDto } from 'src/common/validators';
+
+// +++ TODO: Ongoing +++
+type PaginationDto = any;
 
 @Injectable()
 export class CommentService {
@@ -24,7 +26,7 @@ export class CommentService {
     this.comments = [...ownComments, ...otherComments];
 
     const comments = this.comments.slice((page - 1) * limit, page * limit);
-    const pagination: PaginationDto<CommentPayload> = {
+    const pagination: PaginationDtoApi<CommentPayload> = {
       total: this.comments.length,
       page,
       limit,
@@ -37,13 +39,10 @@ export class CommentService {
   public async add({ momentId: postId, content }: CommentDto, userId: User['id']) {
     // const user = await this.userService.getUserSummaryDto(userId);
     // if (!user) throw new NotFoundException('User not found');
-
     // const moment = await this.postService.getById(userId, postId);
     // if (!moment) throw new NotFoundException('Moment not found');
-
     // save comment to database
     // const comment = ...
-
     // const commentPayload: CommentPayload = {
     //   id: Auth.generateId('uuid'),
     //   user,
@@ -53,7 +52,6 @@ export class CommentService {
     //   updatedAt: new Date().toISOString(),
     // };
     // this.comments.push(commentPayload);
-
     // return commentPayload;
   }
 

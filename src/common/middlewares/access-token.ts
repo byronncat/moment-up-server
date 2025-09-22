@@ -4,7 +4,6 @@ import type { JwtPayload, AuthRequest } from 'jwt-library';
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-
 import { Auth } from '../helpers';
 
 @Injectable()
@@ -16,7 +15,7 @@ export class AccessTokenMiddleware implements NestMiddleware {
     private readonly configService: ConfigService
   ) {}
 
-  async use(request: AuthRequest, response: Response, next: NextFunction) {
+  async use(request: AuthRequest, _response: Response, next: NextFunction) {
     const token = Auth.parseBearer(request.headers.authorization);
     if (!token) return next();
 

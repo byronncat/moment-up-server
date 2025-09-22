@@ -1,5 +1,5 @@
 import type { AuthRequest } from 'jwt-library';
-import type { ExpressSession } from 'express-session';
+import type { AppSession } from 'app-session';
 
 import {
   Injectable,
@@ -19,7 +19,7 @@ export class AccessTokenGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<AuthRequest>();
     const token = request.accessToken;
-    const session: ExpressSession = request.session;
+    const session = request.session as AppSession;
 
     try {
       if (!token || !token.sub) throw new UnauthorizedException('Access token is required');
@@ -37,7 +37,7 @@ export class AccessTokenGuard implements CanActivate {
     }
   }
 
-  private clearAuthState(session: ExpressSession) {
+  private clearAuthState(session: AppSession) {
     if (session?.user) {
       session.user = undefined;
       session.cookie.maxAge = 3 * 24 * 60 * 60 * 1000; // 3 days default

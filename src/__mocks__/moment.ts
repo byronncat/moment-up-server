@@ -1,4 +1,4 @@
-import type { MomentPayload } from 'api';
+import type { MomentDto } from 'api';
 import { getRandomFile, imageUrls, videoUrls } from './file';
 import { faker } from '@faker-js/faker';
 
@@ -70,7 +70,7 @@ function createRandomPost(
   };
 }
 
-export const mockMoments: MomentPayload[] = (() => {
+export const mockMoments: MomentDto[] = (() => {
   const moments = [];
   let mediaIndex = 0;
 
@@ -92,7 +92,7 @@ export const mockMoments: MomentPayload[] = (() => {
 
     // Create moment with this group of files
     moments.push({
-      id: faker.string.uuid(),
+      id: faker.number.int({ min: 1, max: 1000000 }),
       user: createRandomUser(),
       post: createRandomPost(false, mediaFilesForPost),
     });
@@ -104,7 +104,7 @@ export const mockMoments: MomentPayload[] = (() => {
   // Add text-only posts
   for (let i = 0; i < textOnlyPosts; i++) {
     moments.push({
-      id: faker.string.uuid(),
+      id: faker.number.int({ min: 1, max: 1000000 }),
       user: createRandomUser(),
       post: createRandomPost(true), // Force text only
     });

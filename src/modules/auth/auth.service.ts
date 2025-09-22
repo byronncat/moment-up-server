@@ -1,4 +1,4 @@
-import type { ExpressSession } from 'express-session';
+import type { AppSession, AppSessionData } from 'app-session';
 import type { JwtPayload } from 'jwt-library';
 import type { GoogleUser } from 'passport-library';
 import type { User } from 'schema';
@@ -88,7 +88,7 @@ export class AuthService {
     private readonly hbsService: HbsService
   ) {}
 
-  public async refresh(session: ExpressSession) {
+  public async refresh(session: AppSession) {
     if (session.user) {
       const userId = session.user.sub;
       const account = await this.userService.getById(userId, {
@@ -107,7 +107,7 @@ export class AuthService {
     throw new UnauthorizedException(Message.NotAuthenticated);
   }
 
-  public async currentUser(session: ExpressSession, accessToken?: JwtPayload) {
+  public async currentUser(session: AppSessionData, accessToken?: JwtPayload) {
     const userId = accessToken?.sub || session.user?.sub;
     if (!userId) throw new UnauthorizedException(Message.NotAuthenticated);
 
@@ -125,7 +125,7 @@ export class AuthService {
     return payload;
   }
 
-  public async login(data: LoginDto, session: ExpressSession) {
+  public async login(data: LoginDto, session: AppSession) {
     const account = await this.userService.getById(data.identity, {
       select: 'id, username, display_name, email, avatar, password, blocked, verified, deleted_at',
     });
@@ -189,7 +189,7 @@ export class AuthService {
     return payload;
   }
 
-  public logout(session: ExpressSession) {
+  public logout(session: AppSession) {
     this.clearAuthState(session);
   }
 
@@ -230,7 +230,7 @@ export class AuthService {
     return this.hbsService.renderSuccessTemplate('success', baseContext);
   }
 
-  public async sendOtpEmail(data: IdentityDto, session: ExpressSession) {
+  public async sendOtpEmail(data: IdentityDto, session: AppSessionData) {
     const account = await this.userService.getById(data.identity, {
       select: 'id, email, password',
     });
@@ -256,7 +256,7 @@ export class AuthService {
     }
   }
 
-  public async recoverPassword(data: ChangePasswordDto, session: ExpressSession) {
+  public async recoverPassword(data: ChangePasswordDto, session: AppSessionData) {
     if (data.newPassword !== data.confirmPassword)
       throw new UnauthorizedException(Message.RecoverPassword.Mismatch);
 
@@ -276,7 +276,7 @@ export class AuthService {
     Otp.clear(session);
   }
 
-  public async googleLogin(googleUser: GoogleUser, session: ExpressSession) {
+  public async googleLogin(googleUser: GoogleUser, session: AppSession) {
     try {
       let account = await this.userService.getById(googleUser.email, {
         select: 'id, username, display_name, email, avatar, blocked, verified',
@@ -314,7 +314,7 @@ export class AuthService {
     }
   }
 
-  public async switchAccount(data: SwitchAccountDto, session: ExpressSession) {
+  public async switchAccount(data: SwitchAccountDto, session: AppSession) {
     const account = await this.userService.getById(data.accountId, {
       select: 'id, username, display_name, email, avatar, blocked, verified',
     });
@@ -416,7 +416,7 @@ export class AuthService {
     }
   }
 
-  private clearAuthState(session: ExpressSession) {
+  private clearAuthState(session: AppSession) {
     session.user = undefined;
     session.cookie.maxAge = Cookie.MaxAge.DEFAULT;
   }

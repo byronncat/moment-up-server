@@ -1,3 +1,4 @@
+// === Configuration ===
 export const RateLimit = {
   TTL: 60000, // 1 minute
   LIMIT: 100,
@@ -13,11 +14,18 @@ export const Cookie = {
   },
 };
 
+// === Default value ===
 export const TOKEN_ID_LENGTH = 10;
 export const MAX_NAME_LENGTH = 50;
 export const MAX_BIO_LENGTH = 160;
 export const MAX_TEXT_CONTENT_LENGTH = 2000;
 
+export const MIN_USERNAME_LENGTH = 5;
+export const MIN_PASSWORD_LENGTH = 7;
+
+export const INITIAL_PAGE = 1;
+
+// === Template ===
 export const Url = {
   CONTACT: 'https://docs.google.com/forms/d/1oUM87A2Kkv7ME9OhRtNDZ_HyMsoKzJR_lOCwna4T_rU/',
   GITHUB: 'https://github.com/byronncat',
@@ -28,11 +36,17 @@ export const Url = {
   ICON: 'https://res.cloudinary.com/dq02xgn2g/image/upload/v1753716413/Public/moment-up-icon.png',
 };
 
-export const INITIAL_PAGE = 1;
-
+// === Refactor ===
 export const DatabaseError = {
   UNDEFINED_FUNCTION: '42883',
 };
+
+// === Enum ===
+export enum AccountExist {
+  NONE,
+  EMAIL,
+  USERNAME,
+}
 
 export enum ProfileVisibility {
   PUBLIC,
@@ -54,6 +68,12 @@ export enum TrendingReportType {
   HARMFUL,
 }
 
+export enum SocialAuthError {
+  ACCOUNT_BLOCKED = 'AccountBlocked',
+  AUTHENTICATION_FAILED = 'AuthenticationFailed',
+}
+
+// +++ TODO: Ongoing +++
 export enum SearchItemType {
   USER,
   QUERY,
@@ -112,15 +132,4 @@ export enum NotificationType {
 export enum ExploreType {
   MEDIA = 'media',
   POST = 'post',
-}
-
-export enum AccountExist {
-  NONE,
-  EMAIL,
-  USERNAME,
-}
-
-export enum SocialAuthError {
-  ACCOUNT_BLOCKED = 'AccountBlocked',
-  AUTHENTICATION_FAILED = 'AuthenticationFailed',
 }

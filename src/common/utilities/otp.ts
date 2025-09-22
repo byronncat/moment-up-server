@@ -1,19 +1,13 @@
-import type { ExpressSession } from 'express-session';
-import { Auth } from '../helpers';
-
-export interface OtpData {
-  code: string;
-  expiresAt: number;
-  purpose: 'password-reset' | 'email-verification' | 'account-verification';
-  uid: string;
-}
+import type { AppSessionData, OtpPayload } from 'app-session';
 
 export interface OtpConfig {
   expirationTimeMs: number;
-  purpose: OtpData['purpose'];
+  purpose: OtpPayload['purpose'];
 }
 
-export function create(userId: string, config: OtpConfig): OtpData {
+import { Auth } from '../helpers';
+
+export function create(userId: string, config: OtpConfig): OtpPayload {
   const code = Auth.generateId('otp');
   const expiresAt = Date.now() + config.expirationTimeMs;
 
@@ -25,15 +19,15 @@ export function create(userId: string, config: OtpConfig): OtpData {
   };
 }
 
-export function isValid(otpData: OtpData | undefined): boolean {
-  if (!otpData) return false;
-  return Date.now() < otpData.expiresAt;
+export function isValid(OtpPayload: OtpPayload | undefined): boolean {
+  if (!OtpPayload) return false;
+  return Date.now() < OtpPayload.expiresAt;
 }
 
 export function verify(
-  session: ExpressSession,
+  session: AppSessionData,
   inputCode: string,
-  purpose: OtpData['purpose']
+  purpose: OtpPayload['purpose']
 ): boolean {
   const { otp } = session;
 
@@ -45,6 +39,6 @@ export function verify(
   return true;
 }
 
-export function clear(session: ExpressSession): void {
+export function clear(session: AppSessionData): void {
   session.otp = undefined;
 }
