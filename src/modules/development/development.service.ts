@@ -7,6 +7,7 @@ import { getRandomFile, imageUrls, videoUrls } from 'src/__mocks__/file';
 import { faker } from '@faker-js/faker';
 import { ProfileVisibility, ContentPrivacy } from 'src/common/constants';
 import { Auth } from 'src/common/helpers';
+import { UserService } from '../user/user.service';
 
 const DEFAULT_PASSWORD = '1';
 
@@ -14,8 +15,23 @@ const DEFAULT_PASSWORD = '1';
 export class DevelopmentService {
   constructor(
     private readonly supabaseService: SupabaseService,
-    private readonly cloudinaryService: CloudinaryService
+    private readonly cloudinaryService: CloudinaryService,
+    private readonly userService: UserService
   ) {}
+
+  public async changePassword(id: string, newPassword: string) {
+    const user = await this.userService.updatePassword(id, newPassword);
+    console.log(String(user));
+    if (!user) throw new NotFoundException('User not found');
+    return user;
+  }
+
+  public async verifyEmail(id: string) {
+    const user = await this.userService.verifyEmail(id);
+    console.log(String(user));
+    if (!user) throw new NotFoundException('User not found');
+    return user;
+  }
 
   public async generateUsers(count: number = 10) {
     if (count <= 0) {

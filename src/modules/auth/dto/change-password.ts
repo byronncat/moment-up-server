@@ -10,6 +10,7 @@ import {
   ValidationArguments,
 } from 'class-validator';
 import { PasswordStrengthValidator } from './register';
+import { MIN_PASSWORD_LENGTH } from 'src/common/constants';
 
 @ValidatorConstraint({ name: 'matchFields', async: false })
 export class MatchValidator implements ValidatorConstraintInterface {
@@ -32,7 +33,9 @@ export class ChangePasswordDto {
   otp: string;
 
   @Validate(PasswordStrengthValidator)
-  @MinLength(8, { message: 'New password must be at least 8 characters' })
+  @MinLength(MIN_PASSWORD_LENGTH, {
+    message: `New password must be at least ${MIN_PASSWORD_LENGTH} characters`,
+  })
   @IsNotEmpty({ message: 'New password is required' })
   newPassword: string;
 

@@ -6,6 +6,8 @@ import {
   HttpStatus,
   Post,
   Query,
+  Body,
+  Param,
 } from '@nestjs/common';
 import { DevelopmentService } from './development.service';
 import { TrendingService } from '../suggestion/trending.service';
@@ -55,5 +57,17 @@ export class DevelopmentController {
       throw new BadRequestException('Invalid format');
     }
     return await this.developmentService.getMediaInfo(publicId, ids, format);
+  }
+
+  @Post('user/:id/verify-email')
+  @HttpCode(HttpStatus.OK)
+  async verifyEmail(@Param('id') id: string) {
+    return await this.developmentService.verifyEmail(id);
+  }
+
+  @Post('user/:id/change-password')
+  @HttpCode(HttpStatus.OK)
+  async changePassword(@Param('id') id: string, @Body() newPassword: string) {
+    return await this.developmentService.changePassword(id, newPassword);
   }
 }

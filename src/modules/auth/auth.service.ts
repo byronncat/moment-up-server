@@ -210,15 +210,7 @@ export class AuthService {
       });
     }
 
-    const account = await this.userService.getById(payload.sub);
-    if (!account) {
-      return this.hbsService.renderSuccessTemplate('failure', {
-        ...baseContext,
-        errorMessage: Message.Account.NotFound,
-      });
-    }
-
-    const user = await this.userService.verifyEmail(account.id);
+    const user = await this.userService.verifyEmail(payload.sub);
     if (!user) {
       return this.hbsService.renderSuccessTemplate('failure', {
         ...baseContext,
@@ -264,13 +256,8 @@ export class AuthService {
     if (!otp || !Otp.verify(session, data.otp, 'password-reset'))
       throw new UnauthorizedException(Message.RecoverPassword.Expired);
 
-    const account = await this.userService.getById(otp.uid, {
-      select: 'id, password',
-    });
-    if (!account) throw new NotFoundException(Message.Account.NotFound);
-
     const hashedPassword = await Auth.hash(data.newPassword, this.saltRounds);
-    const changedSuccess = await this.userService.updatePassword(account.id, hashedPassword);
+    const changedSuccess = await this.userService.updatePassword(otp.uid, hashedPassword);
     if (!changedSuccess) throw new InternalServerErrorException(Message.RecoverPassword.Failed);
 
     Otp.clear(session);
