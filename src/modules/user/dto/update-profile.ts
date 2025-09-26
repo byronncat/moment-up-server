@@ -1,11 +1,11 @@
-import { IsOptional, IsString, ValidateIf, MaxLength } from 'class-validator';
-import { MAX_NAME_LENGTH, MAX_BIO_LENGTH } from 'src/common/constants';
+import { IsOptional, IsString, MaxLength, ValidateIf } from 'class-validator';
+import { MAX_BIO_LENGTH, MAX_NAME_LENGTH } from 'src/common/constants';
 
 export class UpdateProfileDto {
   @ValidateIf((_, value) => value !== null)
   @IsString({ message: 'Avatar must be a string' })
   @IsOptional()
-  avatar: string | null;
+  avatar?: string | null;
 
   @ValidateIf((_, value) => value !== null)
   @MaxLength(MAX_NAME_LENGTH, {
@@ -13,16 +13,16 @@ export class UpdateProfileDto {
   })
   @IsString({ message: 'Display name must be a string' })
   @IsOptional()
-  displayName: string | null;
+  displayName?: string | null;
 
   @ValidateIf((_, value) => value !== null)
   @MaxLength(MAX_BIO_LENGTH, { message: `Bio must be less than ${MAX_BIO_LENGTH} characters` })
   @IsString({ message: 'Bio must be a string' })
   @IsOptional()
-  bio: string | null;
+  bio?: string | null;
 
   @ValidateIf((_, value) => value !== null)
   @IsString({ message: 'Background image must be a string' })
   @IsOptional()
-  backgroundImage: string | null;
+  backgroundImage?: string | null;
 }

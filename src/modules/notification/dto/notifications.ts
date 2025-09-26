@@ -1,4 +1,4 @@
-import { IntersectionType } from '@nestjs/mapped-types';  
+import { IntersectionType } from '@nestjs/mapped-types';
 import { IsEnum, IsOptional } from 'class-validator';
 import { LimitDto, PageDto } from 'src/common/validators';
 import { NotificationType } from 'src/common/constants';

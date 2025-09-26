@@ -3,6 +3,7 @@ import { faker } from '@faker-js/faker';
 
 // === Type ===
 import type { HashtagDto } from 'api';
+import type { Hashtag, TrendingReport } from 'schema';
 
 export interface HashtagMetrics {
   hashtag: string;
@@ -30,8 +31,8 @@ interface TimeWindow {
 
 // === Service ===
 import {
-  Injectable,
   Inject,
+  Injectable,
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
@@ -40,8 +41,6 @@ import { SupabaseService } from '../database/supabase.service';
 import { TrendingReportDto } from './dto';
 import { Logger } from 'winston';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
-import { DatabaseError } from 'src/common/constants';
-import { Hashtag, TrendingReport } from 'schema';
 
 const Message = {
   Hashtag: {
@@ -69,7 +68,7 @@ export class TrendingService {
   ) {}
 
   public async getTrending(limit: number): Promise<HashtagDto[]> {
-    // TODO: Remove this after testing
+    // TEMPORARY
     if (this.configService.get('MOCK_DATA')) {
       const mockHashtags = new Set<string>();
 
@@ -82,6 +81,7 @@ export class TrendingService {
         count: faker.number.int({ min: 1, max: 100000 }),
       }));
     }
+    // TEMPORARY
 
     const trendingMetrics = await this.getTrendingHashtags(limit);
     const trendingHashtags: HashtagDto[] = trendingMetrics.map((metric) => ({
@@ -92,15 +92,14 @@ export class TrendingService {
     return trendingHashtags;
   }
 
-  public async processPostHashtags(postId: string, context: string) {
+  public async processPostHashtags(context: string) {
     const hashtagRegex = /#(\w+)/g;
     const hashtags =
-      context.match(hashtagRegex)?.map((hashtag) => hashtag.slice(1).toLowerCase()) || [];
+      context.match(hashtagRegex)?.map((hashtag) => hashtag.slice(1).toLowerCase()) ?? [];
     const uniqueHashtags = [...new Set(hashtags)];
 
     if (uniqueHashtags.length > 0) {
       try {
-        await this.addHashtags(postId, uniqueHashtags);
         await Promise.all(
           uniqueHashtags.map(async (hashtag) => {
             const now = Date.now();
@@ -115,7 +114,11 @@ export class TrendingService {
           })
         );
       } catch {
-        return null;
+        this.logger.error('Error in processPostHashtags', {
+          location: 'processPostHashtags',
+          context: 'TrendingService',
+        });
+        return undefined;
       }
     }
 
@@ -123,7 +126,7 @@ export class TrendingService {
   }
 
   public async reportTrendingTopic({ topic, type }: TrendingReportDto, userId: string) {
-    // TODO: Remove this after testing
+    // TEMPORARY
     if (this.configService.get('MOCK_DATA')) {
       const trendingReports = await this.supabaseService.insert<TrendingReport>(
         'trending_reports',
@@ -137,6 +140,7 @@ export class TrendingService {
         throw new InternalServerErrorException(Message.Hashtag.ReportFailed);
       return;
     }
+    // TEMPORARY
 
     const topics = await this.supabaseService.select<Hashtag>('hashtags', {
       select: 'id',
@@ -153,28 +157,6 @@ export class TrendingService {
     });
     if (trendingReports.length === 0)
       throw new InternalServerErrorException('Failed to report trending topic');
-  }
-
-  private async addHashtags(postId: string, hashtags: string[]): Promise<void> {
-    if (hashtags.length === 0) return;
-
-    try {
-      const client = this.supabaseService.getClient();
-      const { data, error } = await client.rpc('process_hashtags_for_post', {
-        p_post_id: postId,
-        p_hashtags: hashtags.map((h) => h.toLowerCase()),
-      });
-
-      if (error) {
-        if (error.code === DatabaseError.UNDEFINED_FUNCTION)
-          throw new Error('RPC function process_hashtags_for_post not found');
-
-        throw new Error(`Failed to process hashtags atomically: ${error.message}`);
-      }
-    } catch (error) {
-      this.logger.error('Error in atomic hashtag processing:', error);
-      throw error;
-    }
   }
 
   private async getTrendingHashtags(limit: number): Promise<HashtagMetrics[]> {
@@ -256,8 +238,8 @@ export class TrendingService {
     ]);
 
     allHashtags.forEach((hashtag) => {
-      const currentCount = currentWindow.hashtags.get(hashtag) || 0;
-      const previousCount = previousWindow.hashtags.get(hashtag) || 0;
+      const currentCount = currentWindow.hashtags.get(hashtag) ?? 0;
+      const previousCount = previousWindow.hashtags.get(hashtag) ?? 0;
 
       if (currentCount < config.minCountThreshold) return;
 

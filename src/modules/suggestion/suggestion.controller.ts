@@ -7,8 +7,8 @@ import {
   HttpCode,
   HttpStatus,
   Post,
-  UseGuards,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { ValidationPipe } from '@nestjs/common/pipes/validation.pipe';
 import { PeopleDiscoveryService } from './people-discovery.service';
@@ -31,7 +31,7 @@ export class SuggestionController {
   @HttpCode(HttpStatus.OK)
   @UseGuards(AccessTokenGuard)
   async getUserSuggestions(@AccessToken() token: JwtPayload) {
-    const userId = token?.sub || '';
+    const userId = token.sub ?? '';
     return {
       users: await this.peopleDiscoveryService.getUser(userId),
     };
@@ -41,7 +41,7 @@ export class SuggestionController {
   @HttpCode(HttpStatus.OK)
   @UseGuards(AccessTokenGuard)
   async getPopularProfiles(@AccessToken() token: JwtPayload) {
-    const userId = token?.sub || '';
+    const userId = token.sub ?? '';
     return {
       users: await this.peopleDiscoveryService.getPopular(userId),
     };
@@ -60,7 +60,7 @@ export class SuggestionController {
     @Body(ValidationPipe) trendingReportDto: TrendingReportDto,
     @AccessToken() token: JwtPayload
   ) {
-    const userId = token?.sub || '';
+    const userId = token.sub ?? '';
     await this.trendingService.reportTrendingTopic(trendingReportDto, userId);
     return {
       message: 'Report submitted successfully',

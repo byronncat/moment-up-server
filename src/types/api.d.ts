@@ -1,14 +1,5 @@
 declare module 'api' {
-  import type {
-    User,
-    Post,
-    Moment,
-    CloudinaryFile,
-    Hashtag,
-    Story,
-    Comment,
-    Attachment,
-  } from 'schema';
+  import type { Attachment, CloudinaryFile, Comment, Hashtag, Post, Story, User } from 'schema';
   import type { StoryBackground } from 'common/constants';
 
   // === User ===
@@ -24,22 +15,22 @@ declare module 'api' {
     backgroundImage: User['background_image'];
     followers: number;
     following: number;
-    isFollowing: boolean | null;
-    isMuted: boolean | null;
+    isFollower: boolean;
+    isFollowing: boolean;
+    isMuted: boolean;
     isProtected: boolean;
     hasStory: boolean;
   }
 
   interface UserSummaryDto
-    extends AccountDto,
-      Omit<ProfileDto, 'backgroundImage' | 'isMuted' | 'isProtected'> {
+    extends Omit<ProfileDto, 'backgroundImage' | 'isMuted' | 'isProtected' | 'isFollower'> {
     followedBy: {
       remainingCount: number;
-      displayItems: {
+      displayItems: Array<{
         id: User['id'];
         displayName: User['display_name'];
         avatar: User['avatar'];
-      }[];
+      }>;
     } | null;
   }
 
@@ -82,27 +73,27 @@ declare module 'api' {
     createdAt: Story['createdAt'];
   }
 
-  type StoryTextContent = {
+  interface StoryTextContent {
     type: 'text';
     text: string;
     background: StoryBackground;
-  };
+  }
 
-  type StoryMediaContent = {
+  interface StoryMediaContent {
     type: Exclude<CloudinaryFile['type'], 'audio'>;
     id: CloudinaryFile['id'];
     url: CloudinaryFile['url'];
     aspectRatio: '9:16';
-  };
+  }
 
   type StoryContent = StoryTextContent | StoryMediaContent;
 
-  type StoryData = {
+  interface StoryData {
     id: Story['id'];
     content: StoryContent;
     sound?: CloudinaryFile['url'];
     createdAt: Story['createdAt'];
-  };
+  }
 
   interface StoryPayload {
     user: Omit<AccountDto, 'email'>;

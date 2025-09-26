@@ -1,23 +1,46 @@
-import type { User, Follow, Block, Mute } from 'schema';
+import type { Block, Follow, Mute, User, UserReport } from 'schema';
 import type { ProfileDto, UserSummaryDto } from 'api';
 import type { GoogleUser } from 'passport-library';
 
 type UniqueUserId = User['id'] | User['email'] | User['username'];
 
 import {
-  Injectable,
-  NotFoundException,
   BadRequestException,
-  ConflictException,
   Inject,
+  Injectable,
+  InternalServerErrorException,
   Logger,
 } from '@nestjs/common';
-import { SupabaseService, type SelectOptions } from '../database/supabase.service';
+import { type SelectOptions, SupabaseService } from '../database/supabase.service';
 import { CloudinaryService } from '../database/cloudinary.service';
-import { UpdateProfileDto } from './dto';
+import { ReportUserDto, UpdateProfileDto } from './dto';
 import { Auth, String } from 'src/common/helpers';
-import { AccountExist, ProfileVisibility } from 'src/common/constants';
+import { AccountExist } from 'src/common/constants';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+
+export const ErrorMessage = {
+  Profile: {
+    NotFound: 'User not found',
+    UpdateForbidden: 'You can only update your own profile.',
+  },
+  Follow: {
+    Conflict: (follow: boolean) => `You cannot ${follow ? 'follow' : 'unfollow'} yourself`,
+    Failed: (follow: boolean) => `Failed to ${follow ? 'follow' : 'unfollow'} user`,
+    Get: (follow: boolean) => `Failed to get ${follow ? 'followers' : 'following'}`,
+  },
+  Block: {
+    Conflict: (block: boolean) => `You cannot ${block ? 'block' : 'unblock'} yourself`,
+    Failed: (block: boolean) => `Failed to ${block ? 'block' : 'unblock'} user`,
+  },
+  Mute: {
+    Conflict: (mute: boolean) => `You cannot ${mute ? 'mute' : 'unmute'} yourself`,
+    Failed: (mute: boolean) => `Failed to ${mute ? 'mute' : 'unmute'} user`,
+  },
+  Report: {
+    Failed: 'Failed to report this user. Please try again later.',
+  },
+  InternalServerError: 'Something went wrong. Please try again.',
+};
 
 @Injectable()
 export class UserService {
@@ -30,33 +53,19 @@ export class UserService {
   public async getById(id: UniqueUserId, options?: Pick<SelectOptions, 'select'>) {
     try {
       const isUuid = String.isUuid(id);
-      const users = await this.supabaseService.select<User>('users', {
+      const [user] = await this.supabaseService.select<User>('users', {
         select: options?.select,
         caseSensitive: false,
         orWhere: isUuid ? { id } : { username: id, email: id },
       });
-      if (users.length === 0) return null;
-      return users[0];
-    } catch {
-      return null;
-    }
-  }
 
-  public async isAccountExist(email: UniqueUserId, username: UniqueUserId) {
-    try {
-      const users = await this.supabaseService.select<User>('users', {
-        select: 'email, username',
-        caseSensitive: false,
-        orWhere: { email, username },
+      return user;
+    } catch (error) {
+      this.logger.error(error.message, {
+        location: 'getById',
+        context: 'UserService',
       });
-
-      if (users.length > 0) {
-        if (email.toLowerCase() === users[0].email) return AccountExist.EMAIL;
-        if (username.toLowerCase() === users[0].username) return AccountExist.USERNAME;
-      }
-      return AccountExist.NONE;
-    } catch {
-      return AccountExist.NONE;
+      return undefined;
     }
   }
 
@@ -64,137 +73,141 @@ export class UserService {
     userData: Required<Pick<User, 'email' | 'username' | 'password'>>
   ) {
     try {
-      const newUser = await this.supabaseService.insert<User>('users', {
+      const [newUser] = await this.supabaseService.insert<User>('users', {
         email: userData.email.toLocaleLowerCase(),
         username: userData.username.toLocaleLowerCase(),
         password: userData.password,
       });
 
-      return newUser[0];
-    } catch {
+      return newUser;
+    } catch (error) {
+      this.logger.error(error.message, {
+        location: 'addCredentialUser',
+        context: 'UserService',
+      });
       return null;
     }
   }
 
   public async addGoogleUser(googleData: GoogleUser) {
-    const displayName =
-      googleData.firstName && googleData.lastName
-        ? `${googleData.firstName} ${googleData.lastName}`
-        : googleData.email.split('@')[0];
+    try {
+      const displayName =
+        googleData.firstName && googleData.lastName
+          ? `${googleData.firstName} ${googleData.lastName}`
+          : googleData.email.split('@')[0];
 
-    let username = Auth.generateUsername(googleData.email);
-    while (true) {
-      const usernameExists = await this.supabaseService.exists('users', { where: { username } });
-      if (!usernameExists) break;
-      username = Auth.generateUsername(googleData.email);
+      let username = Auth.generateUsername(googleData.email);
+      while (await this.supabaseService.exists('users', { where: { username } })) {
+        username = Auth.generateUsername(googleData.email);
+      }
+
+      const [newUser] = await this.supabaseService.insert<User>('users', {
+        username,
+        display_name: displayName,
+        email: googleData.email,
+        blocked: false,
+        verified: true,
+      });
+
+      return newUser;
+    } catch (error) {
+      this.logger.error(error.message, {
+        location: 'addGoogleUser',
+        context: 'UserService',
+      });
+      return undefined;
     }
-
-    const newUser = await this.supabaseService.insert<User>('users', {
-      username,
-      display_name: displayName,
-      email: googleData.email,
-      blocked: false,
-      verified: true,
-    });
-
-    return newUser[0];
   }
 
-  public async getUserSummary(userId: User['id'], currentUserId?: User['id']) {
+  public async isAccountExist(email: UniqueUserId, username: UniqueUserId) {
     try {
-      const user = await this.getById(userId);
-      if (!user) return null;
+      const [user] = await this.supabaseService.select<User>('users', {
+        select: 'email, username',
+        caseSensitive: false,
+        orWhere: { email, username },
+      });
 
-      let isFollowing = null;
-      if (currentUserId && currentUserId !== user.id)
-        isFollowing = await this.isFollowing(currentUserId, user.id);
+      if (email.toLowerCase() === user.email) return AccountExist.EMAIL;
+      if (username.toLowerCase() === user.username) return AccountExist.USERNAME;
+      return AccountExist.NONE;
+    } catch (error) {
+      this.logger.error(error.message, {
+        location: 'isAccountExist',
+        context: 'UserService',
+      });
+      return AccountExist.NONE;
+    }
+  }
 
-      const currentUserFollowing = currentUserId 
-        ? await this.supabaseService.select('follows', {
-            select: 'following_id',
-            where: { follower_id: currentUserId },
-          })
-        : [];
-      const followingIds = currentUserFollowing.map((f) => f.following_id);
+  public async getUserSummaries(userIds: Array<User['id']>, currentUserId?: User['id']) {
+    try {
+      if (userIds.length === 0) return [];
 
-      const [followerCount, followingCount, mutualFollowersData] = await Promise.all([
-        this.getFollowerCount(user.id),
-        this.getFollowingCount(user.id),
-        this.getMutualFollowers(user.id, followingIds, 3),
-      ]);
+      const { data, error } = await this.supabaseService.getClient().rpc('get_user_summary_batch', {
+        p_user_ids: userIds,
+        p_current_user_id: currentUserId ?? null,
+        p_mutual_limit: 3,
+      });
+      if (error) throw error;
 
-      const { users: mutualFollowers, totalCount } = mutualFollowersData;
-      const remainingCount = Math.max(0, totalCount - mutualFollowers.length);
-
-      const followedBy =
-        mutualFollowers.length > 0
-          ? {
-              remainingCount,
-              displayItems: mutualFollowers.map((follower) => ({
-                id: follower.id,
-                displayName: follower.display_name || follower.username,
-                avatar: follower.avatar,
-              })),
-            }
-          : null;
-
-      const payload: UserSummaryDto = {
-        id: user.id,
-        username: user.username,
-        displayName: user.display_name,
-        avatar: user.avatar,
-        bio: user.bio,
-        followers: followerCount,
-        following: followingCount,
-        isFollowing,
-        hasStory: true, // TODO: Implement real story checking logic
-        followedBy,
-      };
-      return payload;
-    } catch {
-      return null;
+      if (!data) throw new Error('Failed to get user summaries');
+      const userSummaries: UserSummaryDto[] = data.map((user: any) => {
+        return {
+          id: user.id,
+          username: user.username,
+          displayName: user.display_name,
+          avatar: user.avatar,
+          bio: user.bio,
+          followers: user.followers,
+          following: user.following,
+          isFollowing: user.is_following,
+          hasStory: user.has_story,
+          followedBy: user.followed_by,
+        } satisfies UserSummaryDto;
+      });
+      return userSummaries;
+    } catch (error) {
+      this.logger.error(error.message, {
+        location: 'getUserSummariesBatch',
+        context: 'UserService',
+      });
+      return undefined;
     }
   }
 
   public async getProfileByUsername(username: User['username'], currentUserId?: User['id']) {
     try {
-      const user = await this.getById(username);
-      if (!user) return null;
+      const { data, error } = await this.supabaseService.getClient().rpc('get_user_profile', {
+        p_username: username,
+        p_current_user_id: currentUserId ?? null,
+      });
+      if (error) throw error;
 
-      let isFollowing = false;
-      let isMuted = false;
-      let isBlocked = false;
-      if (currentUserId && currentUserId !== user.id)
-        [isFollowing, isMuted, isBlocked] = await Promise.all([
-          this.isFollowing(currentUserId, user.id),
-          this.isMuted(currentUserId, user.id),
-          this.isBlockedEither(currentUserId, user.id),
-        ]);
+      const profile = data[0];
+      if (!profile) throw new Error('User not found');
+      if (profile.is_blocked) return undefined;
 
-      const [followerCount, followingCount] = await Promise.all([
-        this.getFollowerCount(user.id),
-        this.getFollowingCount(user.id),
-      ]);
-
-      if (isBlocked) return null;
-
-      const profile: ProfileDto = {
-        id: user.id,
-        username: user.username,
-        displayName: user.display_name,
-        avatar: user.avatar,
-        backgroundImage: user.background_image,
-        bio: user.bio,
-        followers: followerCount,
-        following: followingCount,
-        isFollowing,
-        isMuted,
-        isProtected: user.privacy === ProfileVisibility.PRIVATE,
-        hasStory: true,
-      };
-      return profile;
-    } catch {
-      return null;
+      return {
+        id: profile.id,
+        username: profile.username,
+        displayName: profile.display_name,
+        avatar: profile.avatar,
+        backgroundImage: profile.background_image,
+        bio: profile.bio,
+        followers: profile.followers,
+        following: profile.following,
+        isFollower: profile.is_follower,
+        isFollowing: profile.is_following,
+        isMuted: profile.is_muted,
+        isProtected: profile.is_protected,
+        hasStory: profile.has_story,
+      } as ProfileDto;
+    } catch (error) {
+      this.logger.error(error.message, {
+        location: 'getProfileByUsername',
+        context: 'UserService',
+      });
+      return undefined;
     }
   }
 
@@ -205,22 +218,32 @@ export class UserService {
         { password: hashedPassword },
         { id: userId }
       );
+
       return true;
-    } catch {
+    } catch (error) {
+      this.logger.error(error.message, {
+        location: 'updatePassword',
+        context: 'UserService',
+      });
       return false;
     }
   }
 
   public async verifyEmail(userId: User['id']) {
     try {
-      const user = await this.supabaseService.update<User>(
+      const [user] = await this.supabaseService.update<User>(
         'users',
         { verified: true },
         { id: userId }
       );
-      return user[0];
-    } catch {
-      return null;
+
+      return user;
+    } catch (error) {
+      this.logger.error(error.message, {
+        location: 'verifyEmail',
+        context: 'UserService',
+      });
+      return undefined;
     }
   }
 
@@ -229,7 +252,7 @@ export class UserService {
       const currentUser = await this.getById(userId, {
         select: 'id, avatar, background_image',
       });
-      if (!currentUser) return null;
+      if (!currentUser) return undefined;
 
       const updateFields: Partial<User> = {};
       if (updateData.avatar !== undefined) {
@@ -243,267 +266,150 @@ export class UserService {
       }
 
       if (updateData.displayName !== undefined) updateFields.display_name = updateData.displayName;
-
       if (updateData.bio !== undefined) updateFields.bio = updateData.bio;
 
-      const user = await this.supabaseService.update<User>('users', updateFields, { id: userId });
-      if (user.length === 0) return null;
-
-      return {
-        id: user[0].id,
-        username: user[0].username,
-        displayName: user[0].display_name,
-        email: user[0].email,
-        avatar: user[0].avatar,
-        bio: user[0].bio,
-        backgroundImage: user[0].background_image,
-      };
-    } catch {
-      return null;
+      const [user] = await this.supabaseService.update<User>('users', updateFields, { id: userId });
+      return user;
+    } catch (error) {
+      this.logger.error(error.message, {
+        location: 'updateProfile',
+        context: 'UserService',
+      });
+      throw new InternalServerErrorException(ErrorMessage.InternalServerError);
     }
   }
 
   public async follow(currentUserId: User['id'], targetUserId: User['id']) {
     try {
-      const allUsersExist = await this.supabaseService.existsAll('users', [
-        currentUserId,
-        targetUserId,
-      ]);
-      if (!allUsersExist) throw new NotFoundException('User not found');
-      if (currentUserId === targetUserId) throw new BadRequestException('Cannot follow yourself');
-
-      const followExists = await this.supabaseService.exists('follows', {
-        where: { follower_id: currentUserId, following_id: targetUserId },
-      });
-      if (followExists) throw new ConflictException('You are already following this user');
-
-      const newFollow = await this.supabaseService.insert<Follow>('follows', {
+      const [newFollow] = await this.supabaseService.insert<Follow>('follows', {
         follower_id: currentUserId,
         following_id: targetUserId,
       });
 
-      return newFollow[0];
+      return newFollow;
     } catch (error) {
-      if (
-        error instanceof NotFoundException ||
-        error instanceof BadRequestException ||
-        error instanceof ConflictException
-      )
-        throw error;
-
-      throw new BadRequestException('Failed to follow user');
+      this.logger.error(error.message, {
+        location: 'follow',
+        context: 'UserService',
+      });
+      throw new BadRequestException(ErrorMessage.Follow.Failed(true));
     }
   }
 
   public async unfollow(currentUserId: User['id'], targetUserId: User['id']) {
     try {
-      const allUsersExist = await this.supabaseService.existsAll('users', [
-        currentUserId,
-        targetUserId,
-      ]);
-      if (!allUsersExist) throw new NotFoundException('User not found');
-      if (currentUserId === targetUserId) throw new BadRequestException('Cannot unfollow yourself');
-
-      const followExists = await this.supabaseService.exists('follows', {
-        where: { follower_id: currentUserId, following_id: targetUserId },
-      });
-      if (!followExists) throw new ConflictException('You are not following this user');
-
       await this.supabaseService.delete<Follow>('follows', {
         follower_id: currentUserId,
         following_id: targetUserId,
       });
     } catch (error) {
-      if (
-        error instanceof NotFoundException ||
-        error instanceof BadRequestException ||
-        error instanceof ConflictException
-      )
-        throw error;
-
-      throw new BadRequestException('Failed to unfollow user');
-    }
-  }
-
-  public async isFollowing(currentUserId: User['id'], targetUserId: User['id']): Promise<boolean> {
-    try {
-      return await this.supabaseService.exists('follows', {
-        where: { follower_id: currentUserId, following_id: targetUserId },
+      this.logger.error(error.message, {
+        location: 'unfollow',
+        context: 'UserService',
       });
-    } catch {
-      return false;
+      throw new BadRequestException(ErrorMessage.Follow.Failed(false));
     }
   }
 
-  public async getFollowerCount(userId: User['id']): Promise<number> {
+  public async getFollowers(
+    userId: User['id'],
+    limit = 10,
+    offset = 0,
+    currentUserId?: User['id']
+  ): Promise<UserSummaryDto[]> {
     try {
-      return await this.supabaseService.count('follows', {
-        where: { following_id: userId },
-      });
-    } catch {
-      return 0;
-    }
-  }
-
-  public async getFollowingCount(userId: User['id']): Promise<number> {
-    try {
-      return await this.supabaseService.count('follows', {
-        where: { follower_id: userId },
-      });
-    } catch (error) {
-      return 0;
-    }
-  }
-
-  public async getFollowers(userId: User['id'], limit = 10, offset = 0): Promise<User[]> {
-    try {
-      const follows = await this.supabaseService.select<Follow>('follows', {
+      // First, get the follower IDs
+      const followers = await this.supabaseService.select<{ follower_id: string }>('follows', {
+        select: 'follower_id',
         where: { following_id: userId },
         limit,
         offset,
         orderBy: { column: 'created_at', ascending: false },
       });
 
-      const followerIds = follows.map((follow) => follow.follower_id);
-      if (followerIds.length === 0) return [];
+      if (followers.length === 0) return [];
 
-      return await this.supabaseService.select<User>('users', {
-        whereIn: { id: followerIds },
-        select: 'id, username, display_name, avatar',
-      });
+      // Extract the user IDs
+      const followerIds = followers.map((f) => f.follower_id);
+
+      // Use getUserSummaries to get complete user data
+      const userSummaries = await this.getUserSummaries(followerIds, currentUserId);
+
+      return userSummaries ?? [];
     } catch (error) {
-      return [];
+      this.logger.error(error.message, {
+        location: 'getFollowers',
+        context: 'UserService',
+      });
+      throw new InternalServerErrorException(ErrorMessage.InternalServerError);
     }
   }
 
-  public async getFollowings(userId: User['id'], limit = 10, offset = 0): Promise<User[]> {
+  public async getFollowing(
+    userId: User['id'],
+    limit = 10,
+    offset = 0,
+    currentUserId?: User['id']
+  ): Promise<UserSummaryDto[]> {
     try {
-      const follows = await this.supabaseService.select<Follow>('follows', {
+      const following = await this.supabaseService.select<Follow>('follows', {
+        select: 'following_id',
         where: { follower_id: userId },
         limit,
         offset,
         orderBy: { column: 'created_at', ascending: false },
       });
 
-      const followingIds = follows.map((follow) => follow.following_id);
-      if (followingIds.length === 0) return [];
-
-      return await this.supabaseService.select<User>('users', {
-        whereIn: { id: followingIds },
-        select: 'id, username, display_name, avatar',
-      });
+      const followingIds = following.map((f) => f.following_id);
+      const userSummaries = await this.getUserSummaries(followingIds, currentUserId);
+      if (!userSummaries) throw new Error('Failed to get following');
+      return userSummaries;
     } catch (error) {
-      return [];
+      this.logger.error(error.message, {
+        location: 'getFollowing',
+        context: 'UserService',
+      });
+      throw new BadRequestException(ErrorMessage.Follow.Get(true));
     }
   }
 
   public async block(currentUserId: User['id'], targetUserId: User['id']) {
     try {
-      const allUsersExist = await this.supabaseService.existsAll('users', [
-        currentUserId,
-        targetUserId,
-      ]);
-      if (!allUsersExist) throw new NotFoundException('User not found');
-      if (currentUserId === targetUserId) throw new BadRequestException('Cannot block yourself');
+      await this.supabaseService
+        .getClient()
+        .from('follows')
+        .delete()
+        .or(
+          `and(follower_id.eq.${currentUserId},following_id.eq.${targetUserId}),and(follower_id.eq.${targetUserId},following_id.eq.${currentUserId})`
+        );
 
-      const blockExists = await this.supabaseService.exists('blocks', {
-        where: { blocker_id: currentUserId, blocked_id: targetUserId },
-      });
-      if (blockExists) throw new ConflictException('You have already blocked this user');
-
-      const followingExists = await this.supabaseService.exists('follows', {
-        where: { follower_id: currentUserId, following_id: targetUserId },
-      });
-      if (followingExists)
-        await this.supabaseService.delete<Follow>('follows', {
-          follower_id: currentUserId,
-          following_id: targetUserId,
-        });
-
-      const followerExists = await this.supabaseService.exists('follows', {
-        where: { follower_id: targetUserId, following_id: currentUserId },
-      });
-      if (followerExists)
-        await this.supabaseService.delete<Follow>('follows', {
-          follower_id: targetUserId,
-          following_id: currentUserId,
-        });
-
-      const newBlock = await this.supabaseService.insert<Block>('blocks', {
+      const [newBlock] = await this.supabaseService.insert<Block>('blocks', {
         blocker_id: currentUserId,
         blocked_id: targetUserId,
       });
 
-      return newBlock[0];
+      return newBlock;
     } catch (error) {
-      if (
-        error instanceof NotFoundException ||
-        error instanceof BadRequestException ||
-        error instanceof ConflictException
-      )
-        throw error;
-
-      throw new BadRequestException('Failed to block user');
+      this.logger.error(error.message, {
+        location: 'block',
+        context: 'UserService',
+      });
+      throw new BadRequestException(ErrorMessage.Block.Failed(true));
     }
   }
 
   public async unblock(currentUserId: User['id'], targetUserId: User['id']) {
     try {
-      const allUsersExist = await this.supabaseService.existsAll('users', [
-        currentUserId,
-        targetUserId,
-      ]);
-      if (!allUsersExist) throw new NotFoundException('User not found');
-      if (currentUserId === targetUserId) throw new BadRequestException('Cannot unblock yourself');
-
-      const blockExists = await this.supabaseService.exists('blocks', {
-        where: { blocker_id: currentUserId, blocked_id: targetUserId },
-      });
-      if (!blockExists) throw new ConflictException('You have not blocked this user');
-
       await this.supabaseService.delete<Block>('blocks', {
         blocker_id: currentUserId,
         blocked_id: targetUserId,
       });
     } catch (error) {
-      if (
-        error instanceof NotFoundException ||
-        error instanceof BadRequestException ||
-        error instanceof ConflictException
-      )
-        throw error;
-
-      throw new BadRequestException('Failed to unblock user');
-    }
-  }
-
-  public async isBlocked(currentUserId: User['id'], targetUserId: User['id']): Promise<boolean> {
-    try {
-      return await this.supabaseService.exists('blocks', {
-        where: { blocker_id: currentUserId, blocked_id: targetUserId },
+      this.logger.error(error.message, {
+        location: 'unblock',
+        context: 'UserService',
       });
-    } catch {
-      return false;
-    }
-  }
-
-  public async isBlockedEither(
-    currentUserId: User['id'],
-    targetUserId: User['id']
-  ): Promise<boolean> {
-    try {
-      const [currentBlockedTarget, targetBlockedCurrent] = await Promise.all([
-        this.supabaseService.exists('blocks', {
-          where: { blocker_id: currentUserId, blocked_id: targetUserId },
-        }),
-        this.supabaseService.exists('blocks', {
-          where: { blocker_id: targetUserId, blocked_id: currentUserId },
-        }),
-      ]);
-
-      return currentBlockedTarget || targetBlockedCurrent;
-    } catch {
-      return false;
+      throw new BadRequestException(ErrorMessage.Block.Failed(false));
     }
   }
 
@@ -524,79 +430,49 @@ export class UserService {
         select: 'id, username, display_name, avatar',
       });
     } catch (error) {
-      return [];
+      this.logger.error(error.message, {
+        location: 'getBlockedUsers',
+        context: 'UserService',
+      });
+      throw new BadRequestException(ErrorMessage.Mute.Failed(true));
     }
   }
 
   public async mute(currentUserId: User['id'], targetUserId: User['id']) {
     try {
-      const allUsersExist = await this.supabaseService.existsAll('users', [
-        currentUserId,
-        targetUserId,
-      ]);
-      if (!allUsersExist) throw new NotFoundException('User not found');
-      if (currentUserId === targetUserId) throw new BadRequestException('Cannot mute yourself');
+      if (currentUserId === targetUserId)
+        throw new BadRequestException(ErrorMessage.Mute.Conflict(true));
 
-      const muteExists = await this.supabaseService.exists('mutes', {
-        where: { muter_id: currentUserId, muted_id: targetUserId },
-      });
-      if (muteExists) throw new ConflictException('You have already muted this user');
-
-      const newMute = await this.supabaseService.insert<Mute>('mutes', {
+      const [newMute] = await this.supabaseService.insert<Mute>('mutes', {
         muter_id: currentUserId,
         muted_id: targetUserId,
       });
 
-      return newMute[0];
+      return newMute;
     } catch (error) {
-      if (
-        error instanceof NotFoundException ||
-        error instanceof BadRequestException ||
-        error instanceof ConflictException
-      )
-        throw error;
-
-      throw new BadRequestException('Failed to mute user');
+      this.logger.error(error.message, {
+        location: 'mute',
+        context: 'UserService',
+      });
+      throw new BadRequestException(ErrorMessage.Mute.Failed(true));
     }
   }
 
   public async unmute(currentUserId: User['id'], targetUserId: User['id']) {
     try {
-      const allUsersExist = await this.supabaseService.existsAll('users', [
-        currentUserId,
-        targetUserId,
-      ]);
-      if (!allUsersExist) throw new NotFoundException('User not found');
-      if (currentUserId === targetUserId) throw new BadRequestException('Cannot unmute yourself');
-
-      const muteExists = await this.supabaseService.exists('mutes', {
-        where: { muter_id: currentUserId, muted_id: targetUserId },
-      });
-      if (!muteExists) throw new ConflictException('You have not muted this user');
+      if (currentUserId === targetUserId)
+        throw new BadRequestException(ErrorMessage.Mute.Conflict(false));
 
       await this.supabaseService.delete<Mute>('mutes', {
         muter_id: currentUserId,
         muted_id: targetUserId,
       });
     } catch (error) {
-      if (
-        error instanceof NotFoundException ||
-        error instanceof BadRequestException ||
-        error instanceof ConflictException
-      )
-        throw error;
-
-      throw new BadRequestException('Failed to unmute user');
-    }
-  }
-
-  public async isMuted(currentUserId: User['id'], targetUserId: User['id']): Promise<boolean> {
-    try {
-      return await this.supabaseService.exists('mutes', {
-        where: { muter_id: currentUserId, muted_id: targetUserId },
+      this.logger.error(error.message, {
+        location: 'unmute',
+        context: 'UserService',
       });
-    } catch {
-      return false;
+      throw new BadRequestException(ErrorMessage.Mute.Failed(false));
     }
   }
 
@@ -617,48 +493,28 @@ export class UserService {
         select: 'id, username, display_name, avatar',
       });
     } catch (error) {
-      return [];
+      this.logger.error(error.message, {
+        location: 'getMutedUsers',
+        context: 'UserService',
+      });
+      throw new BadRequestException(ErrorMessage.Mute.Failed(false));
     }
   }
 
-  public async getMutualFollowers(
-    targetUserId: User['id'],
-    viewerFollowingIds: User['id'][],
-    displayLimit = 3
-  ): Promise<{ users: User[]; totalCount: number }> {
+  public async reportUser(userId: User['id'], { type }: ReportUserDto) {
     try {
-      if (viewerFollowingIds.length === 0) return { users: [], totalCount: 0 };
-
-      const totalMutualFollows = await this.supabaseService.select('follows', {
-        select: 'follower_id',
-        where: { following_id: targetUserId },
-        whereIn: { follower_id: viewerFollowingIds },
+      const [newReport] = await this.supabaseService.insert<UserReport>('user_reports', {
+        user_id: userId,
+        type,
       });
 
-      const totalCount = totalMutualFollows.length;
-      if (totalCount === 0) return { users: [], totalCount: 0 };
-
-      const mutualFollowsData = await this.supabaseService.select('follows', {
-        select: 'follower_id',
-        where: { following_id: targetUserId },
-        whereIn: { follower_id: viewerFollowingIds },
-        limit: displayLimit,
-      });
-
-      const mutualFollowerIds = mutualFollowsData.map((f) => f.follower_id);
-
-      const mutualFollowers = await this.supabaseService.select<User>('users', {
-        whereIn: { id: mutualFollowerIds },
-        select: 'id, username, display_name, avatar',
-      });
-
-      return { users: mutualFollowers, totalCount };
+      return newReport;
     } catch (error) {
-      this.logger.warn(error, {
+      this.logger.error(error.message, {
+        location: 'reportUser',
         context: 'UserService',
-        location: 'getMutualFollowers',
       });
-      return { users: [], totalCount: 0 };
+      throw new InternalServerErrorException(ErrorMessage.Report.Failed);
     }
   }
 
@@ -671,7 +527,7 @@ export class UserService {
 
       await this.cloudinaryService.destroy(publicId);
     } catch (error) {
-      this.logger.warn(error, {
+      this.logger.error(error.message, {
         context: 'UserService',
         location: 'deleteOldImage',
       });

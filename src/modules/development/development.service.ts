@@ -1,11 +1,11 @@
-import type { User, Post } from 'schema';
+import type { Post, User } from 'schema';
 
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { SupabaseService } from '../database/supabase.service';
 import { CloudinaryService } from '../database/cloudinary.service';
 import { getRandomFile, imageUrls, videoUrls } from 'src/__mocks__/file';
 import { faker } from '@faker-js/faker';
-import { ProfileVisibility, ContentPrivacy } from 'src/common/constants';
+import { ContentPrivacy, ProfileVisibility } from 'src/common/constants';
 import { Auth } from 'src/common/helpers';
 import { UserService } from '../user/user.service';
 
@@ -21,19 +21,17 @@ export class DevelopmentService {
 
   public async changePassword(id: string, newPassword: string) {
     const user = await this.userService.updatePassword(id, newPassword);
-    console.log(String(user));
     if (!user) throw new NotFoundException('User not found');
     return user;
   }
 
   public async verifyEmail(id: string) {
     const user = await this.userService.verifyEmail(id);
-    console.log(String(user));
     if (!user) throw new NotFoundException('User not found');
     return user;
   }
 
-  public async generateUsers(count: number = 10) {
+  public async generateUsers(count = 10) {
     if (count <= 0) {
       throw new BadRequestException('Count must be greater than 0');
     }
@@ -42,7 +40,7 @@ export class DevelopmentService {
       throw new BadRequestException('Count cannot exceed 100 users at once');
     }
 
-    const usersToInsert: Omit<User, 'id' | 'created_at' | 'last_modified'>[] = [];
+    const usersToInsert: Array<Omit<User, 'id' | 'created_at' | 'last_modified'>> = [];
 
     // Generate additional random users
     const remainingCount = count - usersToInsert.length;
@@ -105,12 +103,12 @@ export class DevelopmentService {
           privacy: user.privacy,
         })),
       };
-    } catch (error) {
+    } catch {
       throw new BadRequestException('Failed to insert users into database');
     }
   }
 
-  public async generateFollowRelationships(maxFollowsPerUser: number = 5) {
+  public async generateFollowRelationships(maxFollowsPerUser = 5) {
     if (maxFollowsPerUser <= 0) {
       throw new BadRequestException('maxFollowsPerUser must be greater than 0');
     }
@@ -200,12 +198,12 @@ export class DevelopmentService {
           };
         }),
       };
-    } catch (error) {
+    } catch {
       throw new BadRequestException('Failed to create follow relationships');
     }
   }
 
-  public async generatePosts(count: number = 50) {
+  public async generatePosts(count = 50) {
     if (count <= 0) {
       throw new BadRequestException('Count must be greater than 0');
     }
@@ -231,7 +229,7 @@ export class DevelopmentService {
 
       // Combine all media files
       const allMedia = [...imageUrls, ...videoUrls].sort(() => Math.random() - 0.5);
-      const postsToInsert: Omit<Post, 'id' | 'created_at' | 'last_modified'>[] = [];
+      const postsToInsert: Array<Omit<Post, 'id' | 'created_at' | 'last_modified'>> = [];
 
       let mediaIndex = 0;
 
@@ -315,7 +313,6 @@ export class DevelopmentService {
   public async getMediaInfo(mediaId?: string, ids?: string, format?: 'image' | 'video' | 'raw') {
     if (ids) {
       const media = await this.cloudinaryService.getResources(ids.split(','), format);
-      if (!media) throw new NotFoundException('Media not found');
       return media;
     }
 

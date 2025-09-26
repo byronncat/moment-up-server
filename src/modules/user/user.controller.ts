@@ -2,37 +2,32 @@ import type { User } from 'schema';
 import type { JwtPayload } from 'jwt-library';
 
 import {
+  BadRequestException,
+  Body,
   Controller,
   Delete,
   Get,
   HttpCode,
   HttpStatus,
-  Param,
-  Post,
-  Patch,
-  Body,
-  UseGuards,
   NotFoundException,
-  BadRequestException,
-  Inject,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
   ValidationPipe,
 } from '@nestjs/common';
-import { UserService } from './user.service';
+import { ErrorMessage, UserService } from './user.service';
 import { AccessTokenGuard } from 'src/common/guards';
 import { AccessToken } from 'src/common/decorators';
-import { UpdateProfileDto } from './dto';
-import { Logger } from 'winston';
-import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import { ReportUserDto, UpdateProfileDto } from './dto';
 
 @Controller({
   path: 'users',
   version: '1',
 })
 export class UserController {
-  constructor(
-    private readonly userService: UserService,
-    @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger
-  ) {}
+  constructor(private readonly userService: UserService) {}
 
   @Get(':username')
   @HttpCode(HttpStatus.OK)
@@ -40,9 +35,10 @@ export class UserController {
     @AccessToken() token: JwtPayload,
     @Param('username') username: User['username']
   ) {
-    const currentUserId = token?.sub || '';
+    const currentUserId = token.sub ?? '';
     const profile = await this.userService.getProfileByUsername(username, currentUserId);
     if (!profile) throw new NotFoundException('Profile not found');
+
     return {
       profile,
     };
@@ -56,12 +52,12 @@ export class UserController {
     @Param('id') userId: string,
     @Body(ValidationPipe) updateData: UpdateProfileDto
   ) {
-    const currentUserId = token?.sub || '';
+    const currentUserId = token.sub ?? '';
     if (currentUserId !== userId)
-      throw new BadRequestException('You can only update your own profile');
+      throw new BadRequestException(ErrorMessage.Profile.UpdateForbidden);
 
     const updatedUser = await this.userService.updateProfile(userId, updateData);
-    if (!updatedUser) throw new NotFoundException('User not found');
+    if (!updatedUser) throw new NotFoundException(ErrorMessage.Profile.NotFound);
 
     return {
       user: updatedUser,
@@ -72,7 +68,10 @@ export class UserController {
   @HttpCode(HttpStatus.CREATED)
   @UseGuards(AccessTokenGuard)
   async followUser(@AccessToken() token: JwtPayload, @Param('id') targetUserId: string) {
-    const currentUserId = token?.sub || '';
+    const currentUserId = token.sub ?? '';
+    if (currentUserId === targetUserId)
+      throw new BadRequestException(ErrorMessage.Follow.Conflict(true));
+
     return { follow: await this.userService.follow(currentUserId, targetUserId) };
   }
 
@@ -80,23 +79,75 @@ export class UserController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @UseGuards(AccessTokenGuard)
   async unfollowUser(@AccessToken() token: JwtPayload, @Param('id') targetUserId: string) {
-    const currentUserId = token?.sub || '';
+    const currentUserId = token.sub ?? '';
+    if (currentUserId === targetUserId)
+      throw new BadRequestException(ErrorMessage.Follow.Conflict(false));
+
     await this.userService.unfollow(currentUserId, targetUserId);
+  }
+
+  @Delete(':id/remove-follower')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(AccessTokenGuard)
+  async removeFollower(@AccessToken() token: JwtPayload, @Param('id') targetUserId: string) {
+    const currentUserId = token.sub ?? '';
+    if (currentUserId === targetUserId)
+      throw new BadRequestException('You cannot remove yourself as a follower.');
+
+    try {
+      await this.userService.unfollow(targetUserId, currentUserId);
+    } catch {
+      throw new BadRequestException('Failed to remove this follower.');
+    }
   }
 
   @Get(':id/followers')
   @HttpCode(HttpStatus.OK)
-  async getFollowers(@Param('id') userId: string) {
+  @UseGuards(AccessTokenGuard)
+  async getFollowers(
+    @AccessToken() token: JwtPayload,
+    @Param('id') userId: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string
+  ) {
+    const currentUserId = token.sub ?? '';
+    const pageNum = parseInt(page ?? '1');
+    const limitNum = parseInt(limit ?? '20');
+    const offset = (pageNum - 1) * limitNum;
+
+    const followers = await this.userService.getFollowers(userId, limitNum, offset, currentUserId);
+    const hasNextPage = followers.length === limitNum;
+
     return {
-      followers: await this.userService.getFollowers(userId),
+      followers,
+      page: pageNum,
+      limit: limitNum,
+      hasNextPage,
     };
   }
 
-  @Get(':id/followings')
+  @Get(':id/following')
   @HttpCode(HttpStatus.OK)
-  async getFollowings(@Param('id') userId: string) {
+  @UseGuards(AccessTokenGuard)
+  async getFollowing(
+    @AccessToken() token: JwtPayload,
+    @Param('id') userId: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string
+  ) {
+    const currentUserId = token.sub ?? '';
+    const pageNum = parseInt(page ?? '1');
+    const limitNum = parseInt(limit ?? '20');
+    const offset = (pageNum - 1) * limitNum;
+
+    const following = await this.userService.getFollowing(userId, limitNum, offset, currentUserId);
+    const hasNextPage = following.length === limitNum;
+
     return {
-      followings: await this.userService.getFollowings(userId),
+      following,
+      page: pageNum,
+      limit: limitNum,
+      hasNextPage,
     };
   }
 
@@ -104,7 +155,10 @@ export class UserController {
   @HttpCode(HttpStatus.CREATED)
   @UseGuards(AccessTokenGuard)
   async blockUser(@AccessToken() token: JwtPayload, @Param('id') targetUserId: string) {
-    const currentUserId = token?.sub || '';
+    const currentUserId = token.sub ?? '';
+    if (currentUserId === targetUserId)
+      throw new BadRequestException(ErrorMessage.Block.Conflict(true));
+
     return { block: await this.userService.block(currentUserId, targetUserId) };
   }
 
@@ -112,7 +166,10 @@ export class UserController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @UseGuards(AccessTokenGuard)
   async unblockUser(@AccessToken() token: JwtPayload, @Param('id') targetUserId: string) {
-    const currentUserId = token?.sub || '';
+    const currentUserId = token.sub ?? '';
+    if (currentUserId === targetUserId)
+      throw new BadRequestException(ErrorMessage.Block.Conflict(false));
+
     await this.userService.unblock(currentUserId, targetUserId);
   }
 
@@ -120,10 +177,10 @@ export class UserController {
   @HttpCode(HttpStatus.OK)
   @UseGuards(AccessTokenGuard)
   async getBlockedUsers(@AccessToken() token: JwtPayload, @Param('id') userId: string) {
-    const currentUserId = token?.sub || '';
-    if (currentUserId !== userId) {
+    const currentUserId = token.sub ?? '';
+    if (currentUserId !== userId)
       throw new BadRequestException('You can only view your own blocked users');
-    }
+
     return {
       blockedUsers: await this.userService.getBlockedUsers(userId),
     };
@@ -133,7 +190,7 @@ export class UserController {
   @HttpCode(HttpStatus.CREATED)
   @UseGuards(AccessTokenGuard)
   async muteUser(@AccessToken() token: JwtPayload, @Param('id') targetUserId: string) {
-    const currentUserId = token?.sub || '';
+    const currentUserId = token.sub ?? '';
     return { mute: await this.userService.mute(currentUserId, targetUserId) };
   }
 
@@ -141,7 +198,7 @@ export class UserController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @UseGuards(AccessTokenGuard)
   async unmuteUser(@AccessToken() token: JwtPayload, @Param('id') targetUserId: string) {
-    const currentUserId = token?.sub || '';
+    const currentUserId = token.sub ?? '';
     await this.userService.unmute(currentUserId, targetUserId);
   }
 
@@ -149,10 +206,10 @@ export class UserController {
   @HttpCode(HttpStatus.OK)
   @UseGuards(AccessTokenGuard)
   async getMutedUsers(@AccessToken() token: JwtPayload, @Param('id') userId: string) {
-    const currentUserId = token?.sub || '';
-    if (currentUserId !== userId) {
+    const currentUserId = token.sub ?? '';
+    if (currentUserId !== userId)
       throw new BadRequestException('You can only view your own muted users');
-    }
+
     return {
       mutedUsers: await this.userService.getMutedUsers(userId),
     };
@@ -161,16 +218,10 @@ export class UserController {
   @Post(':id/report')
   @HttpCode(HttpStatus.CREATED)
   @UseGuards(AccessTokenGuard)
-  async reportUser(@AccessToken() token: JwtPayload, @Param('id') targetUserId: string) {
-    const currentUserId = token?.sub || '';
-    this.logger.silly(`User ${currentUserId} reported user ${targetUserId}`, {
-      action: 'report_user',
-      currentUserId,
-      targetUserId,
-    });
-    return {
-      success: true,
-      message: 'User reported successfully',
-    };
+  async reportUser(
+    @Param('id') targetUserId: string,
+    @Body(ValidationPipe) reportData: ReportUserDto
+  ) {
+    return { report: await this.userService.reportUser(targetUserId, reportData) };
   }
 }

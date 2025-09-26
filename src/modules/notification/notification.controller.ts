@@ -20,6 +20,6 @@ export class NotificationController {
     @Query() notificationsDto: NotificationsDto
   ) {
     const userId = token?.sub || '';
-    return await this.notificationService.get(userId, notificationsDto);
+    return this.notificationService.get(userId, notificationsDto);
   }
 }

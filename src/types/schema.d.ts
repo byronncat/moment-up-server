@@ -4,15 +4,17 @@ declare module 'schema' {
     ProfileVisibility,
     StoryBackground,
     TrendingReportType,
+    UserReportType,
   } from 'common/constants';
 
   type uuid = string;
   type snowflake = number;
   type serial = number;
+  type public_id = string;
   type timestamptz = Date | string;
 
   // === Main ===
-  type User = {
+  interface User {
     readonly id: uuid;
     readonly username: string;
     display_name: string | null;
@@ -27,9 +29,9 @@ declare module 'schema' {
     last_modified: timestamptz;
     readonly created_at: timestamptz;
     deleted_at: timestamptz | null;
-  };
+  }
 
-  type Post = {
+  interface Post {
     readonly id: snowflake;
     readonly user_id: User['id'];
     text: string | null;
@@ -37,131 +39,138 @@ declare module 'schema' {
     privacy: ContentPrivacy;
     last_modified: timestamptz;
     readonly created_at: timestamptz;
-  };
+  }
 
-  type Attachment = {
-    readonly id: string;
+  interface Attachment {
+    readonly id: public_id;
     readonly type: 'image' | 'video';
-  };
+  }
 
-  type Story = {
-    readonly id: string;
+  interface Story {
+    readonly id: snowflake;
     readonly user_id: User['id'];
     text: StoryTextContent | null;
-    media: CloudinaryFile['id'] | null;
-    sound: CloudinaryFile['id'] | null;
+    media: public_id | null;
+    sound: public_id | null;
     readonly created_at: timestamptz;
-  };
+  }
 
   interface StoryTextContent {
     text: string;
     background: StoryBackground;
   }
 
-  type Hashtag = {
+  interface Hashtag {
     readonly id: serial;
     readonly name: string;
     readonly created_at: timestamptz;
-  };
+  }
 
-  type TrendingReport = {
+  interface UserReport {
+    readonly id: serial;
+    readonly user_id: User['id'];
+    readonly type: UserReportType;
+    readonly created_at: timestamptz;
+  }
+
+  interface TrendingReport {
     readonly id: serial;
     readonly hashtag_id: Hashtag['id'];
     readonly user_id: User['id'];
     readonly type: TrendingReportType;
     readonly created_at: timestamptz;
-  };
+  }
 
   // === Relationship ===
-  type PostHashtag = {
-    readonly post_id: Moment['id'];
+  interface PostHashtag {
+    readonly post_id: Post['id'];
     readonly hashtag_id: Hashtag['id'];
-  };
+  }
 
-  type Follow = {
+  interface Follow {
     readonly follower_id: User['id'];
     readonly following_id: User['id'];
     readonly created_at: timestamptz;
-  };
+  }
 
-  type Mute = {
+  interface Mute {
     readonly muter_id: User['id'];
     readonly muted_id: User['id'];
     readonly created_at: timestamptz;
-  };
+  }
 
-  type Block = {
+  interface Block {
     readonly blocker_id: User['id'];
     readonly blocked_id: User['id'];
     readonly created_at: timestamptz;
-  };
+  }
 
   // +++ Ongoing +++
 
-  type Comment = {
+  interface Comment {
     readonly id: string;
     readonly userId: User['id'];
-    readonly momentId: Moment['id'];
+    readonly momentId: Post['id'];
     content: string;
     updatedAt: Date | string;
     readonly createdAt: Date | string;
-  };
+  }
 
-  type SearchHistory = {
+  interface SearchHistory {
     readonly id: string;
     readonly userId: User['id'];
     readonly type: number; // SearchItemType enum
     readonly query: string;
     readonly createdAt: Date | string;
-  };
+  }
 
   // === Relationships ===
-  type MomentLike = {
+  interface MomentLike {
     readonly id: string;
     readonly userId: User['id'];
-    readonly momentId: Moment['id'];
+    readonly momentId: Post['id'];
     readonly createdAt: Date | string;
-  };
+  }
 
-  type CommentLike = {
+  interface CommentLike {
     readonly id: string;
     readonly userId: User['id'];
     readonly commentId: Comment['id'];
     readonly createdAt: Date | string;
-  };
+  }
 
-  type Bookmark = {
+  interface Bookmark {
     readonly id: string;
     readonly userId: User['id'];
-    readonly momentId: Moment['id'];
+    readonly momentId: Post['id'];
     readonly createdAt: Date | string;
-  };
+  }
 
-  type Repost = {
+  interface Repost {
     readonly id: string;
     readonly userId: User['id'];
-    readonly momentId: Moment['id'];
+    readonly momentId: Post['id'];
     comment: string | null;
     audience: number; // Audience enum
     readonly createdAt: Date | string;
-  };
+  }
 
-  type View = {
+  interface View {
     readonly id: string;
     readonly userId: User['id'];
     readonly storyId: Story['id'];
     readonly createdAt: Date | string;
-  };
+  }
 
   // === MongoDB ===
-  type CloudinaryFile = {
+  interface CloudinaryFile {
     readonly id: string; // Public ID
-    readonly postId: Moment['id'] | Story['id'];
+    readonly postId: Post['id'] | Story['id'];
     readonly url: string; // Secure URL
     readonly type: 'image' | 'video' | 'audio';
     readonly format: string;
     readonly width?: number; // For images/videos
     readonly height?: number; // For images/videos
     readonly duration?: number; // For video/audio
-  };
+  }
 }
