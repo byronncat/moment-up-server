@@ -1,15 +1,15 @@
-import { Injectable, OnModuleInit, Inject } from '@nestjs/common';
+import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { SupabaseClient, createClient } from '@supabase/supabase-js';
 import { Logger } from 'winston';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { String } from 'src/common/helpers';
 
-type MainTable = 'users' | 'hashtags' | 'posts' | 'trending_reports';
+type MainTable = 'users' | 'hashtags' | 'posts' | 'stories' | 'trending_reports' | 'user_reports';
 type RelationshipTable = 'post_hashtags' | 'follows' | 'blocks' | 'mutes';
 type Table = MainTable | RelationshipTable;
 
-export type SelectOptions = {
+export interface SelectOptions {
   select?: string;
   where?: Record<string, any>;
   orWhere?: Record<string, any>;
@@ -17,11 +17,15 @@ export type SelectOptions = {
   whereNotIn?: Record<string, any[]>;
   whereGte?: Record<string, any>;
   whereLte?: Record<string, any>;
+  whereNull?: string[];
+  whereNotNull?: string[];
   caseSensitive?: boolean;
-  orderBy?: { column: string; ascending?: boolean };
+  orderBy?:
+    | { column: string; ascending?: boolean }
+    | Array<{ column: string; ascending?: boolean }>;
   limit?: number;
   offset?: number;
-};
+}
 
 @Injectable()
 export class SupabaseService implements OnModuleInit {
@@ -49,11 +53,6 @@ export class SupabaseService implements OnModuleInit {
   }
 
   public getClient(): SupabaseClient {
-    if (!this.supabase)
-      throw new Error(
-        'Supabase client not initialized. Make sure the service is properly configured.'
-      );
-
     return this.supabase;
   }
 
@@ -65,11 +64,11 @@ export class SupabaseService implements OnModuleInit {
 
   public async select<T = any>(table: Table, options?: SelectOptions): Promise<T[]> {
     try {
-      let query = this.supabase.from(table).select(options?.select || '*');
+      let query = this.supabase.from(table).select(options?.select ?? '*');
 
       if (options?.where)
         Object.entries(options.where).forEach(([key, value]) => {
-          if (value !== undefined) {
+          if (value) {
             const useIlike = options.caseSensitive === false && this.shouldUseIlike(value);
             if (useIlike) query = query.ilike(key, `${value}`);
             else query = query.eq(key, value);
@@ -78,7 +77,7 @@ export class SupabaseService implements OnModuleInit {
 
       if (options?.orWhere) {
         const orClauses = Object.entries(options.orWhere)
-          .filter(([, value]) => value !== undefined)
+          .filter(([, value]) => value)
           .map(([key, value]) => {
             const useIlike = options.caseSensitive === false && this.shouldUseIlike(value);
             const operator = useIlike ? 'ilike' : 'eq';
@@ -90,71 +89,90 @@ export class SupabaseService implements OnModuleInit {
 
       if (options?.whereIn)
         Object.entries(options.whereIn).forEach(([key, values]) => {
-          if (values !== undefined && values.length > 0) {
+          if (values.length > 0) {
             query = query.in(key, values);
           }
         });
 
       if (options?.whereNotIn)
         Object.entries(options.whereNotIn).forEach(([key, values]) => {
-          if (values !== undefined && values.length > 0) {
+          if (values.length > 0) {
             query = query.not(key, 'in', `(${values.join(',')})`);
           }
         });
 
       if (options?.whereGte)
         Object.entries(options.whereGte).forEach(([key, value]) => {
-          if (value !== undefined) {
+          if (value) {
             query = query.gte(key, value);
           }
         });
 
       if (options?.whereLte)
         Object.entries(options.whereLte).forEach(([key, value]) => {
-          if (value !== undefined) {
+          if (value) {
             query = query.lte(key, value);
           }
         });
 
-      if (options?.orderBy)
-        query = query.order(options.orderBy.column, {
-          ascending: options.orderBy.ascending ?? true,
+      if (options?.whereNull)
+        options.whereNull.forEach((column) => {
+          query = query.is(column, null);
         });
+
+      if (options?.whereNotNull)
+        options.whereNotNull.forEach((column) => {
+          query = query.not(column, 'is', null);
+        });
+
+      if (options?.orderBy) {
+        if (Array.isArray(options.orderBy))
+          options.orderBy.forEach((order) => {
+            query = query.order(order.column, {
+              ascending: order.ascending ?? true,
+            });
+          });
+        else
+          query = query.order(options.orderBy.column, {
+            ascending: options.orderBy.ascending ?? true,
+          });
+      }
 
       if (options?.limit) query = query.limit(options.limit);
 
       if (options?.offset)
-        query = query.range(options.offset, options.offset + (options?.limit || 10) - 1);
+        query = query.range(options.offset, options.offset + (options.limit ?? 10) - 1);
 
       const { data, error } = await query;
-      if (error) throw new Error(`Select from ${table} failed: ${error.message}`);
 
-      return (data as T[]) || [];
+      if (error) throw error;
+
+      return data as T[];
     } catch (error) {
-      this.logger.error(error, {
+      this.logger.error(error.message, {
         context: 'Supabase',
-        location: 'Select',
+        location: 'select',
       });
-      throw new Error(error);
+      throw error;
     }
   }
 
-  public async insert<T = any>(table: Table, data: Partial<T> | Partial<T>[]): Promise<T[]> {
+  public async insert<T = any>(table: Table, data: Partial<T> | Array<Partial<T>>): Promise<T[]> {
     try {
       const { data: result, error } = await this.supabase
         .from(table)
         .insert(data as any)
         .select();
 
-      if (error) throw new Error(`Insert into ${table} failed: ${error.message}`);
+      if (error) throw error;
 
-      return (result as T[]) || [];
+      return result as T[];
     } catch (error) {
-      this.logger.error(error, {
+      this.logger.error(error.message, {
         context: 'Supabase',
-        location: 'Insert',
+        location: 'insert',
       });
-      throw new Error(error);
+      throw error;
     }
   }
 
@@ -167,21 +185,22 @@ export class SupabaseService implements OnModuleInit {
       let query = this.supabase.from(table).update(data as any);
 
       Object.entries(where).forEach(([key, value]) => {
-        if (value !== undefined) {
+        if (value) {
           query = query.eq(key, value);
         }
       });
 
       const { data: result, error } = await query.select();
-      if (error) throw new Error(`Update in ${table} failed: ${error.message}`);
+
+      if (error) throw error;
 
       return (result as T[]) || [];
     } catch (error) {
-      this.logger.error(error, {
+      this.logger.error(error.message, {
         context: 'Supabase',
-        location: 'Update',
+        location: 'update',
       });
-      throw new Error(error);
+      throw error;
     }
   }
 
@@ -190,78 +209,22 @@ export class SupabaseService implements OnModuleInit {
       let query = this.supabase.from(table).delete();
 
       Object.entries(where).forEach(([key, value]) => {
-        if (value !== undefined) {
+        if (value) {
           query = query.eq(key, value);
         }
       });
 
       const { data: result, error } = await query.select();
-      if (error) throw new Error(`Delete from ${table} failed: ${error.message}`);
 
-      return (result as T[]) || [];
+      if (error) throw error;
+
+      return result as T[];
     } catch (error) {
-      this.logger.error(error, {
+      this.logger.error(error.message, {
         context: 'Supabase',
-        location: 'Delete',
+        location: 'delete',
       });
       throw error;
-    }
-  }
-
-  public async count(
-    table: Table,
-    options?: Omit<SelectOptions, 'select' | 'orderBy' | 'limit' | 'offset'>
-  ): Promise<number> {
-    try {
-      let query = this.supabase.from(table).select('*', { count: 'exact', head: true });
-
-      if (options?.where)
-        Object.entries(options.where).forEach(([key, value]) => {
-          if (value !== undefined) {
-            const useIlike = options.caseSensitive === false && this.shouldUseIlike(value);
-            if (useIlike) query = query.ilike(key, `${value}`);
-            else query = query.eq(key, value);
-          }
-        });
-
-      if (options?.whereIn)
-        Object.entries(options.whereIn).forEach(([key, values]) => {
-          if (values !== undefined && values.length > 0) {
-            query = query.in(key, values);
-          }
-        });
-
-      if (options?.whereNotIn)
-        Object.entries(options.whereNotIn).forEach(([key, values]) => {
-          if (values !== undefined && values.length > 0) {
-            query = query.not(key, 'in', `(${values.join(',')})`);
-          }
-        });
-
-      if (options?.whereGte)
-        Object.entries(options.whereGte).forEach(([key, value]) => {
-          if (value !== undefined) {
-            query = query.gte(key, value);
-          }
-        });
-
-      if (options?.whereLte)
-        Object.entries(options.whereLte).forEach(([key, value]) => {
-          if (value !== undefined) {
-            query = query.lte(key, value);
-          }
-        });
-
-      const { count, error } = await query;
-      if (error) throw new Error(`Count from ${table} failed: ${error.message}`);
-
-      return count || 0;
-    } catch (error) {
-      this.logger.error(error, {
-        context: 'Supabase',
-        location: 'Count',
-      });
-      throw new Error(error);
     }
   }
 
@@ -274,7 +237,7 @@ export class SupabaseService implements OnModuleInit {
 
       if (options?.where)
         Object.entries(options.where).forEach(([key, value]) => {
-          if (value !== undefined) {
+          if (value) {
             const useIlike = options.caseSensitive === false && this.shouldUseIlike(value);
             if (useIlike) query = query.ilike(key, `${value}`);
             else query = query.eq(key, value);
@@ -283,70 +246,59 @@ export class SupabaseService implements OnModuleInit {
 
       if (options?.whereIn)
         Object.entries(options.whereIn).forEach(([key, values]) => {
-          if (values !== undefined && values.length > 0) {
+          if (values.length > 0) {
             query = query.in(key, values);
           }
         });
 
       if (options?.whereNotIn)
         Object.entries(options.whereNotIn).forEach(([key, values]) => {
-          if (values !== undefined && values.length > 0) {
+          if (values.length > 0) {
             query = query.not(key, 'in', `(${values.join(',')})`);
           }
         });
 
       if (options?.whereGte)
         Object.entries(options.whereGte).forEach(([key, value]) => {
-          if (value !== undefined) {
+          if (value) {
             query = query.gte(key, value);
           }
         });
 
       if (options?.whereLte)
         Object.entries(options.whereLte).forEach(([key, value]) => {
-          if (value !== undefined) {
+          if (value) {
             query = query.lte(key, value);
           }
         });
 
+      if (options?.whereNull)
+        options.whereNull.forEach((column) => {
+          query = query.is(column, null);
+        });
+
+      if (options?.whereNotNull)
+        options.whereNotNull.forEach((column) => {
+          query = query.not(column, 'is', null);
+        });
+
       const { data, error } = await query;
-      if (error) throw new Error(`Exists check on ${table} failed: ${error.message}`);
 
-      return data && data.length > 0;
+      if (error) throw error;
+
+      return data.length > 0;
     } catch (error) {
-      this.logger.error(error, {
+      this.logger.error(error.message, {
         context: 'Supabase',
-        location: 'Exists',
+        location: 'exists',
       });
-      throw new Error(error);
+      throw error;
     }
   }
 
-  public async existsAll(table: Table, ids: string[], column: string = 'id'): Promise<boolean> {
-    try {
-      if (ids.length === 0) return true;
-
-      const count = await this.count(table, {
-        whereIn: { [column]: ids },
-      });
-
-      return count === ids.length;
-    } catch (error) {
-      this.logger.error(error, {
-        context: 'Supabase',
-        location: 'ExistsAll',
-      });
-      throw new Error(error);
-    }
-  }
-
-  // === Ongoing ===
-  /**
-   * Perform upsert operation
-   */
   async upsert<T = any>(
     table: string,
-    data: Partial<T> | Partial<T>[],
+    data: Partial<T> | Array<Partial<T>>,
     options?: {
       onConflict?: string;
       ignoreDuplicates?: boolean;
@@ -361,24 +313,18 @@ export class SupabaseService implements OnModuleInit {
         })
         .select();
 
-      if (error) {
-        this.logger.error(`Upsert into ${table} failed:`, error);
-        throw new Error(`Upsert into ${table} failed: ${error.message}`);
-      }
+      if (error) throw error;
 
-      return (result as T[]) || [];
+      return result as T[];
     } catch (error) {
-      this.logger.error(error, {
+      this.logger.error(error.message, {
         context: 'Supabase',
-        location: 'Upsert',
+        location: 'upsert',
       });
       throw error;
     }
   }
 
-  /**
-   * Subscribe to real-time changes on a table
-   */
   subscribeToTable(
     table: string,
     callback: (payload: {
@@ -396,9 +342,9 @@ export class SupabaseService implements OnModuleInit {
       .on(
         'postgres_changes' as any,
         {
-          event: options?.event || '*',
+          event: options?.event ?? '*',
           schema: 'public',
-          table: table,
+          table,
           filter: options?.filter,
         },
         callback as any
@@ -408,9 +354,6 @@ export class SupabaseService implements OnModuleInit {
     return channel;
   }
 
-  /**
-   * Unsubscribe from real-time changes
-   */
   async unsubscribe(channel: any) {
     await this.supabase.removeChannel(channel);
   }
