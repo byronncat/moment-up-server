@@ -1,6 +1,6 @@
 import type { GoogleProfile } from 'passport-library';
 
-import { Injectable, Inject } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { Strategy, VerifyCallback } from 'passport-google-oauth20';
@@ -42,8 +42,8 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
         googleId: id,
         email,
         name: displayName,
-        firstName: profile.name?.givenName,
-        lastName: profile.name?.familyName,
+        firstName: profile.name.givenName,
+        lastName: profile.name.familyName,
         picture: photos[0]?.value,
         accessToken,
       };

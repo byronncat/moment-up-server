@@ -6,7 +6,7 @@ import type { AppSession, AppSessionData } from 'app-session';
 
 interface AuthRequest extends Request {
   session: AppSession;
-  csrfToken(): string;
+  csrfToken: () => string;
 }
 
 interface GoogleAuthRequest extends Request {
@@ -15,16 +15,16 @@ interface GoogleAuthRequest extends Request {
 
 // === Controller ===
 import {
-  Controller,
-  Post,
   Body,
+  Controller,
+  Get,
   HttpCode,
   HttpStatus,
-  Session,
-  Get,
-  Req,
+  Post,
   Query,
+  Req,
   Res,
+  Session,
   UseGuards,
 } from '@nestjs/common';
 import { ValidationPipe } from '@nestjs/common/pipes/validation.pipe';
@@ -34,12 +34,12 @@ import { AccessToken } from 'src/common/decorators';
 import { AccessTokenGuard } from 'src/common/guards';
 import { GoogleOAuthGuard } from './guards';
 import {
-  LoginDto,
-  IdentityDto,
-  RegisterDto,
   ChangePasswordDto,
-  VerifyDto,
+  IdentityDto,
+  LoginDto,
+  RegisterDto,
   SwitchAccountDto,
+  VerifyDto,
 } from './dto';
 import { Cookie, SocialAuthError } from 'src/common/constants';
 
@@ -56,15 +56,7 @@ export class AuthController {
   @Get('refresh')
   @HttpCode(HttpStatus.OK)
   async refresh(@Session() session: AppSession) {
-    return {
-      accessToken: await this.authService.refresh(session),
-    };
-  }
-
-  @Get('me')
-  @HttpCode(HttpStatus.OK)
-  async me(@Session() session: AppSessionData, @AccessToken() accessToken?: JwtPayload) {
-    return { user: await this.authService.currentUser(session, accessToken) };
+    return this.authService.refresh(session);
   }
 
   @Get('verify')
@@ -79,7 +71,7 @@ export class AuthController {
   @Post('login')
   @HttpCode(HttpStatus.OK)
   async login(@Body(ValidationPipe) loginDto: LoginDto, @Session() session: AppSession) {
-    return await this.authService.login(loginDto, session);
+    return this.authService.login(loginDto, session);
   }
 
   @Post('switch-account')
@@ -89,7 +81,7 @@ export class AuthController {
     @Body(ValidationPipe) switchAccountDto: SwitchAccountDto,
     @Session() session: AppSession
   ) {
-    return await this.authService.switchAccount(switchAccountDto, session);
+    return this.authService.switchAccount(switchAccountDto, session);
   }
 
   @Post('register')
@@ -168,11 +160,8 @@ export class AuthController {
   @Post('google/add-account')
   @HttpCode(HttpStatus.OK)
   @UseGuards(AccessTokenGuard)
-  async addGoogleAccount(
-    @AccessToken() accessToken: JwtPayload,
-    @Session() session: AppSessionData
-  ) {
-    const user = await this.authService.currentUser(session, accessToken);
+  async addGoogleAccount(@AccessToken() accessToken: JwtPayload) {
+    const user = await this.authService.currentUser(accessToken);
     return { user };
   }
 }

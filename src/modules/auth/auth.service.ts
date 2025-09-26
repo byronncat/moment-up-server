@@ -7,13 +7,13 @@ import type { AccountDto } from 'api';
 type EmailTemplate = 'otp' | 'verify' | 'welcome';
 
 import {
-  ForbiddenException,
-  Injectable,
-  UnauthorizedException,
-  Inject,
   ConflictException,
-  NotFoundException,
+  ForbiddenException,
+  Inject,
+  Injectable,
   InternalServerErrorException,
+  NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -26,46 +26,41 @@ import { Logger } from 'winston';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Otp } from 'src/common/utilities';
 import {
-  LoginDto,
-  IdentityDto,
-  RegisterDto,
   ChangePasswordDto,
-  VerifyDto,
+  IdentityDto,
+  LoginDto,
+  RegisterDto,
   SwitchAccountDto,
+  VerifyDto,
 } from './dto';
-import { TOKEN_ID_LENGTH, Url, Cookie, AccountExist } from 'src/common/constants';
+import { AccountExist, Cookie, TOKEN_ID_LENGTH, Url } from 'src/common/constants';
 
 const OTP_MAX_AGE = 5 * 60 * 1000; // 5 minutes
 const VERIFICATION_TOKEN_MAX_AGE = '30m';
 const REFRESH_TOKEN_MAX_AGE = 365 * 24 * 60 * 60 * 1000; // 1 year
 const ACCESS_TOKEN_MAX_AGE = '2h';
 
-const Message = {
+const ErrorMessage = {
   NotAuthenticated: 'You must be logged in to continue.',
   Account: {
     Blocked: 'This account has been blocked.',
-    NotVerified: 'Your email address is not verified.',
     NotFound: 'Account not found. It may have been deleted.',
   },
   Login: {
-    Success: 'Logged in successfully.',
     InvalidCredentials: 'Incorrect credentials.',
   },
   Register: {
-    Success: 'Account created successfully.',
     UsernameConflict: 'This username is already taken.',
     EmailConflict: 'An account with this email already exists.',
     Failed: 'Unable to create account. Please try again.',
   },
   Verify: {
     SendEmail: 'Email not verified. A new verification email has been sent.',
-    Success: 'Your email has been verified.',
     InvalidToken: 'Invalid or corrupted verification link.',
     Failed: 'Email verification failed. Please try again.',
     SendFailed: 'Unable to send verification email.',
   },
   RecoverPassword: {
-    Success: 'Password has been reset successfully.',
     Mismatch: 'Passwords do not match.',
     Expired: 'OTP has expired. Please request a new one.',
     Failed: 'Unable to reset password. Please try again.',
@@ -92,29 +87,37 @@ export class AuthService {
     if (session.user) {
       const userId = session.user.sub;
       const account = await this.userService.getById(userId, {
-        select: 'id, verified, blocked',
+        select: 'id, username, display_name, email, avatar, verified, blocked',
       });
       if (account) {
-        if (account.blocked) throw new ForbiddenException(Message.Account.Blocked);
-        if (!account.verified) throw new ForbiddenException(Message.Verify.SendEmail);
+        if (account.blocked) throw new ForbiddenException(ErrorMessage.Account.Blocked);
+        if (!account.verified) throw new ForbiddenException(ErrorMessage.Verify.SendEmail);
 
         const newAccessToken = await this.createJwtToken(account.id, ACCESS_TOKEN_MAX_AGE);
         session.user.jti = newAccessToken.jti;
-        return newAccessToken.value;
+
+        const payload: AccountDto = {
+          id: account.id,
+          username: account.username,
+          displayName: account.display_name,
+          avatar: account.avatar,
+        };
+        return {
+          accessToken: newAccessToken.value,
+          user: payload,
+        };
       }
     }
     this.clearAuthState(session);
-    throw new UnauthorizedException(Message.NotAuthenticated);
+    throw new UnauthorizedException(ErrorMessage.NotAuthenticated);
   }
 
-  public async currentUser(session: AppSessionData, accessToken?: JwtPayload) {
-    const userId = accessToken?.sub || session.user?.sub;
-    if (!userId) throw new UnauthorizedException(Message.NotAuthenticated);
-
-    const account = await this.userService.getById(userId, {
-      select: 'id, username, display_name, email, avatar',
+  public async currentUser(accessToken?: JwtPayload) {
+    if (!accessToken?.sub) throw new UnauthorizedException(ErrorMessage.NotAuthenticated);
+    const account = await this.userService.getById(accessToken.sub, {
+      select: 'id, username, display_name, email, avatar, verified, blocked',
     });
-    if (!account) throw new UnauthorizedException(Message.NotAuthenticated);
+    if (!account) throw new UnauthorizedException(ErrorMessage.NotAuthenticated);
 
     const payload: AccountDto = {
       id: account.id,
@@ -130,17 +133,17 @@ export class AuthService {
       select: 'id, username, display_name, email, avatar, password, blocked, verified, deleted_at',
     });
 
-    if (!account) throw new UnauthorizedException(Message.Login.InvalidCredentials);
-    if (account.blocked) throw new ForbiddenException(Message.Account.Blocked);
+    if (!account) throw new UnauthorizedException(ErrorMessage.Login.InvalidCredentials);
+    if (account.blocked) throw new ForbiddenException(ErrorMessage.Account.Blocked);
     if (
       account.deleted_at ||
       !account.password ||
       !(await Auth.compare(data.password, account.password))
     )
-      throw new UnauthorizedException(Message.Login.InvalidCredentials);
+      throw new UnauthorizedException(ErrorMessage.Login.InvalidCredentials);
     if (!account.verified) {
       await this.sendVerificationEmail(account.email);
-      throw new UnauthorizedException(Message.Verify.SendEmail);
+      throw new UnauthorizedException(ErrorMessage.Verify.SendEmail);
     }
 
     const accessToken = await this.createJwtToken(account.id, ACCESS_TOKEN_MAX_AGE);
@@ -165,9 +168,8 @@ export class AuthService {
 
     if (status !== AccountExist.NONE) {
       if (status === AccountExist.EMAIL)
-        throw new ConflictException(Message.Register.EmailConflict);
-      if (status === AccountExist.USERNAME)
-        throw new ConflictException(Message.Register.UsernameConflict);
+        throw new ConflictException(ErrorMessage.Register.EmailConflict);
+      throw new ConflictException(ErrorMessage.Register.UsernameConflict);
     }
     const hashedPassword = await Auth.hash(data.password, this.saltRounds);
 
@@ -176,7 +178,7 @@ export class AuthService {
       email: data.email,
       password: hashedPassword,
     });
-    if (!newUser) throw new InternalServerErrorException(Message.Register.Failed);
+    if (!newUser) throw new InternalServerErrorException(ErrorMessage.Register.Failed);
 
     await this.sendVerificationEmail(data.email);
 
@@ -203,10 +205,10 @@ export class AuthService {
     };
 
     const payload = await this.verifyJwtToken(data.token);
-    if (!payload || !payload.sub) {
+    if (!payload?.sub) {
       return this.hbsService.renderSuccessTemplate('failure', {
         ...baseContext,
-        errorMessage: Message.Verify.InvalidToken,
+        errorMessage: ErrorMessage.Verify.InvalidToken,
       });
     }
 
@@ -214,7 +216,7 @@ export class AuthService {
     if (!user) {
       return this.hbsService.renderSuccessTemplate('failure', {
         ...baseContext,
-        errorMessage: Message.Verify.Failed,
+        errorMessage: ErrorMessage.Verify.Failed,
       });
     }
 
@@ -226,7 +228,7 @@ export class AuthService {
     const account = await this.userService.getById(data.identity, {
       select: 'id, email, password',
     });
-    if (account && account.password) {
+    if (account?.password) {
       const otpConfig = {
         expirationTimeMs: OTP_MAX_AGE,
         purpose: 'password-reset' as const,
@@ -250,15 +252,16 @@ export class AuthService {
 
   public async recoverPassword(data: ChangePasswordDto, session: AppSessionData) {
     if (data.newPassword !== data.confirmPassword)
-      throw new UnauthorizedException(Message.RecoverPassword.Mismatch);
+      throw new UnauthorizedException(ErrorMessage.RecoverPassword.Mismatch);
 
     const { otp } = session;
     if (!otp || !Otp.verify(session, data.otp, 'password-reset'))
-      throw new UnauthorizedException(Message.RecoverPassword.Expired);
+      throw new UnauthorizedException(ErrorMessage.RecoverPassword.Expired);
 
     const hashedPassword = await Auth.hash(data.newPassword, this.saltRounds);
     const changedSuccess = await this.userService.updatePassword(otp.uid, hashedPassword);
-    if (!changedSuccess) throw new InternalServerErrorException(Message.RecoverPassword.Failed);
+    if (!changedSuccess)
+      throw new InternalServerErrorException(ErrorMessage.RecoverPassword.Failed);
 
     Otp.clear(session);
   }
@@ -270,11 +273,11 @@ export class AuthService {
       });
 
       if (account) {
-        if (account.blocked) throw new ForbiddenException(Message.Account.Blocked);
+        if (account.blocked) throw new ForbiddenException(ErrorMessage.Account.Blocked);
         if (!account.verified) this.userService.verifyEmail(account.id);
       } else {
         account = await this.userService.addGoogleUser(googleUser);
-        if (!account) throw new InternalServerErrorException(Message.Register.Failed);
+        if (!account) throw new InternalServerErrorException(ErrorMessage.Register.Failed);
         await this.sendWelcomeEmail(account.email, account.username);
       }
 
@@ -305,10 +308,10 @@ export class AuthService {
     const account = await this.userService.getById(data.accountId, {
       select: 'id, username, display_name, email, avatar, blocked, verified',
     });
-    if (!account) throw new NotFoundException(Message.Account.NotFound);
-    if (account.deleted_at) throw new NotFoundException(Message.Login.InvalidCredentials);
-    if (account.blocked) throw new ForbiddenException(Message.Account.Blocked);
-    if (!account.verified) throw new UnauthorizedException(Message.Verify.SendEmail);
+    if (!account) throw new NotFoundException(ErrorMessage.Account.NotFound);
+    if (account.deleted_at) throw new NotFoundException(ErrorMessage.Login.InvalidCredentials);
+    if (account.blocked) throw new ForbiddenException(ErrorMessage.Account.Blocked);
+    if (!account.verified) throw new UnauthorizedException(ErrorMessage.Verify.SendEmail);
 
     const accessToken = await this.createJwtToken(account.id, ACCESS_TOKEN_MAX_AGE);
     session.user = { sub: account.id, jti: accessToken.jti };
@@ -346,7 +349,7 @@ export class AuthService {
         location: 'sendVerificationEmail',
         context: 'Email',
       });
-      throw new InternalServerErrorException(Message.Verify.SendFailed);
+      throw new InternalServerErrorException(ErrorMessage.Verify.SendFailed);
     }
   }
 
@@ -427,7 +430,7 @@ export class AuthService {
   }
 
   private async createJwtToken(userId: string, expiresIn: string, _jti?: string) {
-    const jti = _jti || Auth.generateId('nanoid', { length: TOKEN_ID_LENGTH });
+    const jti = _jti ?? Auth.generateId('nanoid', { length: TOKEN_ID_LENGTH });
     const payload = { sub: userId, jti };
     const token = await this.jwtService.signAsync(payload, {
       secret: this.jwtSecret,

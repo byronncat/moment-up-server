@@ -1,12 +1,12 @@
 import {
   IsEmail,
   IsNotEmpty,
-  MinLength,
   Matches,
+  MaxLength,
+  MinLength,
+  Validate,
   ValidatorConstraint,
   ValidatorConstraintInterface,
-  Validate,
-  MaxLength,
 } from 'class-validator';
 import { MAX_NAME_LENGTH, MIN_PASSWORD_LENGTH, MIN_USERNAME_LENGTH } from 'src/common/constants';
 
