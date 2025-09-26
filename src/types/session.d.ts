@@ -1,5 +1,5 @@
 declare module 'app-session' {
-  import type { Session, SessionData as BaseSessionData } from 'express-session';
+  import type { SessionData as BaseSessionData, Session } from 'express-session';
 
   interface OtpPayload {
     code: string;

@@ -1,6 +1,6 @@
-import { Injectable, OnModuleInit, Inject, HttpStatus } from '@nestjs/common';
+import { HttpStatus, Inject, Injectable, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { v2 as cloudinary, UploadApiResponse, type ResourceApiResponse } from 'cloudinary';
+import { type ResourceApiResponse, UploadApiResponse, v2 as cloudinary } from 'cloudinary';
 import { Logger } from 'winston';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 
@@ -146,7 +146,7 @@ export class CloudinaryService implements OnModuleInit {
   public async destroy(publicId: string, resourceType?: 'image' | 'video' | 'raw') {
     try {
       const result: CloudinaryDestroy = await cloudinary.uploader.destroy(publicId, {
-        resource_type: resourceType || 'image',
+        resource_type: resourceType ?? 'image',
       });
 
       if (result.result === 'not found') throw new Error('File not found');
@@ -168,7 +168,7 @@ export class CloudinaryService implements OnModuleInit {
   ): Promise<any> {
     try {
       const result = await cloudinary.api.delete_resources(publicIds, {
-        resource_type: resourceType || 'image',
+        resource_type: resourceType ?? 'image',
       });
 
       return result;
@@ -189,7 +189,6 @@ export class CloudinaryService implements OnModuleInit {
 
       return result;
     } catch (result: any) {
-      console.log(result);
       const error = result.error as CloudinaryResourceError;
       if (error.http_code === HttpStatus.NOT_FOUND) return null;
       this.logger.error(error.message, {
@@ -230,8 +229,8 @@ export class CloudinaryService implements OnModuleInit {
 
       const result = await cloudinary.api.resources({
         type: 'upload',
-        prefix: searchParams.expression || '',
-        max_results: searchParams.max_results || 10,
+        prefix: searchParams.expression ?? '',
+        max_results: searchParams.max_results ?? 10,
       });
 
       return result;
@@ -255,7 +254,7 @@ export class CloudinaryService implements OnModuleInit {
   ): string {
     try {
       return cloudinary.url(publicId, {
-        resource_type: options?.resourceType || 'image',
+        resource_type: options?.resourceType ?? 'image',
         transformation: options?.transformation,
         format: options?.format,
         secure: options?.secure ?? true,
@@ -331,8 +330,8 @@ export class CloudinaryService implements OnModuleInit {
     try {
       const result = await cloudinary.utils.archive_params({
         public_ids: publicIds,
-        type: options?.type || 'upload',
-        target_format: options?.target_format || 'zip',
+        type: options?.type ?? 'upload',
+        target_format: options?.target_format ?? 'zip',
       });
 
       return result;

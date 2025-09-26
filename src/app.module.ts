@@ -1,22 +1,22 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
-import { APP_INTERCEPTOR, APP_FILTER, APP_GUARD } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { WinstonModule } from 'nest-winston';
-import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import {
   AuthModule,
   CoreModule,
+  DatabaseModule,
+  DevelopmentModule,
   NotificationModule,
   SearchModule,
   SuggestionModule,
   UserModule,
-  DatabaseModule,
-  DevelopmentModule,
 } from './modules';
 import { RequestLogger } from './common/interceptors';
 import { HttpExceptionFilter } from './common/filters';
-import { environment, createWinstonTransports } from './configurations';
+import { createWinstonTransports, environment } from './configurations';
 import { AccessTokenMiddleware } from './common/middlewares';
 import { RateLimit } from './common/constants';
 

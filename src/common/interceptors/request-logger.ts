@@ -1,4 +1,4 @@
-import { Inject, Injectable, NestInterceptor, ExecutionContext, CallHandler } from '@nestjs/common';
+import { CallHandler, ExecutionContext, Inject, Injectable, NestInterceptor } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { tap } from 'rxjs/operators';
 import { Logger } from 'winston';

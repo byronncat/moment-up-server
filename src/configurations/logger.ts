@@ -1,15 +1,15 @@
 import * as winston from 'winston';
 
-export type HttpMeta = {
+export interface HttpMeta {
   method: string;
   url: string;
   status: number;
-};
+}
 
-export type LogMeta = {
+export interface LogMeta {
   location?: string;
   context?: string;
-};
+}
 
 function padString(str: string, width: number, align: 'left' | 'right' = 'left') {
   return align === 'left' ? str.padEnd(width) : str.padStart(width);
@@ -74,10 +74,8 @@ const consoleTransport = new winston.transports.Console({
       };
       if (!context && !location && metaWithStack.stack && Array.isArray(metaWithStack.stack)) {
         const stackMeta = metaWithStack.stack[0];
-        if (stackMeta) {
-          context = stackMeta.context;
-          location = stackMeta.location;
-        }
+        context = stackMeta.context;
+        location = stackMeta.location;
       }
 
       const coloredMessage = colorizer.colorize(rawLevel, String(message));

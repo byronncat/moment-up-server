@@ -5,9 +5,9 @@ import {
   Matches,
   MinLength,
   Validate,
+  ValidationArguments,
   ValidatorConstraint,
   ValidatorConstraintInterface,
-  ValidationArguments,
 } from 'class-validator';
 import { PasswordStrengthValidator } from './register';
 import { MIN_PASSWORD_LENGTH } from 'src/common/constants';

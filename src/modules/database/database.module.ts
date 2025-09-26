@@ -1,17 +1,19 @@
-import { Module, Global } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
+import { Global, Module } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { SupabaseService } from './supabase.service';
 import { RedisService } from './redis.service';
-import { createClient } from 'redis'; 
+import { createClient } from 'redis';
 import { CloudinaryService } from './cloudinary.service';
 import { v2 as cloudinary } from 'cloudinary';
+import { Logger } from 'winston';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 
 @Global()
 @Module({
   providers: [
     {
       provide: 'REDIS_CLIENT',
-      useFactory: async (configService: ConfigService) => {
+      useFactory: async (configService: ConfigService, logger: Logger) => {
         const client = createClient({
           username: configService.get<string>('db.redis.username'),
           password: configService.get<string>('db.redis.password'),
@@ -26,17 +28,20 @@ import { v2 as cloudinary } from 'cloudinary';
         });
 
         client.on('error', (error) => {
-          console.error('Redis connection error:', error);
+          logger.error(error.message, {
+            location: 'resdis',
+            context: 'Database',
+          });
         });
 
         client.on('reconnecting', () => {
-          console.log('Redis reconnecting...');
+          logger.info('Redis reconnecting...', {
+            location: 'redis',
+            context: 'Database',
+          });
         });
-
-        await client.connect();
-        return client;
       },
-      inject: [ConfigService],
+      inject: [ConfigService, WINSTON_MODULE_PROVIDER],
     },
     {
       provide: 'CLOUDINARY_CLIENT',

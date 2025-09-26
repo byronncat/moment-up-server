@@ -1,6 +1,6 @@
 type TemplateType = 'success' | 'failure';
 
-import { Injectable, InternalServerErrorException, HttpStatus, Inject } from '@nestjs/common';
+import { HttpStatus, Inject, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { Logger } from 'winston';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import * as handlebars from 'handlebars';
@@ -86,11 +86,11 @@ export class HbsService {
     let statusCode = HttpStatus.OK;
     if (templateType === 'failure')
       if (
-        context.errorMessage?.includes('Invalid verification token') ||
-        context.errorMessage?.includes('expired')
+        context.errorMessage.includes('Invalid verification token') ||
+        context.errorMessage.includes('expired')
       )
         statusCode = HttpStatus.UNAUTHORIZED;
-      else if (context.errorMessage?.includes('not found')) statusCode = HttpStatus.NOT_FOUND;
+      else if (context.errorMessage.includes('not found')) statusCode = HttpStatus.NOT_FOUND;
       else statusCode = HttpStatus.BAD_REQUEST;
 
     return statusCode;

@@ -1,5 +1,5 @@
-import type { Response, NextFunction } from 'express';
-import type { JwtPayload, AuthRequest } from 'jwt-library';
+import type { NextFunction, Response } from 'express';
+import type { AuthRequest, JwtPayload } from 'jwt-library';
 
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';

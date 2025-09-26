@@ -95,7 +95,7 @@ export class SearchService {
 
     // Handle pagination
     let result: PaginationDto<SearchPayload>;
-    if (type && type.includes('&')) {
+    if (type?.includes('&')) {
       const postCount = sortedResults.filter((item) => item.type === SearchItemType.POST).length;
       const hasNextPage = page === 1 ? postCount > limit : postCount > (page - 1) * limit;
 
@@ -220,7 +220,7 @@ export class SearchService {
         const getDate = (item: SearchPayload) => {
           // For posts (including those treated as media), use post.updatedAt
           if (item.type === SearchItemType.POST) {
-            const moment = item as MomentData;
+            const moment = item;
             return moment.post?.lastModified ? new Date(moment.post.lastModified).getTime() : 0;
           }
           // For other types, keep current order (return same timestamp)
@@ -245,10 +245,10 @@ export class SearchService {
         const getPopularityScore = (item: SearchPayload) => {
           switch (item.type) {
             case SearchItemType.POST:
-              const moment = item as MomentData;
+              const moment = item;
               return moment.post?.likes || 0;
             case SearchItemType.HASHTAG:
-              const hashtag = item as HashtagSearchData;
+              const hashtag = item;
               return hashtag.count || 0;
             case SearchItemType.USER:
             case SearchItemType.QUERY:

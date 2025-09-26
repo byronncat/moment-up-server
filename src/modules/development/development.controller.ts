@@ -1,13 +1,13 @@
 import {
   BadRequestException,
+  Body,
   Controller,
   Get,
   HttpCode,
   HttpStatus,
+  Param,
   Post,
   Query,
-  Body,
-  Param,
 } from '@nestjs/common';
 import { DevelopmentService } from './development.service';
 import { TrendingService } from '../suggestion/trending.service';
@@ -21,29 +21,29 @@ export class DevelopmentController {
 
   @Get('get-trending-from-context')
   @HttpCode(HttpStatus.OK)
-  async getTrendingFromContext(@Query('postId') postId: string, @Query('context') context: string) {
-    return await this.trendingService.processPostHashtags(postId, context);
+  async getTrendingFromContext(@Query('context') context: string) {
+    return this.trendingService.processPostHashtags(context);
   }
 
   @Post('generate-users')
   @HttpCode(HttpStatus.CREATED)
   async generateUsers(@Query('count') count?: string) {
     const userCount = count ? parseInt(count, 10) : 10;
-    return await this.developmentService.generateUsers(userCount);
+    return this.developmentService.generateUsers(userCount);
   }
 
   @Post('generate-follow-relationships')
   @HttpCode(HttpStatus.CREATED)
   async generateFollowRelationships(@Query('maxFollowsPerUser') maxFollowsPerUser?: string) {
     const maxFollows = maxFollowsPerUser ? parseInt(maxFollowsPerUser, 10) : 5;
-    return await this.developmentService.generateFollowRelationships(maxFollows);
+    return this.developmentService.generateFollowRelationships(maxFollows);
   }
 
   @Post('generate-posts')
   @HttpCode(HttpStatus.CREATED)
   async generatePosts(@Query('count') count?: string) {
     const postCount = count ? parseInt(count, 10) : 50;
-    return await this.developmentService.generatePosts(postCount);
+    return this.developmentService.generatePosts(postCount);
   }
 
   @Get('media-info')
@@ -56,18 +56,18 @@ export class DevelopmentController {
     if (format !== 'image' && format !== 'video' && format !== 'raw') {
       throw new BadRequestException('Invalid format');
     }
-    return await this.developmentService.getMediaInfo(publicId, ids, format);
+    return this.developmentService.getMediaInfo(publicId, ids, format);
   }
 
   @Post('user/:id/verify-email')
   @HttpCode(HttpStatus.OK)
   async verifyEmail(@Param('id') id: string) {
-    return await this.developmentService.verifyEmail(id);
+    return this.developmentService.verifyEmail(id);
   }
 
   @Post('user/:id/change-password')
   @HttpCode(HttpStatus.OK)
   async changePassword(@Param('id') id: string, @Body() newPassword: string) {
-    return await this.developmentService.changePassword(id, newPassword);
+    return this.developmentService.changePassword(id, newPassword);
   }
 }

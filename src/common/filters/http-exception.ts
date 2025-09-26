@@ -1,12 +1,12 @@
 import type { Request, Response } from 'express';
 
 import {
-  ExceptionFilter,
-  Catch,
   ArgumentsHost,
+  Catch,
+  ExceptionFilter,
   HttpException,
-  Inject,
   HttpStatus,
+  Inject,
 } from '@nestjs/common';
 import { Logger } from 'winston';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';

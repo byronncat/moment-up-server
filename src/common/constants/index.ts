@@ -36,11 +36,6 @@ export const Url = {
   ICON: 'https://res.cloudinary.com/dq02xgn2g/image/upload/v1753716413/Public/moment-up-icon.png',
 };
 
-// === Refactor ===
-export const DatabaseError = {
-  UNDEFINED_FUNCTION: '42883',
-};
-
 // === Enum ===
 export enum AccountExist {
   NONE,
@@ -57,6 +52,19 @@ export enum ContentPrivacy {
   PUBLIC,
   FOLLOWERS,
   PRIVATE,
+}
+
+export enum UserReportType {
+  SPAM,
+  IMPERSONATION,
+  INAPPROPRIATE_CONTENT,
+  ABUSIVE,
+  HARMFUL,
+  CHILD_EXPLORATION,
+  SEXUAL_CONTENT,
+  FAKE_INFORMATION,
+  DONT_WANT_TO_SEE,
+  OTHER,
 }
 
 export enum TrendingReportType {

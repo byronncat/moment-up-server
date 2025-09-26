@@ -2,12 +2,12 @@ import type { AuthRequest } from 'jwt-library';
 import type { AppSession } from 'app-session';
 
 import {
-  Injectable,
   CanActivate,
   ExecutionContext,
-  UnauthorizedException,
   ForbiddenException,
   Inject,
+  Injectable,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { Logger } from 'winston';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
@@ -22,7 +22,7 @@ export class AccessTokenGuard implements CanActivate {
     const session = request.session as AppSession;
 
     try {
-      if (!token || !token.sub) throw new UnauthorizedException('Access token is required');
+      if (!token?.sub) throw new UnauthorizedException('Access token is required');
       return true;
     } catch (error) {
       this.clearAuthState(session);
@@ -38,7 +38,7 @@ export class AccessTokenGuard implements CanActivate {
   }
 
   private clearAuthState(session: AppSession) {
-    if (session?.user) {
+    if (session.user) {
       session.user = undefined;
       session.cookie.maxAge = 3 * 24 * 60 * 60 * 1000; // 3 days default
     }

@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { Min, IsNumber, IsOptional } from 'class-validator';
+import { IsNumber, IsOptional, Min } from 'class-validator';
 import { INITIAL_PAGE } from 'src/common/constants';
 
 export class PageDto {

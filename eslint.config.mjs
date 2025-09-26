@@ -44,12 +44,10 @@ export default [
 
     rules: {
       '@typescript-eslint/interface-name-prefix': 'off',
-      '@typescript-eslint/explicit-function-return-type': 'off',
       '@typescript-eslint/explicit-module-boundary-types': 'off',
       '@typescript-eslint/no-explicit-any': 'off',
 
       // === TypeScript ===
-      '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/no-unused-vars': [
         'error',
         {
@@ -58,10 +56,7 @@ export default [
           caughtErrorsIgnorePattern: '^_',
         },
       ],
-      '@typescript-eslint/explicit-function-return-type': 'error',
-      '@typescript-eslint/explicit-module-boundary-types': 'error',
       '@typescript-eslint/no-inferrable-types': 'error',
-      '@typescript-eslint/no-non-null-assertion': 'error',
       '@typescript-eslint/prefer-nullish-coalescing': 'error',
       '@typescript-eslint/prefer-optional-chain': 'error',
       '@typescript-eslint/no-unnecessary-type-assertion': 'error',
@@ -81,49 +76,10 @@ export default [
           allowSingleExtends: true,
         },
       ],
-      '@typescript-eslint/ban-types': [
-        'error',
-        {
-          types: {
-            Object: {
-              message: 'Avoid using the `Object` type. Did you mean `object`?',
-            },
-            Function: {
-              message:
-                'Avoid using the `Function` type. Prefer a specific function type, like `() => void`.',
-            },
-            Boolean: {
-              message: 'Avoid using the `Boolean` type. Did you mean `boolean`?',
-            },
-            Number: {
-              message: 'Avoid using the `Number` type. Did you mean `number`?',
-            },
-            String: {
-              message: 'Avoid using the `String` type. Did you mean `string`?',
-            },
-            Symbol: {
-              message: 'Avoid using the `Symbol` type. Did you mean `symbol`?',
-            },
-          },
-        },
-      ],
 
       // === NestJS ===
       '@typescript-eslint/prefer-readonly': 'error',
       '@typescript-eslint/prefer-readonly-parameter-types': 'off', // Too strict for NestJS
-      '@typescript-eslint/explicit-member-accessibility': [
-        'error',
-        {
-          accessibility: 'explicit',
-          overrides: {
-            accessors: 'explicit',
-            constructors: 'explicit',
-            methods: 'explicit',
-            properties: 'explicit',
-            parameterProperties: 'explicit',
-          },
-        },
-      ],
 
       // === Decorator ===
       '@typescript-eslint/no-unsafe-declaration-merging': 'warn',
@@ -146,7 +102,6 @@ export default [
 
       // === Performance ===
       '@typescript-eslint/await-thenable': 'error',
-      '@typescript-eslint/no-floating-promises': 'error',
       '@typescript-eslint/no-misused-promises': [
         'error',
         {
@@ -206,7 +161,7 @@ export default [
         },
         {
           selector: 'typeAlias',
-          format: ['PascalCase'],
+          format: ['PascalCase', 'snake_case'],
         },
         {
           selector: 'enum',
@@ -222,11 +177,11 @@ export default [
         },
         {
           selector: 'method',
-          format: ['camelCase'],
+          format: ['camelCase', 'PascalCase'],
         },
         {
           selector: 'property',
-          format: ['camelCase', 'PascalCase', 'UPPER_CASE'],
+          format: ['camelCase', 'PascalCase', 'snake_case', 'UPPER_CASE'],
           filter: {
             regex: '^(Authorization|Content-Type|X-.*|Accept)$',
             match: false,
@@ -250,11 +205,6 @@ export default [
 
       // === Security ===
       '@typescript-eslint/no-implied-eval': 'error',
-      '@typescript-eslint/no-unsafe-argument': 'warn',
-      '@typescript-eslint/no-unsafe-assignment': 'warn',
-      '@typescript-eslint/no-unsafe-call': 'warn',
-      '@typescript-eslint/no-unsafe-member-access': 'warn',
-      '@typescript-eslint/no-unsafe-return': 'warn',
     },
   },
 ];

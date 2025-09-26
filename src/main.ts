@@ -150,7 +150,9 @@ async function bootstrap() {
   });
 
   await app.listen(port!, () => {
-    logger.info(`Server is running on ${https ? 'https' : 'http'}://localhost:${port}${prefix ? `/${prefix}` : ''}`);
+    logger.info(
+      `Server is running on ${https ? 'https' : 'http'}://localhost:${port}${prefix ? `/${prefix}` : ''}`
+    );
   });
 }
 bootstrap();

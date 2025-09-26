@@ -19,9 +19,9 @@ export function create(userId: string, config: OtpConfig): OtpPayload {
   };
 }
 
-export function isValid(OtpPayload: OtpPayload | undefined): boolean {
-  if (!OtpPayload) return false;
-  return Date.now() < OtpPayload.expiresAt;
+export function isValid(otpPayload: OtpPayload | undefined): boolean {
+  if (!otpPayload) return false;
+  return Date.now() < otpPayload.expiresAt;
 }
 
 export function verify(
