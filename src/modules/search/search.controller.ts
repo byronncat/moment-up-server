@@ -25,7 +25,7 @@ export class SearchController {
   @HttpCode(HttpStatus.OK)
   @UseGuards(AccessTokenGuard)
   async search(@Query() searchDto: SearchDto) {
-    return await this.searchService.search(searchDto);
+    return this.searchService.search(searchDto);
   }
 
   @Get('history')
