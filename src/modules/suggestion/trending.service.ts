@@ -113,8 +113,8 @@ export class TrendingService {
             await this.redisService.setExpiration(key, 7200); // 2 hours
           })
         );
-      } catch {
-        this.logger.error('Error in processPostHashtags', {
+      } catch (error) {
+        this.logger.error(error.message, {
           location: 'processPostHashtags',
           context: 'TrendingService',
         });

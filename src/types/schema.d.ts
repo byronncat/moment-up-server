@@ -46,6 +46,24 @@ declare module 'schema' {
     readonly type: 'image' | 'video';
   }
 
+  interface Repost {
+    readonly id: snowflake;
+    readonly post_id: Post['id'];
+    readonly user_id: User['id'];
+    caption: string | null;
+    privacy: ContentPrivacy;
+    readonly created_at: timestamptz;
+  }
+
+  interface Comment {
+    readonly id: snowflake;
+    readonly user_id: User['id'];
+    readonly post_id: Post['id'];
+    text: string;
+    updated_at: timestamptz;
+    readonly created_at: timestamptz;
+  }
+
   interface Story {
     readonly id: snowflake;
     readonly user_id: User['id'];
@@ -105,17 +123,25 @@ declare module 'schema' {
     readonly created_at: timestamptz;
   }
 
-  // +++ Ongoing +++
-
-  interface Comment {
-    readonly id: string;
-    readonly userId: User['id'];
-    readonly momentId: Post['id'];
-    content: string;
-    updatedAt: Date | string;
-    readonly createdAt: Date | string;
+  interface PostLike {
+    readonly user_id: User['id'];
+    readonly post_id: Post['id'];
+    readonly created_at: timestamptz;
   }
 
+  interface PostBookmark {
+    readonly user_id: User['id'];
+    readonly post_id: Post['id'];
+    readonly created_at: timestamptz;
+  }
+
+  interface CommentLike {
+    readonly user_id: User['id'];
+    readonly comment_id: Comment['id'];
+    readonly created_at: timestamptz;
+  }
+
+  // +++ Ongoing below +++
   interface SearchHistory {
     readonly id: string;
     readonly userId: User['id'];
@@ -124,53 +150,10 @@ declare module 'schema' {
     readonly createdAt: Date | string;
   }
 
-  // === Relationships ===
-  interface MomentLike {
-    readonly id: string;
-    readonly userId: User['id'];
-    readonly momentId: Post['id'];
-    readonly createdAt: Date | string;
-  }
-
-  interface CommentLike {
-    readonly id: string;
-    readonly userId: User['id'];
-    readonly commentId: Comment['id'];
-    readonly createdAt: Date | string;
-  }
-
-  interface Bookmark {
-    readonly id: string;
-    readonly userId: User['id'];
-    readonly momentId: Post['id'];
-    readonly createdAt: Date | string;
-  }
-
-  interface Repost {
-    readonly id: string;
-    readonly userId: User['id'];
-    readonly momentId: Post['id'];
-    comment: string | null;
-    audience: number; // Audience enum
-    readonly createdAt: Date | string;
-  }
-
   interface View {
     readonly id: string;
     readonly userId: User['id'];
     readonly storyId: Story['id'];
     readonly createdAt: Date | string;
-  }
-
-  // === MongoDB ===
-  interface CloudinaryFile {
-    readonly id: string; // Public ID
-    readonly postId: Post['id'] | Story['id'];
-    readonly url: string; // Secure URL
-    readonly type: 'image' | 'video' | 'audio';
-    readonly format: string;
-    readonly width?: number; // For images/videos
-    readonly height?: number; // For images/videos
-    readonly duration?: number; // For video/audio
   }
 }

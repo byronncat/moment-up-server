@@ -1,5 +1,5 @@
 import type { Block, Follow, Mute, User, UserReport } from 'schema';
-import type { ProfileDto, UserSummaryDto } from 'api';
+import type { PaginationDto, ProfileDto, UserSummaryDto } from 'api';
 import type { GoogleUser } from 'passport-library';
 
 type UniqueUserId = User['id'] | User['email'] | User['username'];
@@ -13,9 +13,9 @@ import {
 } from '@nestjs/common';
 import { type SelectOptions, SupabaseService } from '../database/supabase.service';
 import { CloudinaryService } from '../database/cloudinary.service';
-import { ReportUserDto, UpdateProfileDto } from './dto';
+import { FollowPaginationDto, ReportUserDto, UpdateProfileDto } from './dto';
 import { Auth, String } from 'src/common/helpers';
-import { AccountExist } from 'src/common/constants';
+import { AccountExist, INITIAL_PAGE } from 'src/common/constants';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 
 export const ErrorMessage = {
@@ -179,7 +179,7 @@ export class UserService {
     try {
       const { data, error } = await this.supabaseService.getClient().rpc('get_user_profile', {
         p_username: username,
-        p_current_user_id: currentUserId ?? null,
+        ...(currentUserId ? { p_current_user_id: currentUserId } : {}),
       });
       if (error) throw error;
 
@@ -313,29 +313,30 @@ export class UserService {
 
   public async getFollowers(
     userId: User['id'],
-    limit = 10,
-    offset = 0,
+    { limit, page }: FollowPaginationDto,
     currentUserId?: User['id']
-  ): Promise<UserSummaryDto[]> {
+  ): Promise<PaginationDto<UserSummaryDto>> {
     try {
-      // First, get the follower IDs
-      const followers = await this.supabaseService.select<{ follower_id: string }>('follows', {
+      const followers = await this.supabaseService.select<Follow>('follows', {
         select: 'follower_id',
         where: { following_id: userId },
-        limit,
-        offset,
+        limit: limit + 1,
+        offset: (page - INITIAL_PAGE) * limit,
         orderBy: { column: 'created_at', ascending: false },
       });
 
-      if (followers.length === 0) return [];
+      const hasNextPage = followers.length > limit;
+      if (hasNextPage) followers.pop();
 
-      // Extract the user IDs
       const followerIds = followers.map((f) => f.follower_id);
-
-      // Use getUserSummaries to get complete user data
       const userSummaries = await this.getUserSummaries(followerIds, currentUserId);
-
-      return userSummaries ?? [];
+      if (!userSummaries) throw new Error('Failed to get followers');
+      return {
+        page,
+        limit,
+        hasNextPage,
+        items: userSummaries,
+      };
     } catch (error) {
       this.logger.error(error.message, {
         location: 'getFollowers',
@@ -347,23 +348,30 @@ export class UserService {
 
   public async getFollowing(
     userId: User['id'],
-    limit = 10,
-    offset = 0,
+    { limit, page }: FollowPaginationDto,
     currentUserId?: User['id']
-  ): Promise<UserSummaryDto[]> {
+  ): Promise<PaginationDto<UserSummaryDto>> {
     try {
       const following = await this.supabaseService.select<Follow>('follows', {
         select: 'following_id',
         where: { follower_id: userId },
-        limit,
-        offset,
+        limit: limit + 1,
+        offset: (page - INITIAL_PAGE) * limit,
         orderBy: { column: 'created_at', ascending: false },
       });
+
+      const hasNextPage = following.length > limit;
+      if (hasNextPage) following.pop();
 
       const followingIds = following.map((f) => f.following_id);
       const userSummaries = await this.getUserSummaries(followingIds, currentUserId);
       if (!userSummaries) throw new Error('Failed to get following');
-      return userSummaries;
+      return {
+        page,
+        limit,
+        hasNextPage,
+        items: userSummaries,
+      };
     } catch (error) {
       this.logger.error(error.message, {
         location: 'getFollowing',

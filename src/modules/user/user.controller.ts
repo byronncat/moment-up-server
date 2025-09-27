@@ -20,7 +20,7 @@ import {
 import { ErrorMessage, UserService } from './user.service';
 import { AccessTokenGuard } from 'src/common/guards';
 import { AccessToken } from 'src/common/decorators';
-import { ReportUserDto, UpdateProfileDto } from './dto';
+import { FollowPaginationDto, ReportUserDto, UpdateProfileDto } from './dto';
 
 @Controller({
   path: 'users',
@@ -32,10 +32,10 @@ export class UserController {
   @Get(':username')
   @HttpCode(HttpStatus.OK)
   async getProfileByUsername(
-    @AccessToken() token: JwtPayload,
-    @Param('username') username: User['username']
+    @Param('username') username: User['username'],
+    @AccessToken() token?: JwtPayload
   ) {
-    const currentUserId = token.sub ?? '';
+    const currentUserId = token?.sub ?? '';
     const profile = await this.userService.getProfileByUsername(username, currentUserId);
     if (!profile) throw new NotFoundException('Profile not found');
 
@@ -107,23 +107,10 @@ export class UserController {
   async getFollowers(
     @AccessToken() token: JwtPayload,
     @Param('id') userId: string,
-    @Query('page') page?: string,
-    @Query('limit') limit?: string
+    @Query(ValidationPipe) pagination: FollowPaginationDto
   ) {
     const currentUserId = token.sub ?? '';
-    const pageNum = parseInt(page ?? '1');
-    const limitNum = parseInt(limit ?? '20');
-    const offset = (pageNum - 1) * limitNum;
-
-    const followers = await this.userService.getFollowers(userId, limitNum, offset, currentUserId);
-    const hasNextPage = followers.length === limitNum;
-
-    return {
-      followers,
-      page: pageNum,
-      limit: limitNum,
-      hasNextPage,
-    };
+    return this.userService.getFollowers(userId, pagination, currentUserId);
   }
 
   @Get(':id/following')
@@ -132,23 +119,10 @@ export class UserController {
   async getFollowing(
     @AccessToken() token: JwtPayload,
     @Param('id') userId: string,
-    @Query('page') page?: string,
-    @Query('limit') limit?: string
+    @Query(ValidationPipe) pagination: FollowPaginationDto
   ) {
     const currentUserId = token.sub ?? '';
-    const pageNum = parseInt(page ?? '1');
-    const limitNum = parseInt(limit ?? '20');
-    const offset = (pageNum - 1) * limitNum;
-
-    const following = await this.userService.getFollowing(userId, limitNum, offset, currentUserId);
-    const hasNextPage = following.length === limitNum;
-
-    return {
-      following,
-      page: pageNum,
-      limit: limitNum,
-      hasNextPage,
-    };
+    return this.userService.getFollowing(userId, pagination, currentUserId);
   }
 
   @Post(':id/block')

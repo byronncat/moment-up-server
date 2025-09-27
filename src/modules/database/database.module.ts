@@ -29,7 +29,7 @@ import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 
         client.on('error', (error) => {
           logger.error(error.message, {
-            location: 'resdis',
+            location: 'redis',
             context: 'Database',
           });
         });
@@ -40,6 +40,9 @@ import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
             context: 'Database',
           });
         });
+
+        await client.connect();
+        return client;
       },
       inject: [ConfigService, WINSTON_MODULE_PROVIDER],
     },

@@ -1,5 +1,5 @@
 declare module 'api' {
-  import type { Attachment, CloudinaryFile, Comment, Hashtag, Post, Story, User } from 'schema';
+  import type { Attachment, Comment, Hashtag, Post, Story, User } from 'schema';
   import type { StoryBackground } from 'common/constants';
 
   // === User ===
@@ -50,7 +50,7 @@ declare module 'api' {
     lastModified: Post['last_modified'];
   }
 
-  interface MomentDto {
+  interface FeedDto {
     id: Post['id'];
     user: UserSummaryDto;
     post: PostDto;
@@ -80,9 +80,9 @@ declare module 'api' {
   }
 
   interface StoryMediaContent {
-    type: Exclude<CloudinaryFile['type'], 'audio'>;
-    id: CloudinaryFile['id'];
-    url: CloudinaryFile['url'];
+    type: 'image' | 'video';
+    id: string;
+    url: string;
     aspectRatio: '9:16';
   }
 
@@ -91,7 +91,7 @@ declare module 'api' {
   interface StoryData {
     id: Story['id'];
     content: StoryContent;
-    sound?: CloudinaryFile['url'];
+    sound?: string;
     createdAt: Story['createdAt'];
   }
 
@@ -103,10 +103,10 @@ declare module 'api' {
   interface CommentPayload {
     id: Comment['id'];
     user: UserSummaryDto;
-    content: Comment['content'];
+    content: Comment['text'];
     likes: number;
     isLiked: boolean;
-    updatedAt: Comment['updatedAt'];
+    updatedAt: Comment['updated_at'];
   }
 
   interface SecurityNotificationPayload {
