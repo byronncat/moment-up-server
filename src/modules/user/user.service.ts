@@ -145,7 +145,7 @@ export class UserService {
 
       const { data, error } = await this.supabaseService.getClient().rpc('get_user_summary_batch', {
         p_user_ids: userIds,
-        p_current_user_id: currentUserId ?? null,
+        ...(currentUserId ? { p_current_user_id: currentUserId } : {}),
         p_mutual_limit: 3,
       });
       if (error) throw error;
@@ -523,6 +523,26 @@ export class UserService {
         context: 'UserService',
       });
       throw new InternalServerErrorException(ErrorMessage.Report.Failed);
+    }
+  }
+
+  public async getExcludedUserIds(userId: string): Promise<Set<string>> {
+    try {
+      const { data, error } = await this.supabaseService.getClient().rpc('get_excluded_user_ids', {
+        user_uuid: userId,
+      });
+      if (error) throw error;
+
+      const excludedUserIds = new Set<string>(
+        data.map((record: { excluded_id: string }) => record.excluded_id)
+      ).add(userId);
+      return excludedUserIds;
+    } catch (error: any) {
+      this.logger.error(error.message, {
+        location: 'getExcludedUserIds',
+        context: 'PeopleDiscovery',
+      });
+      return new Set([userId]);
     }
   }
 

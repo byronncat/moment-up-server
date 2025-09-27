@@ -1,6 +1,6 @@
 import { IntersectionType } from '@nestjs/mapped-types';
 import { LimitDto, PageDto } from 'src/common/validators';
-import { IsNotEmpty, IsEnum } from 'class-validator';
+import { IsEnum, IsNotEmpty } from 'class-validator';
 import { ExploreType } from 'src/common/constants';
 
 export class ExploreDto extends IntersectionType(PageDto, LimitDto) {
@@ -9,4 +9,7 @@ export class ExploreDto extends IntersectionType(PageDto, LimitDto) {
   })
   @IsNotEmpty({ message: 'Type is required' })
   type: ExploreType;
+
+  page = 1;
+  limit = 30;
 }

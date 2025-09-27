@@ -55,6 +55,15 @@ declare module 'schema' {
     readonly created_at: timestamptz;
   }
 
+  interface PostStat {
+    readonly post_id: Post['id'];
+    readonly likes_count: number;
+    readonly comments_count: number;
+    readonly reposts_count: number;
+    readonly bookmarks_count: number;
+    readonly last_modified: timestamptz;
+  }
+
   interface Comment {
     readonly id: snowflake;
     readonly user_id: User['id'];

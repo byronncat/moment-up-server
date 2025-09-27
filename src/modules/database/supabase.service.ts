@@ -68,7 +68,7 @@ export class SupabaseService implements OnModuleInit {
 
       if (options?.where)
         Object.entries(options.where).forEach(([key, value]) => {
-          if (value) {
+          if (value !== undefined) {
             const useIlike = options.caseSensitive === false && this.shouldUseIlike(value);
             if (useIlike) query = query.ilike(key, `${value}`);
             else query = query.eq(key, value);
@@ -77,7 +77,7 @@ export class SupabaseService implements OnModuleInit {
 
       if (options?.orWhere) {
         const orClauses = Object.entries(options.orWhere)
-          .filter(([, value]) => value)
+          .filter(([, value]) => value !== undefined)
           .map(([key, value]) => {
             const useIlike = options.caseSensitive === false && this.shouldUseIlike(value);
             const operator = useIlike ? 'ilike' : 'eq';
@@ -89,30 +89,22 @@ export class SupabaseService implements OnModuleInit {
 
       if (options?.whereIn)
         Object.entries(options.whereIn).forEach(([key, values]) => {
-          if (values.length > 0) {
-            query = query.in(key, values);
-          }
+          if (values.length > 0) query = query.in(key, values);
         });
 
       if (options?.whereNotIn)
         Object.entries(options.whereNotIn).forEach(([key, values]) => {
-          if (values.length > 0) {
-            query = query.not(key, 'in', `(${values.join(',')})`);
-          }
+          if (values.length > 0) query = query.not(key, 'in', `(${values.join(',')})`);
         });
 
       if (options?.whereGte)
         Object.entries(options.whereGte).forEach(([key, value]) => {
-          if (value) {
-            query = query.gte(key, value);
-          }
+          if (value !== undefined) query = query.gte(key, value);
         });
 
       if (options?.whereLte)
         Object.entries(options.whereLte).forEach(([key, value]) => {
-          if (value) {
-            query = query.lte(key, value);
-          }
+          if (value !== undefined) query = query.lte(key, value);
         });
 
       if (options?.whereNull)
@@ -209,9 +201,7 @@ export class SupabaseService implements OnModuleInit {
       let query = this.supabase.from(table).delete();
 
       Object.entries(where).forEach(([key, value]) => {
-        if (value) {
-          query = query.eq(key, value);
-        }
+        if (value !== undefined) query = query.eq(key, value);
       });
 
       const { data: result, error } = await query.select();
@@ -237,7 +227,7 @@ export class SupabaseService implements OnModuleInit {
 
       if (options?.where)
         Object.entries(options.where).forEach(([key, value]) => {
-          if (value) {
+          if (value !== undefined) {
             const useIlike = options.caseSensitive === false && this.shouldUseIlike(value);
             if (useIlike) query = query.ilike(key, `${value}`);
             else query = query.eq(key, value);
@@ -260,14 +250,14 @@ export class SupabaseService implements OnModuleInit {
 
       if (options?.whereGte)
         Object.entries(options.whereGte).forEach(([key, value]) => {
-          if (value) {
+          if (value !== undefined) {
             query = query.gte(key, value);
           }
         });
 
       if (options?.whereLte)
         Object.entries(options.whereLte).forEach(([key, value]) => {
-          if (value) {
+          if (value !== undefined) {
             query = query.lte(key, value);
           }
         });

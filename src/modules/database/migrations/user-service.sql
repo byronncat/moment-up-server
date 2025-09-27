@@ -101,7 +101,7 @@ $$;
 
 create or replace function public.get_user_summary_batch (
   p_user_ids uuid[],
-  p_current_user_id uuid,
+  p_current_user_id uuid default null,
   p_mutual_limit integer default 3
 ) returns table (
   id uuid,

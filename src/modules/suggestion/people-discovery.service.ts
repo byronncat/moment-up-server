@@ -3,6 +3,7 @@ import type { User } from 'schema';
 
 import { Inject, Injectable } from '@nestjs/common';
 import { SupabaseService } from '../database/supabase.service';
+import { UserService } from '../user/user.service';
 import { Logger } from 'winston';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 
@@ -12,7 +13,8 @@ const DEFAULT_LIMIT = 5;
 export class PeopleDiscoveryService {
   constructor(
     @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
-    private readonly supabaseService: SupabaseService
+    private readonly supabaseService: SupabaseService,
+    private readonly userService: UserService
   ) {}
 
   public async getUser(userId: string): Promise<UserSummaryDto[]> {
@@ -30,7 +32,7 @@ export class PeopleDiscoveryService {
 
   public async getPopular(userId: string): Promise<PopularProfileDto[]> {
     try {
-      const excludedUserIds = await this.getExcludedUserIds(userId);
+      const excludedUserIds = await this.userService.getExcludedUserIds(userId);
       const trendingUserIds = await this.getTrendingUserIds(userId, DEFAULT_LIMIT, excludedUserIds);
       if (trendingUserIds.length === 0) return [];
 
@@ -63,7 +65,7 @@ export class PeopleDiscoveryService {
 
   private async getUserSuggestions(userId: string): Promise<UserSummaryDto[]> {
     const userIds: Array<User['id']> = [];
-    const excludedUserIds = await this.getExcludedUserIds(userId);
+    const excludedUserIds = await this.userService.getExcludedUserIds(userId);
 
     // 1. Mutual connections (followed by people you follow)
     const mutualConnections = await this.getMutualConnections(userId, excludedUserIds);
@@ -92,26 +94,6 @@ export class PeopleDiscoveryService {
 
     const suggestions = userIds.sort(() => Math.random() - 0.5).slice(0, DEFAULT_LIMIT);
     return this.parseToUserSummaryDto(suggestions, userId);
-  }
-
-  private async getExcludedUserIds(userId: string): Promise<Set<string>> {
-    try {
-      const { data, error } = await this.supabaseService.getClient().rpc('get_excluded_user_ids', {
-        user_uuid: userId,
-      });
-      if (error) throw error;
-
-      const excludedUserIds = new Set<string>(
-        data.map((record: { excluded_id: string }) => record.excluded_id)
-      ).add(userId);
-      return excludedUserIds;
-    } catch (error: any) {
-      this.logger.error(error.message, {
-        location: 'getExcludedUserIds',
-        context: 'PeopleDiscovery',
-      });
-      return new Set([userId]);
-    }
   }
 
   private async getMutualConnections(

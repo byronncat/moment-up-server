@@ -1,54 +1,63 @@
 import { mockMoments } from 'src/__mocks__/moment';
-import type { PaginationDto as PaginationApi, MomentDto } from 'api';
-import type { Bookmark, MomentLike, Post, Repost, User } from 'schema';
+/*
+ Notes:
+ - When ordering by last_modified, we also order by id for consistent results when last_modified is the same
+*/
 
-import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import type { ResourceApiResponse } from 'cloudinary';
+import type { FeedDto, PaginationDto as PaginationApi } from 'api';
+import type { Post, PostStat, User } from 'schema';
+
+type PostMetadata = {
+  is_liked: boolean;
+  is_bookmarked: boolean;
+  is_reposted: boolean;
+} & PostStat;
+
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SupabaseService } from '../database/supabase.service';
 import { CloudinaryService } from '../database/cloudinary.service';
 import { UserService } from '../user/user.service';
+import { CreatePostDto, ExploreDto, ProfileFeedDto, RepostDto } from './dto';
 import { Auth } from 'src/common/helpers';
-import { RepostDto, ExploreDto, ProfileMomentDto, CreatePostDto } from './dto';
+import { ContentPrivacy, INITIAL_PAGE } from 'src/common/constants';
 
 import { Logger } from 'winston';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import { TrendingService } from '../suggestion/trending.service';
 
 // +++ TODO: Ongoing +++
 type PaginationDto = any;
 
+export const Message = {
+  GetPosts: {
+    PublicPost: 'Login to access more posts.',
+    InvalidType: 'Invalid type.',
+    Failed: 'Failed to get posts.',
+  },
+};
+
 @Injectable()
 export class PostService {
-  private moments = mockMoments;
-  private likes: MomentLike[] = [];
-  private bookmarks: Bookmark[] = [];
-  private reposts: Repost[] = [];
+  private readonly moments = mockMoments;
 
   constructor(
     @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
     private readonly configService: ConfigService,
     private readonly supabaseService: SupabaseService,
+    private readonly cloudinaryService: CloudinaryService,
     private readonly userService: UserService,
-    private readonly cloudinaryService: CloudinaryService
+    private readonly trendingService: TrendingService
   ) {}
 
-  public async getMoments(
-    type: 'home' | 'explore' | 'user',
-    userId: User['id'],
-    dto: PaginationDto | ExploreDto | ProfileMomentDto
-  ): Promise<PaginationApi<MomentDto>> {
-    switch (type) {
-      case 'home':
-        return this.geHometMoments(userId, dto as PaginationDto);
-      case 'explore':
-        return this.geExploreMoments(userId, dto as ExploreDto);
-      case 'user':
-        return this.getUserMoments(userId, dto as ProfileMomentDto);
-      default:
-        return this.geHometMoments(userId, dto as PaginationDto);
-    }
-  }
-
-  public async geHometMoments(userId: User['id'], { page, limit }: PaginationDto) {
+  public async getHomePosts(userId: User['id'], { page, limit }: PaginationDto) {
     try {
       const followingUsers = await this.supabaseService.select('follows', {
         select: 'following_id',
@@ -56,11 +65,8 @@ export class PostService {
       });
       const followingIds = followingUsers.map((f) => f.following_id);
 
-      // Include the current user's own posts
       const userIds = [...followingIds, userId];
-
-      // If no users to show posts from, return empty result
-      if (userIds.length === 0) {
+      if (userIds.length === 0)
         return {
           total: 0,
           page,
@@ -68,267 +74,65 @@ export class PostService {
           hasNextPage: false,
           items: [],
         };
-      }
 
-      // Get total count of posts from followed users and own posts
-      const totalCount = await this.supabaseService.count('posts', {
-        whereIn: { user_id: userIds },
+      const mutedUsers = await this.supabaseService.select('mutes', {
+        select: 'muted_id',
+        where: { muter_id: userId },
       });
+      const mutedUserIds = new Set(mutedUsers.map((m) => m.muted_id));
+      const allowedUserIds = userIds.filter((id) => !mutedUserIds.has(id));
 
-      // Get paginated posts from followed users and own posts
-      const posts = await this.supabaseService.select<Post>('posts', {
-        whereIn: { user_id: userIds },
-        orderBy: {
-          column: 'last_modified',
-          ascending: false,
-        },
-        limit,
-        offset: (page - 1) * limit,
-      });
-
-      // Get user summaries for all unique user IDs in the posts
-      const uniqueUserIds = [...new Set(posts.map((post) => post.user_id))];
-      const userSummaries = await Promise.all(
-        uniqueUserIds.map(async (uid) => ({
-          id: uid,
-          summary: await this.userService.getUserSummary(uid),
-        }))
-      );
-
-      // Create a map for quick user lookup
-      const userMap = new Map();
-      userSummaries.forEach(({ id, summary }) => {
-        if (summary) userMap.set(id, summary);
-      });
-
-      // Convert posts to MomentDto with mock interaction data
-      const momentItems = await Promise.all(
-        posts.map(async (post) => {
-          const userSummary = userMap.get(post.user_id);
-          if (!userSummary) return null;
-
-          // Generate mock interaction data (TODO: replace with real data later)
-          const likes = Math.floor(Math.random() * 1000);
-          const comments = Math.floor(Math.random() * 100);
-          const reposts = Math.floor(Math.random() * 50);
-
-          return {
-            id: post.id,
-            user: userSummary,
-            post: {
-              text: post.text,
-              files: await this.parseAttachments(post.attachments),
-              likes,
-              comments,
-              reposts,
-              isLiked: Math.random() > 0.7, // 30% chance of being liked
-              isBookmarked: Math.random() > 0.8, // 20% chance of being bookmarked
-              isReposted: false, // TODO: implement real repost logic
-              lastModified: post.last_modified,
-            },
-          };
-        })
-      );
-
-      // Filter out null results
-      const validMomentItems = momentItems.filter((item) => item !== null);
-
-      const pagination: PaginationApi<MomentDto> = {
-        total: totalCount,
-        page,
-        limit,
-        hasNextPage: page < Math.ceil(totalCount / limit),
-        items: validMomentItems,
-      };
-
-      return pagination;
-    } catch (error) {
-      this.logger.error('Failed to get home moments', {
-        context: 'PostService',
-        location: 'geHometMoments',
-        error: error.message,
-        userId,
-      });
-
-      // Return empty pagination on error
-      return {
-        total: 0,
-        page,
-        limit,
-        hasNextPage: false,
-        items: [],
-      };
-    }
-  }
-
-  private async geExploreMoments(userId: User['id'], { page, limit, type }: ExploreDto) {
-    try {
-      // Get users that the current user is following
-      const followingUsers = await this.supabaseService.select('follows', {
-        select: 'following_id',
-        where: { follower_id: userId },
-      });
-      const followingIds = followingUsers.map((f) => f.following_id);
-
-      // Exclude the current user and users they're following
-      const excludedUserIds = [...followingIds, userId];
-
-      // Build query options with proper filtering
-      let countOptions: any = {};
-      let selectOptions: any = {
-        orderBy: {
-          column: 'created_at', // Use created_at for more random-like distribution
-          ascending: false,
-        },
-        limit,
-        offset: (page - 1) * limit,
-      };
-
-      // Only add whereNotIn if there are users to exclude
-      if (excludedUserIds.length > 0) {
-        countOptions.whereNotIn = { user_id: excludedUserIds };
-        selectOptions.whereNotIn = { user_id: excludedUserIds };
-      }
-
-      // Get total count of explore posts
-      const totalCount = await this.supabaseService.count('posts', countOptions);
-
-      // Get paginated posts for explore feed
-      const posts = await this.supabaseService.select<Post>('posts', selectOptions);
-
-      // Filter posts with media if type is 'media' (additional client-side filter for safety)
-      const filteredPosts =
-        type === 'media'
-          ? posts.filter((post) => post.attachments && post.attachments.length > 0)
-          : posts;
-
-      // Get user summaries for all unique user IDs in the posts
-      const uniqueUserIds = [...new Set(filteredPosts.map((post) => post.user_id))];
-      const userSummaries = await Promise.all(
-        uniqueUserIds.map(async (uid) => ({
-          id: uid,
-          summary: await this.userService.getUserSummary(uid),
-        }))
-      );
-
-      // Create a map for quick user lookup
-      const userMap = new Map();
-      userSummaries.forEach(({ id, summary }) => {
-        if (summary) userMap.set(id, summary);
-      });
-
-      // Convert posts to MomentDto with mock interaction data
-      const momentItems = await Promise.all(
-        filteredPosts.map(async (post) => {
-          const userSummary = userMap.get(post.user_id);
-          if (!userSummary) return null;
-
-          // Generate mock interaction data (TODO: replace with real data later)
-          const likes = Math.floor(Math.random() * 1000);
-          const comments = Math.floor(Math.random() * 100);
-          const reposts = Math.floor(Math.random() * 50);
-
-          return {
-            id: post.id,
-            user: userSummary,
-            post: {
-              text: post.text,
-              files: await this.parseAttachments(post.attachments),
-              likes,
-              comments,
-              reposts,
-              isLiked: Math.random() > 0.7, // 30% chance of being liked
-              isBookmarked: Math.random() > 0.8, // 20% chance of being bookmarked
-              isReposted: false, // TODO: implement real repost logic
-              lastModified: post.last_modified,
-            },
-          };
-        })
-      );
-
-      // Filter out null results
-      const validMomentItems = momentItems.filter((item) => item !== null);
-
-      const pagination: PaginationApi<MomentDto> = {
-        total: totalCount,
-        page,
-        limit,
-        hasNextPage: page < Math.ceil(totalCount / limit),
-        items: validMomentItems,
-      };
-
-      return pagination;
-    } catch (error) {
-      this.logger.error('Failed to get explore moments', {
-        context: 'PostService',
-        location: 'geExploreMoments',
-        error: error.message,
-        userId,
-        type,
-      });
-
-      // Return empty pagination on error
-      return {
-        total: 0,
-        page,
-        limit,
-        hasNextPage: false,
-        items: [],
-      };
-    }
-  }
-
-  private async getUserMoments(userId: User['id'], { page, limit, filter }: ProfileMomentDto) {
-    try {
-      // Build query options based on filter
-      let countOptions: any = {
-        where: { user_id: userId },
-      };
-
-      let selectOptions: any = {
-        where: { user_id: userId },
-        orderBy: {
-          column: 'last_modified',
-          ascending: false,
-        },
-        limit,
-        offset: (page - 1) * limit,
-      };
-
-      // Apply filter if specified
-      // Note: For 'media' filter, we'll do client-side filtering since we need to check if attachments array has content
-      // Other filters (tagged, reposts, liked) would require additional database tables/relationships
-
-      // Get total count of user's posts
-      const totalCount = await this.supabaseService.count('posts', countOptions);
-
-      // Get paginated posts
-      const posts = await this.supabaseService.select<Post>('posts', selectOptions);
-
-      // Apply client-side filtering for media posts
-      const filteredPosts =
-        filter === 'media'
-          ? posts.filter((post) => post.attachments && post.attachments.length > 0)
-          : posts;
-
-      // Get user summary for the posts
-      const userSummary = await this.userService.getUserSummary(userId);
-      if (!userSummary) {
+      if (allowedUserIds.length === 0)
         return {
           page,
           limit,
           hasNextPage: false,
           items: [],
         };
-      }
 
-      // Convert posts to MomentDto with mock interaction data
-      const momentItems = await Promise.all(
-        filteredPosts.map(async (post) => {
-          // Generate mock interaction data
-          const likes = Math.floor(Math.random() * 1000);
-          const comments = Math.floor(Math.random() * 100);
-          const reposts = Math.floor(Math.random() * 50);
+      const posts = await this.supabaseService.select<Post>('posts', {
+        whereIn: { user_id: allowedUserIds },
+        whereLte: { privacy: ContentPrivacy.FOLLOWERS },
+        orderBy: [
+          {
+            column: 'last_modified',
+            ascending: false,
+          },
+          {
+            column: 'id',
+            ascending: false,
+          },
+        ],
+        limit: limit + 1,
+        offset: (page - INITIAL_PAGE) * limit,
+      });
+
+      const hasNextPage = posts.length > limit;
+      const actualPosts = hasNextPage ? posts.slice(0, limit) : posts;
+
+      const uniqueUserIds = [...new Set(actualPosts.map((post) => post.user_id))];
+      const userSummaries = await this.userService.getUserSummaries(uniqueUserIds, userId);
+
+      const userMap = new Map();
+      if (!userSummaries) throw new BadRequestException('Something went wrong');
+      userSummaries.forEach((summary) => {
+        userMap.set(summary.id, summary);
+      });
+
+      const postIds = actualPosts.map((post) => post.id);
+      const postStats = await this.getPostStats(postIds, userId);
+
+      const statsMap = new Map<Post['id'], PostMetadata>();
+      postStats.forEach((stat) => {
+        statsMap.set(stat.post_id, stat);
+      });
+
+      const postItems = await Promise.all(
+        actualPosts.map(async (post) => {
+          const userSummary = userMap.get(post.user_id);
+          if (!userSummary) return null;
+
+          const stats = statsMap.get(post.id);
 
           return {
             id: post.id,
@@ -336,57 +140,194 @@ export class PostService {
             post: {
               text: post.text,
               files: await this.parseAttachments(post.attachments),
-              likes,
-              comments,
-              reposts,
-              isLiked: Math.random() > 0.7, // 30% chance of being liked
-              isBookmarked: Math.random() > 0.8, // 20% chance of being bookmarked
+              likes: stats?.likes_count ?? 0,
+              comments: stats?.comments_count ?? 0,
+              reposts: stats?.reposts_count ?? 0,
+              isLiked: stats?.is_liked ?? false,
+              isBookmarked: stats?.is_bookmarked ?? false,
+              lastModified: post.last_modified,
+            },
+          } satisfies FeedDto;
+        })
+      );
+
+      const validPostItems = postItems.filter((item) => item !== null);
+
+      const pagination: PaginationApi<FeedDto> = {
+        page,
+        limit,
+        hasNextPage,
+        items: validPostItems,
+      };
+
+      return pagination;
+    } catch (error) {
+      this.logger.error(error.message, {
+        location: 'getHomePosts',
+        context: 'PostService',
+      });
+      throw new InternalServerErrorException(Message.GetPosts.Failed);
+    }
+  }
+
+  public async getExplorePosts({ page, limit, type }: ExploreDto, userId?: User['id']) {
+    try {
+      const excludedUserIds = userId
+        ? await this.userService.getExcludedUserIds(userId)
+        : new Set<string>();
+
+      const { data: exploreResults, error } = await this.supabaseService
+        .getClient()
+        .rpc('get_explore_posts', {
+          p_current_user_id: userId,
+          p_excluded_user_ids: Array.from(excludedUserIds),
+          p_post_type: type,
+          p_limit: limit + 1,
+          p_offset: (page - INITIAL_PAGE) * limit,
+        });
+
+      if (error) throw error;
+
+      const hasNextPage = exploreResults && exploreResults.length > limit;
+      const actualResults = hasNextPage ? exploreResults.slice(0, limit) : exploreResults;
+
+      const postItems = await Promise.all(
+        actualResults.map(async (result: any) => {
+          const userSummary = result.user_summary;
+          const postStats = result.post_stats;
+
+          return {
+            id: result.post_id,
+            user: {
+              id: userSummary.id,
+              username: userSummary.username,
+              displayName: userSummary.display_name,
+              avatar: userSummary.avatar,
+              bio: userSummary.bio,
+              followers: userSummary.followers,
+              following: userSummary.following,
+              isFollowing: userSummary.is_following,
+              hasStory: userSummary.has_story,
+              followedBy: userSummary.followed_by,
+            },
+            post: {
+              text: result.text,
+              files: await this.parseAttachments(result.attachments),
+              likes: postStats.likes_count,
+              comments: postStats.comments_count,
+              reposts: postStats.reposts_count,
+              isLiked: postStats.is_liked,
+              isBookmarked: postStats.is_bookmarked,
+              lastModified: result.last_modified,
+            },
+          } satisfies FeedDto;
+        })
+      );
+
+      const pagination: PaginationApi<FeedDto> = {
+        page,
+        limit,
+        hasNextPage,
+        items: postItems,
+      };
+
+      return pagination;
+    } catch (error) {
+      this.logger.error(error.message, {
+        context: 'PostService',
+        location: 'getExplorePosts',
+      });
+
+      throw new InternalServerErrorException(Message.GetPosts.Failed);
+    }
+  }
+
+  public async getUserPosts(
+    {
+      userId,
+      currentUserId,
+    }: {
+      userId: User['id'];
+      currentUserId: User['id'];
+    },
+    { page, limit, filter }: ProfileFeedDto
+  ) {
+    try {
+      const [userSummary] =
+        (await this.userService.getUserSummaries([userId], currentUserId)) ?? [];
+      if (!userSummary) throw new Error('User summary not found');
+
+      const privacyLevel =
+        currentUserId === userId
+          ? ContentPrivacy.PRIVATE
+          : userSummary.isFollowing
+            ? ContentPrivacy.FOLLOWERS
+            : ContentPrivacy.PUBLIC;
+
+      const posts = await this.supabaseService.select<Post>('posts', {
+        where: { user_id: userId },
+        whereLte: { privacy: privacyLevel },
+        ...(filter === 'media' && { whereNotNull: ['attachments'] }),
+        orderBy: [
+          {
+            column: 'last_modified',
+            ascending: false,
+          },
+          {
+            column: 'id',
+            ascending: false,
+          },
+        ],
+        limit: limit + 1,
+        offset: (page - INITIAL_PAGE) * limit,
+      });
+
+      const hasNextPage = posts.length > limit;
+      const actualPosts = hasNextPage ? posts.slice(0, limit) : posts;
+
+      const postIds = actualPosts.map((post) => post.id);
+      const postStats = await this.getPostStats(postIds, currentUserId);
+
+      const statsMap = new Map<Post['id'], PostMetadata>();
+      postStats.forEach((stat) => {
+        statsMap.set(stat.post_id, stat);
+      });
+
+      const momentItems = await Promise.all(
+        actualPosts.map(async (post) => {
+          const stats = statsMap.get(post.id);
+
+          return {
+            id: post.id,
+            user: userSummary,
+            post: {
+              text: post.text,
+              files: await this.parseAttachments(post.attachments),
+              likes: stats?.likes_count ?? 0,
+              comments: stats?.comments_count ?? 0,
+              reposts: stats?.reposts_count ?? 0,
+              isLiked: stats?.is_liked ?? false,
+              isBookmarked: stats?.is_bookmarked ?? false,
               lastModified: post.last_modified,
             },
           };
         })
       );
 
-      // For media filter, we need to adjust the total count since we're doing client-side filtering
-      // This is not ideal for pagination, but works for now until we implement proper database filtering
-      let adjustedTotal = totalCount;
-      if (filter === 'media') {
-        // For media filter, we need to count all posts with attachments
-        // This is a rough approximation - in production, you'd want proper database filtering
-        const allUserPosts = await this.supabaseService.select<Post>('posts', {
-          where: { user_id: userId },
-          select: 'attachments',
-        });
-        adjustedTotal = allUserPosts.filter(
-          (post) => post.attachments && post.attachments.length > 0
-        ).length;
-      }
-
-      const pagination: PaginationApi<MomentDto> = {
-        total: adjustedTotal,
+      const pagination: PaginationApi<FeedDto> = {
         page,
         limit,
-        hasNextPage: page < Math.ceil(adjustedTotal / limit),
+        hasNextPage,
         items: momentItems,
       };
 
       return pagination;
     } catch (error) {
-      this.logger.error('Failed to get user moments', {
+      this.logger.error(error.message, {
+        location: 'getUserPosts',
         context: 'PostService',
-        location: 'getUserMoments',
-        error: error.message,
-        userId,
-        filter,
       });
-
-      // Return empty pagination on error
-      return {
-        page,
-        limit,
-        hasNextPage: false,
-        items: [],
-      };
+      throw new InternalServerErrorException(Message.GetPosts.Failed);
     }
   }
 
@@ -394,55 +335,73 @@ export class PostService {
     const moment = this.moments.find((moment) => moment.id === id);
     if (!moment) throw new NotFoundException('Moment not found');
 
-    const isLiked = userId
-      ? this.likes.some((like) => like.userId === userId && like.momentId === moment.id)
-      : false;
-    const isBookmarked = userId
-      ? this.bookmarks.some(
-          (bookmark) => bookmark.userId === userId && bookmark.momentId === moment.id
-        )
-      : false;
-    const isReposted = userId
-      ? this.reposts.some((repost) => repost.userId === userId && repost.momentId === moment.id)
-      : false;
-
     const newMoment = {
       ...moment,
       post: {
         ...moment.post,
-        isLiked,
-        isBookmarked,
-        isReposted,
+        isLiked: false,
+        isBookmarked: false,
+        isReposted: false,
       },
     };
 
     return newMoment;
   }
 
+  private async getPostStats(postIds: Array<Post['id']>, userId: User['id']) {
+    try {
+      if (postIds.length === 0) return [];
+
+      const { data, error } = await this.supabaseService.getClient().rpc('get_post_stats_batch', {
+        p_post_ids: postIds,
+        p_current_user_id: userId,
+      });
+
+      if (error) throw error;
+      return (data ?? []) as Array<PostMetadata>;
+    } catch (error) {
+      this.logger.error(error.message, {
+        context: 'PostService',
+        location: 'getPostStats',
+      });
+      return [];
+    }
+  }
+
   public async create(userId: User['id'], data: CreatePostDto) {
     try {
-      const post = {
-        user_id: userId,
-        ...data,
-      };
-      const posts = await this.supabaseService.insert('posts', post);
-      if (posts.length === 0) return null;
-      return posts[0];
+      let hashtags: string[] | undefined = undefined;
+      if (data.text) {
+        hashtags = await this.trendingService.processPostHashtags(data.text);
+        if (!hashtags) return undefined;
+      }
+
+      const { data: result, error } = await this.supabaseService
+        .getClient()
+        .rpc('create_post_with_hashtags', {
+          p_user_id: userId,
+          p_text: data.text,
+          p_attachments: data.attachments,
+          p_privacy: data.privacy,
+          p_hashtags: hashtags,
+        });
+
+      if (error) throw error;
+      if (!result) return undefined;
+
+      return result;
     } catch (error) {
-      this.logger.error(error, {
+      this.logger.error(error.message, {
         context: 'PostService',
         location: 'create',
       });
-      return null;
+      return undefined;
     }
   }
 
   public async like(userId: User['id'], momentId: Post['id']) {
     const moment = this.moments.find((moment) => moment.id === momentId);
     if (!moment) throw new NotFoundException('Moment not found');
-
-    const like = this.likes.find((like) => like.userId === userId && like.momentId === momentId);
-    if (like) throw new ConflictException('Already liked');
 
     const likeRecord = {
       id: Auth.generateId('uuid'),
@@ -451,28 +410,17 @@ export class PostService {
       createdAt: new Date(),
     };
 
-    this.likes.push(likeRecord);
     return likeRecord;
   }
 
   public async unlike(userId: User['id'], momentId: Post['id']) {
     const moment = this.moments.find((moment) => moment.id === momentId);
     if (!moment) throw new NotFoundException('Moment not found');
-
-    const like = this.likes.find((like) => like.userId === userId && like.momentId === momentId);
-    if (!like) throw new NotFoundException('You have not liked this moment');
-
-    this.likes = this.likes.filter((l) => l.id !== like.id);
   }
 
   public async bookmark(userId: User['id'], momentId: Post['id']) {
     const moment = this.moments.find((moment) => moment.id === momentId);
     if (!moment) throw new NotFoundException('Moment not found');
-
-    const bookmark = this.bookmarks.find(
-      (bookmark) => bookmark.userId === userId && bookmark.momentId === momentId
-    );
-    if (bookmark) throw new ConflictException('Already bookmarked');
 
     const bookmarkRecord = {
       id: Auth.generateId('uuid'),
@@ -481,20 +429,12 @@ export class PostService {
       createdAt: new Date(),
     };
 
-    this.bookmarks.push(bookmarkRecord);
     return bookmarkRecord;
   }
 
   public async unbookmark(userId: User['id'], momentId: Post['id']) {
     const moment = this.moments.find((moment) => moment.id === momentId);
     if (!moment) throw new NotFoundException('Moment not found');
-
-    const bookmark = this.bookmarks.find(
-      (bookmark) => bookmark.userId === userId && bookmark.momentId === momentId
-    );
-    if (!bookmark) throw new NotFoundException('You have not bookmarked this moment');
-
-    this.bookmarks = this.bookmarks.filter((b) => b.id !== bookmark.id);
   }
 
   public async repost(
@@ -507,11 +447,6 @@ export class PostService {
     const moment = this.moments.find((moment) => moment.id === subject.moment);
     if (!moment) throw new NotFoundException('Moment not found');
 
-    const repost = this.reposts.find(
-      (repost) => repost.userId === subject.user && repost.momentId === subject.moment
-    );
-    if (repost) throw new ConflictException('Already reposted');
-
     const repostRecord = {
       id: Auth.generateId('uuid'),
       userId: subject.user,
@@ -521,23 +456,18 @@ export class PostService {
       createdAt: new Date(),
     };
 
-    this.reposts.push(repostRecord);
     return repostRecord;
   }
 
   private async parseAttachments(attachments: Post['attachments']) {
     if (!attachments || attachments.length === 0) return null;
-
-    // TEMPORARY
-    const isMockData = this.configService.get<boolean>('MOCK_DATA', false);
-    // TEMPORARY
     try {
       // const imageAttachments = attachments.filter((att) => att.type === 'image');
       // const videoAttachments = attachments.filter((att) => att.type === 'video');
-      // Uncomment above lines to use the original logic
 
       // TEMPORARY
       // If MOCK_DATA is true, handle HTTP URLs directly
+      const isMockData = this.configService.get<boolean>('MOCK_DATA', false);
       if (isMockData) {
         const parsedAttachments = attachments
           .map((attachment) => {
@@ -580,21 +510,17 @@ export class PostService {
       // TEMPORARY
 
       const [imageResources, videoResources] = await Promise.all([
-        imageAttachments.length > 0
-          ? this.cloudinaryService.getResources(
-              imageAttachments.map((att) => att.id),
-              'image'
-            )
-          : Promise.resolve({ resources: [] }),
-        videoAttachments.length > 0
-          ? this.cloudinaryService.getResources(
-              videoAttachments.map((att) => att.id),
-              'video'
-            )
-          : Promise.resolve({ resources: [] }),
+        this.cloudinaryService.getResources(
+          imageAttachments.map((att) => att.id),
+          'image'
+        ),
+        this.cloudinaryService.getResources(
+          videoAttachments.map((att) => att.id),
+          'video'
+        ),
       ]);
 
-      const resourceMap = new Map();
+      const resourceMap = new Map<string, ResourceApiResponse['resources'][number]>();
       [...imageResources.resources, ...videoResources.resources].forEach((resource) => {
         resourceMap.set(resource.public_id, resource);
       });
@@ -602,17 +528,14 @@ export class PostService {
       const parsedAttachments = attachments.map((attachment) => {
         // TEMPORARY
         // Skip HTTP URLs if we're not in mock mode (they were handled above)
-        if (attachment.id.startsWith('http') && !isMockData) {
-          return null;
-        }
+        if (attachment.id.startsWith('http') && !isMockData) return null;
         // TEMPORARY
 
         const resource = resourceMap.get(attachment.id);
-
         if (!resource) {
           this.logger.warn(`Resource not found: ${attachment.id} (${attachment.type})`, {
-            context: 'PostService',
             location: 'parseAttachments',
+            context: 'PostService',
           });
           return null;
         }
@@ -632,11 +555,11 @@ export class PostService {
       const validAttachments = parsedAttachments.filter((attachment) => attachment !== null);
       return validAttachments.length > 0 ? validAttachments : null;
     } catch (error) {
-      this.logger.error('Failed to parse attachments', {
-        context: 'PostService',
+      this.logger.error(error.message, {
         location: 'parseAttachments',
+        context: 'PostService',
       });
-      return null;
+      throw new Error('Failed to parse attachments');
     }
   }
 }

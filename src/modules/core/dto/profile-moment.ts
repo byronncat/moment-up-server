@@ -1,8 +1,8 @@
 import { IntersectionType } from '@nestjs/mapped-types';
-import { IsOptional, IsIn } from 'class-validator';
+import { IsIn, IsOptional } from 'class-validator';
 import { LimitDto, PageDto } from 'src/common/validators';
 
-export class ProfileMomentDto extends IntersectionType(PageDto, LimitDto) {
+export class ProfileFeedDto extends IntersectionType(PageDto, LimitDto) {
   page = 1;
   limit = 20;
 
