@@ -1,6 +1,5 @@
 import { createMockSearches } from 'src/__mocks__/search';
-import { mockMoments } from 'src/__mocks__/moment';
-import type { AccountDto, HashtagDto, MomentDto, PaginationDto } from 'api';
+import type { AccountDto, FeedDto, HashtagDto, PaginationDto } from 'api';
 import { SearchItemType } from 'src/common/constants';
 
 export interface UserSearchData extends AccountDto {
@@ -16,11 +15,11 @@ export interface HashtagSearchData extends HashtagDto {
   type: SearchItemType.HASHTAG;
 }
 
-export interface MomentData extends MomentDto {
+export interface MomentData extends FeedDto {
   type: SearchItemType.POST;
 }
 
-export interface MediaSearchData extends MomentDto {
+export interface MediaSearchData extends FeedDto {
   type: SearchItemType.MEDIA;
 }
 
@@ -59,7 +58,6 @@ export class SearchService {
           .split('&')
           .map((t) => t.trim())
           .map((t) => typeMapping[t])
-          .filter((t) => t !== undefined)
       : [
           SearchItemType.USER,
           SearchItemType.QUERY,
@@ -130,7 +128,6 @@ export class SearchService {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   public async clearHistory(userId: string) {
     // In a real application, this would clear the search history from the database.
-    await new Promise((resolve) => setTimeout(resolve, 3000));
   }
 
   public async removeHistoryItem(userId: string, itemId: string) {
@@ -162,54 +159,55 @@ export class SearchService {
     requestedTypes: SearchItemType[]
   ): SearchPayload[] {
     const results: SearchPayload[] = [];
-    const searchTerm = query?.toLowerCase();
+    // const searchTerm = query?.toLowerCase();
     const needsPosts = requestedTypes.includes(SearchItemType.POST);
     const needsMedia = requestedTypes.includes(SearchItemType.MEDIA);
 
     if (!needsPosts && !needsMedia) return results;
 
-    for (const moment of mockMoments) {
-      const hasMedia = moment.post?.files && moment.post.files.length > 0;
+    // for (const moment of mockMoments) {
+    //   const hasMedia = moment.post?.files && moment.post.files.length > 0;
 
-      // Check if this moment matches the requested types
-      const matchesPost = needsPosts;
-      const matchesMedia = needsMedia && hasMedia;
+    //   // Check if this moment matches the requested types
+    //   const matchesPost = needsPosts;
+    //   const matchesMedia = needsMedia && hasMedia;
 
-      if (!matchesPost && !matchesMedia) continue;
+    //   if (!matchesPost && !matchesMedia) continue;
 
-      // Check if query matches
-      if (searchTerm && !this.momentMatchesSearchTerm(moment, searchTerm)) continue;
+    //   // Check if query matches
+    //   if (searchTerm && !this.momentMatchesSearchTerm(moment, searchTerm)) continue;
 
-      // Add as POST type (media is handled through filtering)
-      results.push({
-        type: SearchItemType.POST,
-        ...moment,
-      });
-    }
+    //   // Add as POST type (media is handled through filtering)
+    //   results.push({
+    //     type: SearchItemType.POST,
+    //     ...moment,
+    //   });
+    // }
 
     return results;
   }
 
-  private matchesSearchTerm(item: SearchPayload, searchTerm: string): boolean {
-    switch (item.type) {
-      case SearchItemType.USER:
-        return (
-          item.username?.toLowerCase().includes(searchTerm) ||
-          (item.displayName !== null && item.displayName.toLowerCase().includes(searchTerm))
-        );
-      case SearchItemType.QUERY:
-        return item.id.toLowerCase().includes(searchTerm);
-      case SearchItemType.HASHTAG:
-        return item.name.toLowerCase().includes(searchTerm);
-      default:
-        return false;
-    }
+  private matchesSearchTerm(_item: SearchPayload, _searchTerm: string): boolean {
+    // switch (item.type) {
+    //   case SearchItemType.USER:
+    //     return (
+    //       item.username?.toLowerCase().includes(searchTerm) ||
+    //       (item.displayName !== null && item.displayName.toLowerCase().includes(searchTerm))
+    //     );
+    //   case SearchItemType.QUERY:
+    //     return item.id.toLowerCase().includes(searchTerm);
+    //   case SearchItemType.HASHTAG:
+    //     return item.name.toLowerCase().includes(searchTerm);
+    //   default:
+    //     return false;
+    // }
+    return false;
   }
 
   private momentMatchesSearchTerm(moment: any, searchTerm: string): boolean {
     return (
-      moment.user?.username?.toLowerCase().includes(searchTerm) ||
-      moment.user?.displayName?.toLowerCase().includes(searchTerm) ||
+      moment.user?.username?.toLowerCase().includes(searchTerm) ??
+      moment.user?.displayName?.toLowerCase().includes(searchTerm) ??
       moment.post?.text?.toLowerCase().includes(searchTerm)
     );
   }
@@ -221,7 +219,7 @@ export class SearchService {
           // For posts (including those treated as media), use post.updatedAt
           if (item.type === SearchItemType.POST) {
             const moment = item;
-            return moment.post?.lastModified ? new Date(moment.post.lastModified).getTime() : 0;
+            return moment.post.lastModified ? new Date(moment.post.lastModified).getTime() : 0;
           }
           // For other types, keep current order (return same timestamp)
           return 0;
@@ -246,12 +244,13 @@ export class SearchService {
           switch (item.type) {
             case SearchItemType.POST:
               const moment = item;
-              return moment.post?.likes || 0;
+              return moment.post.likes || 0;
             case SearchItemType.HASHTAG:
               const hashtag = item;
               return hashtag.count || 0;
             case SearchItemType.USER:
             case SearchItemType.QUERY:
+            case SearchItemType.MEDIA:
             default:
               // Keep current position for users and queries
               return 0;
@@ -288,7 +287,7 @@ export class SearchService {
     };
 
     const allowedTypes = type.split('&').map((t) => t.trim());
-    const searchItemTypes = allowedTypes.map((t) => typeMapping[t]).filter((t) => t !== undefined);
+    const searchItemTypes = allowedTypes.map((t) => typeMapping[t]);
 
     const result: SearchPayload[] = [];
 

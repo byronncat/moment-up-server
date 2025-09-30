@@ -6,7 +6,7 @@ export function createMockComment(): CommentPayload {
   const userId = faker.string.uuid();
 
   return {
-    id: faker.string.uuid(),
+    id: faker.number.int(),
     content: faker.lorem.paragraphs({ min: 1, max: 3 }, '\n\n'),
     user: {
       id: userId,

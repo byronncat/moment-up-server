@@ -1,6 +1,7 @@
 declare module 'schema' {
   import type {
     ContentPrivacy,
+    ContentReportType,
     ProfileVisibility,
     StoryBackground,
     TrendingReportType,
@@ -97,6 +98,13 @@ declare module 'schema' {
     readonly id: serial;
     readonly user_id: User['id'];
     readonly type: UserReportType;
+    readonly created_at: timestamptz;
+  }
+
+  interface PostReport {
+    readonly id: serial;
+    readonly post_id: Post['id'];
+    readonly type: ContentReportType;
     readonly created_at: timestamptz;
   }
 

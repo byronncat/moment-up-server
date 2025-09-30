@@ -1,6 +1,6 @@
 import { createMockComments } from 'src/__mocks__/comment';
-import type { PaginationDto as PaginationDtoApi, CommentPayload } from 'api';
-import type { User, Post, Comment } from 'schema';
+import type { CommentPayload, PaginationDto as PaginationDtoApi } from 'api';
+import type { Comment, Post, User } from 'schema';
 
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { UserService } from '../user/user.service';

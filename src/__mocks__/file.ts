@@ -1939,6 +1939,14 @@ export const imageUrls = [
     url: 'https://pbs.twimg.com/media/F_YdIzMawAAwCiS?format=jpg&name=4096x4096',
     aspectRatio: '4:5' as const,
   },
+  {
+    url: 'https://pbs.twimg.com/media/G0kchqZaMAIIBNu?format=jpg&name=large',
+    aspectRatio: '4:5' as const,
+  },
+  {
+    url: 'https://pbs.twimg.com/media/Gxp-AGOXMAAlh1A?format=jpg&name=4096x4096',
+    aspectRatio: '4:5' as const,
+  },
 ];
 
 export const videoUrls = [

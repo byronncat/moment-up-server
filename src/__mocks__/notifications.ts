@@ -1,8 +1,8 @@
 import { faker } from '@faker-js/faker';
 import type {
+  CommunityNotificationPayload,
   NotificationPayload,
   SecurityNotificationPayload,
-  CommunityNotificationPayload,
 } from 'api';
 import { getRandomFile } from './file';
 
@@ -33,13 +33,13 @@ const generateCommunityNotification = (): CommunityNotificationPayload => {
       username,
       displayName,
       avatar: getRandomFile(userId),
-      bio: faker.helpers.maybe(() => faker.person.bio(), { probability: 0.7 }) || null,
+      bio: faker.helpers.maybe(() => faker.person.bio(), { probability: 0.7 }) ?? null,
       followers: faker.number.int({ min: 10, max: 50000 }),
       following: faker.number.int({ min: 5, max: 2000 }),
       hasStory: faker.datatype.boolean(),
       followedBy: null,
-      isMuted: null,
-      isFollowing: null,
+      isMuted: faker.datatype.boolean(),
+      isFollowing: faker.datatype.boolean(),
     },
     createdAt: faker.date.recent({ days: 30 }).toISOString(),
   };

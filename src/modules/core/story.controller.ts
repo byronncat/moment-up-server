@@ -1,6 +1,6 @@
 import type { JwtPayload } from 'jwt-library';
 
-import { Controller, HttpCode, HttpStatus, Get, UseGuards, Param, Delete } from '@nestjs/common';
+import { Controller, Delete, Get, HttpCode, HttpStatus, Param, UseGuards } from '@nestjs/common';
 import { StoryService } from './story.service';
 import { AccessTokenGuard } from 'src/common/guards';
 import { AccessToken } from 'src/common/decorators';
@@ -34,7 +34,7 @@ export class StoryController {
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @UseGuards(AccessTokenGuard)
-  async deleteStory(@Param('id') id: string, @AccessToken() token: JwtPayload) {
+  async deleteStory(@Param('id') id: any, @AccessToken() token: JwtPayload) {
     const userId = token?.sub || '';
     await this.storyService.deleteStory(id, userId);
   }

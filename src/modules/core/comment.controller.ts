@@ -1,16 +1,16 @@
 import type { JwtPayload } from 'jwt-library';
 
 import {
+  Body,
   Controller,
+  Delete,
+  Get,
   HttpCode,
   HttpStatus,
-  Get,
-  UseGuards,
   Param,
-  Query,
   Post,
-  Delete,
-  Body,
+  Query,
+  UseGuards,
 } from '@nestjs/common';
 import { CommentService } from './comment.service';
 import { AccessToken } from 'src/common/decorators';
@@ -51,7 +51,7 @@ export class CommentController {
   @UseGuards(AccessTokenGuard)
   async deleteComment(@Param('id') id: string, @AccessToken() token: JwtPayload) {
     const userId = token?.sub || '';
-    await this.commentService.delete(id, userId);
+    // await this.commentService.delete(id, userId);
   }
 
   @Post(':id/like')
@@ -60,7 +60,7 @@ export class CommentController {
   async likeComment(@Param('id') id: string, @AccessToken() token: JwtPayload) {
     const userId = token?.sub || '';
     return {
-      comment: await this.commentService.like(id, userId),
+      // comment: await this.commentService.like(id, userId),
     };
   }
 
@@ -69,6 +69,6 @@ export class CommentController {
   @UseGuards(AccessTokenGuard)
   async unlikeComment(@Param('id') id: string, @AccessToken() token: JwtPayload) {
     const userId = token?.sub || '';
-    await this.commentService.unlike(id, userId);
+    // await this.commentService.unlike(id, userId);
   }
 }

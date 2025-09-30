@@ -1,4 +1,3 @@
-import { mockMoments } from 'src/__mocks__/moment';
 /*
  Notes:
  - When ordering by last_modified, we also order by id for consistent results when last_modified is the same
@@ -45,8 +44,6 @@ export const Message = {
 
 @Injectable()
 export class PostService {
-  private readonly moments = mockMoments;
-
   constructor(
     @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
     private readonly configService: ConfigService,

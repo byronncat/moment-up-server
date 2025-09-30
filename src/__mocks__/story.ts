@@ -5,7 +5,7 @@ import { accounts } from './auth';
 import { StoryBackground } from '../common/constants';
 
 const myMockStory: StoryNotificationPayload = {
-  id: faker.string.uuid(),
+  id: faker.number.int(),
   userId: accounts[0].id,
   username: accounts[0].username,
   displayName: accounts[0].display_name,
@@ -18,7 +18,7 @@ const myMockStory: StoryNotificationPayload = {
 export const mockStoryNotifications: StoryNotificationPayload[] = [
   myMockStory,
   ...Array.from({ length: 12 }, () => ({
-    id: faker.string.uuid(),
+    id: faker.number.int(),
     userId: faker.string.uuid(),
     username: faker.internet.username(),
     displayName: faker.person.fullName(),
@@ -37,7 +37,7 @@ export const createMockStories = (): StoryPayload[] => {
       return Math.floor((x - Math.floor(x)) * max);
     };
 
-    const generateStory = (storyId?: string) => {
+    const generateStory = (storyId?: number) => {
       // Determine content type: 70% image, 10% text, 20% video
       const contentTypeRand = seedRandom(Math.random() * 10000, 100);
       let contentType: 'image' | 'text' | 'video';
@@ -76,7 +76,7 @@ export const createMockStories = (): StoryPayload[] => {
       }
 
       return {
-        id: storyId || faker.string.uuid(),
+        id: storyId ?? faker.number.int(),
         content,
         createdAt: faker.date.recent().toISOString(),
         ...(shouldHaveSound && {
