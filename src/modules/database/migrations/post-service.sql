@@ -83,8 +83,8 @@ after insert on public.posts for each row
 execute function public.create_post_stats ();
 
 -- Function to get batch of post stats with user interaction flags
-create or replace function public.get_post_stats_batch (p_post_ids bigint[], p_current_user_id uuid) returns table (
-  post_id bigint,
+create or replace function public.get_post_stats_batch (p_post_ids text[], p_current_user_id uuid) returns table (
+  post_id text,
   likes_count bigint,
   comments_count bigint,
   reposts_count bigint,
@@ -97,26 +97,29 @@ set
 begin
   return query
   select 
-    ps.post_id,
+    ps.post_id::text as post_id,
     ps.likes_count,
     ps.comments_count,
     ps.reposts_count,
     ps.bookmarks_count,
-    coalesce(exists(
-      select 1 from post_likes 
-      where post_id = ps.post_id 
-        and user_id = p_current_user_id
-    ), false) as is_liked,
-    coalesce(exists(
-      select 1 from post_bookmarks 
-      where post_id = ps.post_id 
-        and user_id = p_current_user_id
-    ), false) as is_bookmarked
+    exists(
+      select 1 
+      from post_likes pl
+      where pl.post_id = ps.post_id
+        and pl.user_id = p_current_user_id
+    ) as is_liked,
+    exists(
+      select 1 
+      from post_bookmarks pb
+      where pb.post_id = ps.post_id
+        and pb.user_id = p_current_user_id
+    ) as is_bookmarked
   from post_stats ps
-  where ps.post_id = any(p_post_ids)
+  where ps.post_id = any(p_post_ids::bigint[])
   order by ps.post_id;
 end;
 $$;
+
 
 -- Function to get trending hashtag scores for explore algorithm
 create or replace function public.get_trending_hashtag_scores (p_hashtag_ids bigint[]) returns table (hashtag_id bigint, trending_score numeric) language plpgsql
@@ -377,5 +380,25 @@ begin
   order by ep.explore_score desc, ep.created_at desc
   limit p_limit
   offset p_offset;
+end;
+$$;
+
+-- Function to safely increment post stats counters
+create or replace function public.increment_post_stat (
+  p_post_id bigint,
+  p_field text,
+  p_increment integer
+) returns void language plpgsql
+set
+  search_path = public as $$
+begin
+  -- Update the specified field with increment
+  execute format(
+    'update post_stats set %I = COALESCE(%I, 0) + %s, last_modified = NOW() where post_id = %s',
+    p_field,
+    p_field,
+    p_increment,
+    p_post_id
+  );
 end;
 $$;

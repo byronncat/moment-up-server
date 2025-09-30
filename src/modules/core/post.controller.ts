@@ -19,7 +19,14 @@ import {
 import { Message, PostService } from './post.service';
 import { AccessTokenGuard } from 'src/common/guards';
 import { AccessToken } from 'src/common/decorators';
-import { CreatePostDto, ExploreDto, PaginationDto, ProfileFeedDto, RepostDto } from './dto';
+import {
+  CreatePostDto,
+  ExploreDto,
+  PaginationDto,
+  ProfileFeedDto,
+  ReportPostDto,
+  RepostDto,
+} from './dto';
 import { INITIAL_PAGE } from 'src/common/constants';
 
 @Controller({
@@ -144,6 +151,15 @@ export class PostController {
     };
     return {
       repost: await this.postService.repost(subject, repostDto),
+    };
+  }
+
+  @Post(':id/report')
+  @HttpCode(HttpStatus.CREATED)
+  @UseGuards(AccessTokenGuard)
+  async reportPost(@Param('id') id: string, @Body() reportPostDto: ReportPostDto) {
+    return {
+      report: await this.postService.report(id, reportPostDto),
     };
   }
 }

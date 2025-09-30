@@ -5,8 +5,25 @@ import { Logger } from 'winston';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { String } from 'src/common/helpers';
 
-type MainTable = 'users' | 'hashtags' | 'posts' | 'stories' | 'trending_reports' | 'user_reports';
-type RelationshipTable = 'post_hashtags' | 'follows' | 'blocks' | 'mutes';
+type MainTable =
+  | 'users'
+  | 'hashtags'
+  | 'posts'
+  | 'post_stats'
+  | 'stories'
+  | 'comments'
+  | 'user_reports'
+  | 'post_reports'
+  | 'trending_reports';
+type RelationshipTable =
+  | 'post_hashtags'
+  | 'follows'
+  | 'blocks'
+  | 'mutes'
+  | 'post_likes'
+  | 'post_bookmarks'
+  | 'reposts'
+  | 'comment_likes';
 type Table = MainTable | RelationshipTable;
 
 export interface SelectOptions {
@@ -177,16 +194,14 @@ export class SupabaseService implements OnModuleInit {
       let query = this.supabase.from(table).update(data as any);
 
       Object.entries(where).forEach(([key, value]) => {
-        if (value) {
-          query = query.eq(key, value);
-        }
+        if (value !== undefined) query = query.eq(key, value);
       });
 
       const { data: result, error } = await query.select();
 
       if (error) throw error;
 
-      return (result as T[]) || [];
+      return result as T[];
     } catch (error) {
       this.logger.error(error.message, {
         context: 'Supabase',

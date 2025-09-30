@@ -6,7 +6,7 @@ import { mockMoments } from 'src/__mocks__/moment';
 
 import type { ResourceApiResponse } from 'cloudinary';
 import type { FeedDto, PaginationDto as PaginationApi } from 'api';
-import type { Post, PostStat, User } from 'schema';
+import type { Post, PostReport, PostStat, User } from 'schema';
 
 type PostMetadata = {
   is_liked: boolean;
@@ -19,13 +19,12 @@ import {
   Inject,
   Injectable,
   InternalServerErrorException,
-  NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SupabaseService } from '../database/supabase.service';
 import { CloudinaryService } from '../database/cloudinary.service';
 import { UserService } from '../user/user.service';
-import { CreatePostDto, ExploreDto, ProfileFeedDto, RepostDto } from './dto';
+import { CreatePostDto, ExploreDto, ProfileFeedDto, ReportPostDto, RepostDto } from './dto';
 import { Auth } from 'src/common/helpers';
 import { ContentPrivacy, INITIAL_PAGE } from 'src/common/constants';
 
@@ -90,7 +89,8 @@ export class PostService {
           items: [],
         };
 
-      const posts = await this.supabaseService.select<Post>('posts', {
+      const posts = await this.supabaseService.select<any>('posts', {
+        select: 'id:id::text,user_id,text,attachments,privacy,last_modified',
         whereIn: { user_id: allowedUserIds },
         whereLte: { privacy: ContentPrivacy.FOLLOWERS },
         orderBy: [
@@ -119,7 +119,7 @@ export class PostService {
         userMap.set(summary.id, summary);
       });
 
-      const postIds = actualPosts.map((post) => post.id);
+      const postIds = actualPosts.map((post) => post.id as string);
       const postStats = await this.getPostStats(postIds, userId);
 
       const statsMap = new Map<Post['id'], PostMetadata>();
@@ -197,7 +197,7 @@ export class PostService {
           const postStats = result.post_stats;
 
           return {
-            id: result.post_id,
+            id: result.post_id.toString(),
             user: {
               id: userSummary.id,
               username: userSummary.username,
@@ -253,9 +253,9 @@ export class PostService {
     { page, limit, filter }: ProfileFeedDto
   ) {
     try {
-      const [userSummary] =
-        (await this.userService.getUserSummaries([userId], currentUserId)) ?? [];
-      if (!userSummary) throw new Error('User summary not found');
+      const userSummaries = await this.userService.getUserSummaries([userId], currentUserId);
+      if (!userSummaries || userSummaries.length === 0) throw new Error('User summary not found');
+      const userSummary = userSummaries[0];
 
       const privacyLevel =
         currentUserId === userId
@@ -264,7 +264,8 @@ export class PostService {
             ? ContentPrivacy.FOLLOWERS
             : ContentPrivacy.PUBLIC;
 
-      const posts = await this.supabaseService.select<Post>('posts', {
+      const posts = await this.supabaseService.select<any>('posts', {
+        select: 'id:id::text,user_id,text,attachments,privacy,last_modified',
         where: { user_id: userId },
         whereLte: { privacy: privacyLevel },
         ...(filter === 'media' && { whereNotNull: ['attachments'] }),
@@ -285,7 +286,7 @@ export class PostService {
       const hasNextPage = posts.length > limit;
       const actualPosts = hasNextPage ? posts.slice(0, limit) : posts;
 
-      const postIds = actualPosts.map((post) => post.id);
+      const postIds = actualPosts.map((post) => post.id as string);
       const postStats = await this.getPostStats(postIds, currentUserId);
 
       const statsMap = new Map<Post['id'], PostMetadata>();
@@ -331,14 +332,13 @@ export class PostService {
     }
   }
 
-  public async getById(userId: User['id'] | null, id: Post['id']) {
-    const moment = this.moments.find((moment) => moment.id === id);
-    if (!moment) throw new NotFoundException('Moment not found');
+  public async getById(_userId: User['id'] | null, _id: Post['id']) {
+    // const moment = this.moments.find((moment) => moment.id === id);
+    // if (!moment) throw new NotFoundException('Moment not found');
 
     const newMoment = {
-      ...moment,
       post: {
-        ...moment.post,
+        // ...moment.post,
         isLiked: false,
         isBookmarked: false,
         isReposted: false,
@@ -348,7 +348,7 @@ export class PostService {
     return newMoment;
   }
 
-  private async getPostStats(postIds: Array<Post['id']>, userId: User['id']) {
+  private async getPostStats(postIds: string[], userId: User['id']) {
     try {
       if (postIds.length === 0) return [];
 
@@ -358,7 +358,7 @@ export class PostService {
       });
 
       if (error) throw error;
-      return (data ?? []) as Array<PostMetadata>;
+      return (data ?? []) as PostMetadata[];
     } catch (error) {
       this.logger.error(error.message, {
         context: 'PostService',
@@ -399,42 +399,76 @@ export class PostService {
     }
   }
 
-  public async like(userId: User['id'], momentId: Post['id']) {
-    const moment = this.moments.find((moment) => moment.id === momentId);
-    if (!moment) throw new NotFoundException('Moment not found');
+  public async like(userId: User['id'], postId: Post['id']) {
+    try {
+      const [likeRecord] = await this.supabaseService.insert('post_likes', {
+        user_id: userId,
+        post_id: postId,
+      });
 
-    const likeRecord = {
-      id: Auth.generateId('uuid'),
-      userId,
-      momentId,
-      createdAt: new Date(),
-    };
-
-    return likeRecord;
+      await this.updatePostStats(postId, 'likes_count', 1);
+      return likeRecord;
+    } catch (error) {
+      this.logger.error(error.message, {
+        location: 'like',
+        context: 'PostService',
+      });
+      throw new BadRequestException('Failed to like post');
+    }
   }
 
-  public async unlike(userId: User['id'], momentId: Post['id']) {
-    const moment = this.moments.find((moment) => moment.id === momentId);
-    if (!moment) throw new NotFoundException('Moment not found');
+  public async unlike(userId: User['id'], postId: Post['id']) {
+    try {
+      await this.supabaseService.delete('post_likes', {
+        user_id: userId,
+        post_id: postId,
+      });
+
+      await this.updatePostStats(postId, 'likes_count', -1);
+      return true;
+    } catch (error) {
+      this.logger.error(error.message, {
+        location: 'unlike',
+        context: 'PostService',
+      });
+      throw new BadRequestException('Failed to unlike post');
+    }
   }
 
-  public async bookmark(userId: User['id'], momentId: Post['id']) {
-    const moment = this.moments.find((moment) => moment.id === momentId);
-    if (!moment) throw new NotFoundException('Moment not found');
+  public async bookmark(userId: User['id'], postId: Post['id']) {
+    try {
+      const [bookmarkRecord] = await this.supabaseService.insert('post_bookmarks', {
+        user_id: userId,
+        post_id: postId,
+      });
 
-    const bookmarkRecord = {
-      id: Auth.generateId('uuid'),
-      userId,
-      momentId,
-      createdAt: new Date(),
-    };
-
-    return bookmarkRecord;
+      await this.updatePostStats(postId, 'bookmarks_count', 1);
+      return bookmarkRecord;
+    } catch (error) {
+      this.logger.error(error.message, {
+        location: 'bookmark',
+        context: 'PostService',
+      });
+      throw new BadRequestException('Failed to bookmark post');
+    }
   }
 
-  public async unbookmark(userId: User['id'], momentId: Post['id']) {
-    const moment = this.moments.find((moment) => moment.id === momentId);
-    if (!moment) throw new NotFoundException('Moment not found');
+  public async unbookmark(userId: User['id'], postId: Post['id']) {
+    try {
+      await this.supabaseService.delete('post_bookmarks', {
+        user_id: userId,
+        post_id: postId,
+      });
+
+      await this.updatePostStats(postId, 'bookmarks_count', -1);
+      return true;
+    } catch (error) {
+      this.logger.error(error.message, {
+        location: 'unbookmark',
+        context: 'PostService',
+      });
+      throw new BadRequestException('Failed to unbookmark post');
+    }
   }
 
   public async repost(
@@ -444,8 +478,8 @@ export class PostService {
     },
     data: RepostDto
   ) {
-    const moment = this.moments.find((moment) => moment.id === subject.moment);
-    if (!moment) throw new NotFoundException('Moment not found');
+    // const moment = this.moments.find((moment) => moment.id === subject.moment);
+    // if (!moment) throw new NotFoundException('Moment not found');
 
     const repostRecord = {
       id: Auth.generateId('uuid'),
@@ -457,6 +491,54 @@ export class PostService {
     };
 
     return repostRecord;
+  }
+
+  public async report(postId: string, { type }: ReportPostDto) {
+    try {
+      const [newReport] = await this.supabaseService.insert<PostReport>('post_reports', {
+        post_id: postId as any,
+        type,
+      });
+
+      return newReport;
+    } catch (error) {
+      this.logger.error(error.message, {
+        location: 'reportPost',
+        context: 'PostService',
+      });
+      throw new InternalServerErrorException('Failed to report post');
+    }
+  }
+
+  private async updatePostStats(postId: Post['id'], field: keyof PostStat, increment: number) {
+    try {
+      // TEMPORARY
+      try {
+        const [postStats] = await this.supabaseService.select('post_stats', {
+          where: { post_id: postId },
+        });
+        if (!postStats) throw new Error('Post stats not found');
+      } catch {
+        await this.supabaseService.insert('post_stats', {
+          post_id: postId,
+          [field]: increment,
+        });
+      }
+      // TEMPORARY
+
+      const { error } = await this.supabaseService.getClient().rpc('increment_post_stat', {
+        p_post_id: postId,
+        p_field: field,
+        p_increment: increment,
+      });
+
+      if (error) throw error;
+    } catch (error) {
+      this.logger.error(error.message, {
+        location: 'updatePostStats',
+        context: 'PostService',
+      });
+    }
   }
 
   private async parseAttachments(attachments: Post['attachments']) {

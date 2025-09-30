@@ -51,7 +51,7 @@ declare module 'api' {
   }
 
   interface FeedDto {
-    id: Post['id'];
+    id: string;
     user: UserSummaryDto;
     post: PostDto;
   }
