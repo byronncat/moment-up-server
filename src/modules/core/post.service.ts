@@ -173,6 +173,8 @@ export class PostService {
         ? await this.userService.getExcludedUserIds(userId)
         : new Set<string>();
 
+      const trendingMap = await this.trendingService.getTrendingHashtagScoreMap(200);
+
       const { data: exploreResults, error } = await this.supabaseService
         .getClient()
         .rpc('get_explore_posts', {
@@ -181,6 +183,7 @@ export class PostService {
           p_post_type: type,
           p_limit: limit + 1,
           p_offset: (page - INITIAL_PAGE) * limit,
+          p_trending: trendingMap,
         });
 
       if (error) throw error;
@@ -386,6 +389,8 @@ export class PostService {
       if (error) throw error;
       if (!result) return undefined;
 
+      await this.userService.updateUserStats(userId, 'posts_count', 1);
+
       return result;
     } catch (error) {
       this.logger.error(error.message, {
@@ -509,20 +514,6 @@ export class PostService {
 
   private async updatePostStats(postId: Post['id'], field: keyof PostStat, increment: number) {
     try {
-      // TEMPORARY
-      try {
-        const [postStats] = await this.supabaseService.select('post_stats', {
-          where: { post_id: postId },
-        });
-        if (!postStats) throw new Error('Post stats not found');
-      } catch {
-        await this.supabaseService.insert('post_stats', {
-          post_id: postId,
-          [field]: increment,
-        });
-      }
-      // TEMPORARY
-
       const { error } = await this.supabaseService.getClient().rpc('increment_post_stat', {
         p_post_id: postId,
         p_field: field,

@@ -286,6 +286,9 @@ export class UserService {
         following_id: targetUserId,
       });
 
+      await this.updateUserStats(targetUserId, 'followers_count', 1);
+      await this.updateUserStats(currentUserId, 'following_count', 1);
+
       return newFollow;
     } catch (error) {
       this.logger.error(error.message, {
@@ -302,6 +305,9 @@ export class UserService {
         follower_id: currentUserId,
         following_id: targetUserId,
       });
+
+      await this.updateUserStats(targetUserId, 'followers_count', -1);
+      await this.updateUserStats(currentUserId, 'following_count', -1);
     } catch (error) {
       this.logger.error(error.message, {
         location: 'unfollow',
@@ -543,6 +549,23 @@ export class UserService {
         context: 'PeopleDiscovery',
       });
       return new Set([userId]);
+    }
+  }
+
+  public async updateUserStats(userId: User['id'], field: string, increment: number) {
+    try {
+      const { error } = await this.supabaseService.getClient().rpc('increment_user_stat', {
+        p_user_id: userId,
+        p_field: field,
+        p_increment: increment,
+      });
+
+      if (error) throw error;
+    } catch (error) {
+      this.logger.error(error.message, {
+        location: 'updateUserStats',
+        context: 'UserService',
+      });
     }
   }
 

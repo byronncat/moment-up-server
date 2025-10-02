@@ -42,11 +42,12 @@ import { TrendingReportDto } from './dto';
 import { Logger } from 'winston';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 
-const Message = {
+const ErrorMessage = {
   Hashtag: {
     TopicNotFound: 'Topic not found',
     ReportFailed: 'Failed to report trending topic',
   },
+  RefreshUserHashtags: 'Failed to refresh user hashtags',
 };
 
 @Injectable()
@@ -90,6 +91,47 @@ export class TrendingService {
     }));
 
     return trendingHashtags;
+  }
+
+  public async getTrendingHashtagScoreMap(limit = 200): Promise<Record<number, number>> {
+    const metrics = await this.getTrendingHashtags(limit);
+    if (metrics.length === 0) return {};
+
+    const names = Array.from(new Set(metrics.map((m) => m.hashtag.toLowerCase())));
+
+    const { data: rows, error } = await this.supabaseService
+      .getClient()
+      .from('hashtags')
+      .select('id,name')
+      .in('name', names);
+
+    if (error) {
+      this.logger.error(error.message, {
+        location: 'getTrendingHashtagScoreMap',
+        context: 'TrendingService',
+      });
+      return {};
+    }
+
+    const nameToId = new Map<string, number>();
+    const rowList = Array.isArray(rows) ? rows : [];
+    for (const r of rowList as any[]) {
+      const name = (r?.name ?? '').toString();
+      const id = Number(r?.id);
+      if (!name) continue;
+      if (!Number.isFinite(id)) continue;
+      nameToId.set(name.toLowerCase(), id);
+    }
+
+    const result: Record<number, number> = {} as Record<number, number>;
+    metrics.forEach((m) => {
+      const id = nameToId.get(m.hashtag.toLowerCase());
+      if (id !== undefined) {
+        result[id] = m.trendingScore;
+      }
+    });
+
+    return result;
   }
 
   public async processPostHashtags(context: string) {
@@ -137,7 +179,7 @@ export class TrendingService {
         }
       );
       if (trendingReports.length === 0)
-        throw new InternalServerErrorException(Message.Hashtag.ReportFailed);
+        throw new InternalServerErrorException(ErrorMessage.Hashtag.ReportFailed);
       return;
     }
     // TEMPORARY
@@ -148,7 +190,7 @@ export class TrendingService {
         name: topic,
       },
     });
-    if (topics.length === 0) throw new NotFoundException(Message.Hashtag.TopicNotFound);
+    if (topics.length === 0) throw new NotFoundException(ErrorMessage.Hashtag.TopicNotFound);
 
     const trendingReports = await this.supabaseService.insert<TrendingReport>('trending_reports', {
       hashtag_id: topics[0].id,
@@ -341,5 +383,18 @@ export class TrendingService {
       changeWeight: parseFloat(redisConfig.changeWeight) || this.defaultTrendingConfig.changeWeight,
       spikeWeight: parseFloat(redisConfig.spikeWeight) || this.defaultTrendingConfig.spikeWeight,
     };
+  }
+
+  public async refreshUserHashtags() {
+    try {
+      const { error } = await this.supabaseService.getClient().rpc('refresh_user_hashtag_stats');
+      if (error) throw new InternalServerErrorException(error.message);
+    } catch (error) {
+      this.logger.error(error.message, {
+        location: 'refreshUserHashtags',
+        context: 'TrendingService',
+      });
+      throw new InternalServerErrorException(ErrorMessage.RefreshUserHashtags);
+    }
   }
 }

@@ -32,6 +32,15 @@ declare module 'schema' {
     deleted_at: timestamptz | null;
   }
 
+  interface UserStat {
+    readonly user_id: User['id'];
+    readonly followers_count: number;
+    readonly following_count: number;
+    readonly posts_count: number;
+    readonly has_story: boolean;
+    readonly last_modified: timestamptz;
+  }
+
   interface Post {
     readonly id: snowflake;
     readonly user_id: User['id'];
@@ -117,11 +126,6 @@ declare module 'schema' {
   }
 
   // === Relationship ===
-  interface PostHashtag {
-    readonly post_id: Post['id'];
-    readonly hashtag_id: Hashtag['id'];
-  }
-
   interface Follow {
     readonly follower_id: User['id'];
     readonly following_id: User['id'];
@@ -150,6 +154,11 @@ declare module 'schema' {
     readonly user_id: User['id'];
     readonly post_id: Post['id'];
     readonly created_at: timestamptz;
+  }
+
+  interface PostHashtag {
+    readonly post_id: Post['id'];
+    readonly hashtag_id: Hashtag['id'];
   }
 
   interface CommentLike {

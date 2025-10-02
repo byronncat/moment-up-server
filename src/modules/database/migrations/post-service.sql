@@ -13,77 +13,47 @@ declare
   v_hashtag_id bigint;
   result_post jsonb;
 begin
-  -- Insert the post and capture the new ID
-  insert into public.posts (user_id, text, attachments, privacy)
+  -- Insert the post
+  insert into posts (user_id, text, attachments, privacy)
   values (p_user_id, p_text, p_attachments, p_privacy)
-  returning id into new_post_id;
+  returning id, to_jsonb(posts.*) into new_post_id, result_post;
 
-  -- Handle hashtags if provided
+  -- Process hashtags if any exist
   if array_length(p_hashtags, 1) > 0 then
     foreach hashtag_name in array p_hashtags loop
-      -- Insert hashtag if not exists
-      insert into public.hashtags (name)
+      -- Insert hashtag and fetch id
+      insert into hashtags (name)
       values (hashtag_name)
-      on conflict (name) do nothing;
+      on conflict (name) do update set name = excluded.name
+      returning id into v_hashtag_id;
 
-      -- Get hashtag id
-      select h.id
-      into v_hashtag_id
-      from public.hashtags h
-      where h.name = hashtag_name;
-
-      -- Insert relationship
-      insert into public.post_hashtags (post_id, hashtag_id)
+      -- Insert the post-hashtag relationship
+      insert into post_hashtags (post_id, hashtag_id)
       values (new_post_id, v_hashtag_id)
       on conflict (post_id, hashtag_id) do nothing;
     end loop;
   end if;
 
-  -- Return inserted post as JSONB
-  select to_jsonb(p.*)
-  into result_post
-  from public.posts p
-  where p.id = new_post_id;
-
   return result_post;
 end;
 $$;
 
--- Function to create post stats when a post is created
 create or replace function public.create_post_stats () returns trigger language plpgsql
 set
   search_path = public as $$
 begin
-  -- Insert initial post stats with zero counts
-  insert into public.post_stats (
-    post_id,
-    likes_count,
-    comments_count,
-    reposts_count,
-    bookmarks_count,
-    last_modified
-  )
-  values (
-    NEW.id,
-    0,
-    0,
-    0,
-    0,
-    NOW()
-  );
-  
+  insert into public.post_stats (post_id) values (NEW.id);
   return NEW;
 end;
 $$;
 
--- Create trigger to automatically create post stats when a post is inserted
 create
 or replace trigger trigger_create_post_stats
 after insert on public.posts for each row
 execute function public.create_post_stats ();
 
--- Function to get batch of post stats with user interaction flags
-create or replace function public.get_post_stats_batch (p_post_ids text[], p_current_user_id uuid) returns table (
+
+create or replace function public.get_post_stats_batch (p_post_ids bigint[], p_current_user_id uuid) returns table (
   post_id text,
   likes_count bigint,
   comments_count bigint,
@@ -91,99 +61,27 @@ create or replace function public.get_post_stats_batch (p_post_ids text[], p_cur
   bookmarks_count bigint,
   is_liked boolean,
   is_bookmarked boolean
-) language plpgsql
+) language sql
 set
   search_path = public as $$
-begin
-  return query
   select 
-    ps.post_id::text as post_id,
+    ps.post_id::text,
     ps.likes_count,
     ps.comments_count,
     ps.reposts_count,
     ps.bookmarks_count,
-    exists(
-      select 1 
-      from post_likes pl
-      where pl.post_id = ps.post_id
-        and pl.user_id = p_current_user_id
-    ) as is_liked,
-    exists(
-      select 1 
-      from post_bookmarks pb
-      where pb.post_id = ps.post_id
-        and pb.user_id = p_current_user_id
-    ) as is_bookmarked
+    (pl.user_id is not null) as is_liked,
+    (pb.user_id is not null) as is_bookmarked
   from post_stats ps
-  where ps.post_id = any(p_post_ids::bigint[])
-  order by ps.post_id;
-end;
+  -- Is liked
+  left join post_likes pl
+    on pl.post_id = ps.post_id and pl.user_id = p_current_user_id
+  -- Is bookmarked
+  left join post_bookmarks pb
+    on pb.post_id = ps.post_id and pb.user_id = p_current_user_id
+  where ps.post_id = any(p_post_ids);
 $$;
 
-
--- Function to get trending hashtag scores for explore algorithm
-create or replace function public.get_trending_hashtag_scores (p_hashtag_ids bigint[]) returns table (hashtag_id bigint, trending_score numeric) language plpgsql
-set
-  search_path = public as $$
-declare
-  current_window_start timestamp with time zone;
-  previous_window_start timestamp with time zone;
-  window_size_hours integer := 1; -- 1 hour windows for trending calculation
-begin
-  current_window_start := now() - interval '1 hour';
-  previous_window_start := now() - interval '2 hours';
-  
-  return query
-  with current_window_counts as (
-    select 
-      ph.hashtag_id,
-      count(*) as current_count
-    from posts p
-    join post_hashtags ph on p.id = ph.post_id
-    where ph.hashtag_id = any(p_hashtag_ids)
-      and p.created_at >= current_window_start
-      and p.created_at < now()
-    group by ph.hashtag_id
-  ),
-  previous_window_counts as (
-    select 
-      ph.hashtag_id,
-      count(*) as previous_count
-    from posts p
-    join post_hashtags ph on p.id = ph.post_id
-    where ph.hashtag_id = any(p_hashtag_ids)
-      and p.created_at >= previous_window_start
-      and p.created_at < current_window_start
-    group by ph.hashtag_id
-  ),
-  hashtag_metrics as (
-    select 
-      coalesce(c.hashtag_id, p.hashtag_id) as hashtag_id,
-      coalesce(c.current_count, 0) as current_count,
-      coalesce(p.previous_count, 0) as previous_count,
-      case 
-        when coalesce(p.previous_count, 0) = 0 then 
-          case when coalesce(c.current_count, 0) > 0 then 1.0 else 0.0 end
-        else 
-          (coalesce(c.current_count, 0) - coalesce(p.previous_count, 0))::numeric / coalesce(p.previous_count, 0)::numeric
-      end as rate_of_change,
-      coalesce(c.current_count, 0) >= coalesce(p.previous_count, 0) * 2.0 as is_spike
-    from current_window_counts c
-    full outer join previous_window_counts p on c.hashtag_id = p.hashtag_id
-  )
-  select 
-    hm.hashtag_id,
-    -- Trending score formula: log(current + 1) * 0.3 + sigmoid(rate_of_change) * 0.4 + spike_bonus * 0.3
-    (
-      ln(greatest(hm.current_count, 1)) * 0.3 +
-      ((2.0 / (1.0 + exp(-greatest(hm.rate_of_change, -10.0)))) - 1.0) * 0.4 +
-      (case when hm.is_spike then 1.0 else 0.0 end) * 0.3
-    ) as trending_score
-  from hashtag_metrics hm
-  where hm.current_count >= 5 -- Minimum threshold for trending
-  order by trending_score desc;
-end;
-$$;
 
 -- Function to get explore posts with advanced scoring algorithm
 create or replace function public.get_explore_posts (
@@ -191,9 +89,10 @@ create or replace function public.get_explore_posts (
   p_excluded_user_ids uuid[],
   p_post_type text default 'post',
   p_limit integer default 30,
-  p_offset integer default 0
+  p_offset integer default 0,
+  p_trending jsonb default null
 ) returns table (
-  post_id bigint,
+  post_id text,
   user_id uuid,
   text text,
   attachments jsonb[],
@@ -215,6 +114,21 @@ begin
   return query
   with excluded_users as (
     select unnest(p_excluded_user_ids) as excluded_id
+  ),
+  rel_is_following as (
+    select following_id
+    from follows
+    where follower_id = p_current_user_id
+  ),
+  rel_is_follower as (
+    select follower_id
+    from follows
+    where following_id = p_current_user_id
+  ),
+  rel_is_muted as (
+    select muted_id
+    from mutes
+    where muter_id = p_current_user_id
   ),
   post_engagement as (
     select 
@@ -296,14 +210,8 @@ begin
     select 
       ph.post_id,
       ph.hashtag_id,
-      coalesce(th.trending_score, 0.0) as trending_score
+      coalesce((p_trending->>ph.hashtag_id::text)::numeric, 0.0) as trending_score
     from post_hashtags ph
-    left join (
-      select hashtag_id, trending_score
-      from get_trending_hashtag_scores(
-        (select array_agg(distinct hashtag_id) from post_hashtags)
-      )
-    ) th on ph.hashtag_id = th.hashtag_id
   ),
   post_trending_scores as (
     select 
@@ -315,7 +223,7 @@ begin
   ),
   explore_posts as (
     select 
-      p.id as post_id,
+      p.id::text as post_id,
       p.user_id,
       p.text,
       p.attachments,
@@ -340,12 +248,12 @@ begin
         'display_name', u.display_name,
         'avatar', u.avatar,
         'bio', u.bio,
-        'followers', (select count(*) from follows f1 where f1.following_id = u.id),
-        'following', (select count(*) from follows f2 where f2.follower_id = u.id),
-        'is_following', exists(select 1 from follows f3 where f3.follower_id = p_current_user_id and f3.following_id = u.id),
-        'is_follower', exists(select 1 from follows f4 where f4.follower_id = u.id and f4.following_id = p_current_user_id),
-        'is_muted', exists(select 1 from mutes m where m.muter_id = p_current_user_id and m.muted_id = u.id),
-        'has_story', exists(select 1 from stories s where s.user_id = u.id and s.created_at >= now() - interval '24 hours')
+        'followers', coalesce(us.followers_count, 0),
+        'following', coalesce(us.following_count, 0),
+        'is_following', (rif.following_id is not null),
+        'is_follower', (rfr.follower_id is not null),
+        'is_muted', (rim.muted_id is not null),
+        'has_story', coalesce(us.has_story, false)
       ) as user_summary,
       -- Post stats
       jsonb_build_object(
@@ -358,6 +266,10 @@ begin
       ) as post_stats
     from posts p
     join users u on p.user_id = u.id
+    left join user_stats us on us.user_id = u.id
+    left join rel_is_following rif on rif.following_id = u.id
+    left join rel_is_follower rfr on rfr.follower_id = u.id
+    left join rel_is_muted rim on rim.muted_id = u.id
     left join post_engagement pe on p.id = pe.post_id
     left join post_trending_scores pt on p.id = pt.post_id
     left join post_stats ps on p.id = ps.post_id
@@ -383,22 +295,63 @@ begin
 end;
 $$;
 
--- Function to safely increment post stats counters
+-- Insert version of increment_post_stat
 create or replace function public.increment_post_stat (
   p_post_id bigint,
   p_field text,
   p_increment integer
-) returns void language plpgsql
+) returns bigint language plpgsql
 set
   search_path = public as $$
+declare
+  result bigint;
 begin
-  -- Update the specified field with increment
+  if p_field not in ('likes_count', 'comments_count', 'reposts_count', 'bookmarks_count') then
+    raise exception 'Invalid field name: %', p_field;
+  end if;
+
   execute format(
-    'update post_stats set %I = COALESCE(%I, 0) + %s, last_modified = NOW() where post_id = %s',
-    p_field,
-    p_field,
-    p_increment,
-    p_post_id
-  );
+    'update post_stats
+     set %I = COALESCE(%I, 0) + $1,
+         last_modified = NOW()
+     where post_id = $2
+     returning %I',
+    p_field, p_field, p_field
+  )
+  into result
+  using p_increment, p_post_id;
+
+  return result;
+end;
+$$;
+
+-- Upsert version of increment_post_stat
+create or replace function public.increment_post_stat (
+  p_post_id bigint,
+  p_field text,
+  p_increment integer
+) returns bigint language plpgsql
+set
+  search_path = public as $$
+declare
+  result bigint;
+begin
+  if p_field not in ('likes_count', 'comments_count', 'reposts_count', 'bookmarks_count') then
+    raise exception 'Invalid field name: %', p_field;
+  end if;
+
+  execute format(
+    'insert into post_stats (post_id, %I, last_modified)
+       values ($1, $2, now())
+     on conflict (post_id) do update
+       set %I = post_stats.%I + $2,
+           last_modified = now()
+     returning %I',
+    p_field, p_field, p_field, p_field
+  )
+  into result
+  using p_post_id, p_increment;
+
+  return result;
 end;
 $$;

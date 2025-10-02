@@ -41,30 +41,28 @@ begin
       ud.avatar,
       ud.background_image,
       ud.bio,
-      -- Follower count
-      coalesce((select count(*) from follows where following_id = ud.id), 0) as follower_count,
-      -- Following count
-      coalesce((select count(*) from follows where follower_id = ud.id), 0) as following_count,
+      -- Use cached stats from user_stats table
+      coalesce(us.followers_count, 0) as follower_count,
+      coalesce(us.following_count, 0) as following_count,
       -- Relationship checks (only if current_user_id is provided and different from target user)
       case 
         when p_current_user_id is null or p_current_user_id = ud.id then false
-        else coalesce(exists(select 1 from follows where follower_id = ud.id and following_id = p_current_user_id), false)
+        else exists(select 1 from follows where follower_id = ud.id and following_id = p_current_user_id)
       end as is_follower,
       case 
         when p_current_user_id is null or p_current_user_id = ud.id then false
-        else coalesce(exists(select 1 from follows where follower_id = p_current_user_id and following_id = ud.id), false)
+        else exists(select 1 from follows where follower_id = p_current_user_id and following_id = ud.id)
       end as is_following,
       case 
         when p_current_user_id is null or p_current_user_id = ud.id then false
-        else coalesce(exists(select 1 from mutes where muter_id = p_current_user_id and muted_id = ud.id), false)
+        else exists(select 1 from mutes where muter_id = p_current_user_id and muted_id = ud.id)
       end as is_muted,
       -- Check if either user blocked the other
       case 
         when p_current_user_id is null or p_current_user_id = ud.id then false
-        else coalesce(
+        else (
           exists(select 1 from blocks where blocker_id = p_current_user_id and blocked_id = ud.id) or
-          exists(select 1 from blocks where blocker_id = ud.id and blocked_id = p_current_user_id),
-          false
+          exists(select 1 from blocks where blocker_id = ud.id and blocked_id = p_current_user_id)
         )
       end as is_blocked,
       -- Check if profile is protected (private)
@@ -72,13 +70,10 @@ begin
         when ud.privacy = 1 then true
         else false
       end as is_protected,
-      -- Has active story (within 24 hours)
-      coalesce(exists(
-        select 1 from stories 
-        where user_id = ud.id 
-          and created_at > now() - interval '24 hours'
-      ), false) as has_story
+      -- Use cached story status from user_stats table
+      coalesce(us.has_story, false) as has_story
     from user_data ud
+    left join user_stats us on us.user_id = ud.id
   )
   select 
     us.id,
@@ -136,19 +131,15 @@ begin
       ub.display_name,
       ub.avatar,
       ub.bio,
-      -- Follower count
-      coalesce((select count(*) from follows where following_id = ub.id), 0) as follower_count,
-      -- Following count
-      coalesce((select count(*) from follows where follower_id = ub.id), 0) as following_count,
+      -- Use cached stats from user_stats table
+      coalesce(us.followers_count, 0) as follower_count,
+      coalesce(us.following_count, 0) as following_count,
       -- Is current user following this user
-      coalesce(exists(select 1 from follows where follower_id = p_current_user_id and following_id = ub.id), false) as is_following,
-      -- Has active story (within 24 hours)
-      coalesce(exists(
-        select 1 from stories 
-        where user_id = ub.id 
-          and created_at > now() - interval '24 hours'
-      ), false) as has_story
+      exists(select 1 from follows where follower_id = p_current_user_id and following_id = ub.id) as is_following,
+      -- Use cached story status from user_stats table
+      coalesce(us.has_story, false) as has_story
     from user_base ub
+    left join user_stats us on us.user_id = ub.id
   ),
   mutual_followers_data as (
     select 

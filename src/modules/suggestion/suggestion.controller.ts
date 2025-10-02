@@ -66,4 +66,13 @@ export class SuggestionController {
       message: 'Report submitted successfully',
     };
   }
+
+  @Post('trending/refresh-user-hashtags')
+  @HttpCode(HttpStatus.OK)
+  async refreshUserHashtags() {
+    await this.trendingService.refreshUserHashtags();
+    return {
+      message: 'User hashtags refreshed successfully',
+    };
+  }
 }
