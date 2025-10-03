@@ -23,7 +23,7 @@ import { ConfigService } from '@nestjs/config';
 import { SupabaseService } from '../database/supabase.service';
 import { CloudinaryService } from '../database/cloudinary.service';
 import { UserService } from '../user/user.service';
-import { CreatePostDto, ExploreDto, ProfileFeedDto, ReportPostDto, RepostDto } from './dto';
+import { CreatePostDto, ExploreDto, ReportPostDto, RepostDto, UserPostsDto } from './dto';
 import { Auth } from 'src/common/helpers';
 import { ContentPrivacy, INITIAL_PAGE } from 'src/common/constants';
 
@@ -250,7 +250,7 @@ export class PostService {
       userId: User['id'];
       currentUserId: User['id'];
     },
-    { page, limit, filter }: ProfileFeedDto
+    { page, limit, filter }: UserPostsDto
   ) {
     try {
       const userSummaries = await this.userService.getUserSummaries([userId], currentUserId);
@@ -294,7 +294,7 @@ export class PostService {
         statsMap.set(stat.post_id, stat);
       });
 
-      const momentItems = await Promise.all(
+      const postItems = await Promise.all(
         actualPosts.map(async (post) => {
           const stats = statsMap.get(post.id);
 
@@ -319,7 +319,7 @@ export class PostService {
         page,
         limit,
         hasNextPage,
-        items: momentItems,
+        items: postItems,
       };
 
       return pagination;
@@ -476,7 +476,7 @@ export class PostService {
   public async repost(
     subject: {
       user: User['id'];
-      moment: Post['id'];
+      post: Post['id'];
     },
     data: RepostDto
   ) {
@@ -486,7 +486,7 @@ export class PostService {
     const repostRecord = {
       id: Auth.generateId('uuid'),
       userId: subject.user,
-      momentId: subject.moment,
+      postId: subject.post,
       comment: data.comment ?? null,
       audience: data.audience,
       createdAt: new Date(),
@@ -544,13 +544,13 @@ export class PostService {
             // Check if the ID is an HTTP URL
             if (attachment.id.startsWith('http')) {
               // For HTTP URLs, determine aspect ratio from the URL or use default logic
-              let aspectRatio: '1:1' | '4:5' | '1.91:1' = '1:1';
+              let aspectRatio: 'square' | 'portrait' | 'landscape' = 'square';
 
               // Try to determine aspect ratio from URL patterns or use random for demo
               if (attachment.id.includes('4096x4096') || Math.random() < 0.6) {
-                aspectRatio = '4:5';
+                aspectRatio = 'portrait';
               } else if (Math.random() < 0.3) {
-                aspectRatio = '1.91:1';
+                aspectRatio = 'landscape';
               }
 
               return {
@@ -611,9 +611,9 @@ export class PostService {
         }
 
         const ratio = resource.width / resource.height;
-        let aspectRatio: '1:1' | '4:5' | '1.91:1' = '1:1';
-        if (ratio < 1) aspectRatio = '4:5';
-        if (ratio > 1) aspectRatio = '1.91:1';
+        let aspectRatio: 'square' | 'portrait' | 'landscape' = 'square';
+        if (ratio < 1) aspectRatio = 'portrait';
+        if (ratio > 1) aspectRatio = 'landscape';
 
         return {
           id: resource.public_id,

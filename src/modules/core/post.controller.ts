@@ -23,9 +23,9 @@ import {
   CreatePostDto,
   ExploreDto,
   PaginationDto,
-  ProfileFeedDto,
   ReportPostDto,
   RepostDto,
+  UserPostsDto,
 } from './dto';
 import { INITIAL_PAGE } from 'src/common/constants';
 
@@ -55,7 +55,7 @@ export class PostController {
   @HttpCode(HttpStatus.OK)
   async getUserPosts(
     @Param('id') userId: User['id'],
-    @Query() { page, limit: _limit, filter }: ProfileFeedDto,
+    @Query() { page, limit: _limit, filter }: UserPostsDto,
     @AccessToken() accessToken?: JwtPayload
   ) {
     let limit = _limit;
@@ -80,7 +80,7 @@ export class PostController {
 
   @Get(':id')
   @HttpCode(HttpStatus.OK)
-  async getMoment(@AccessToken() token: JwtPayload, @Param('id') id: PostSchema['id']) {
+  async getPost(@AccessToken() token: JwtPayload, @Param('id') id: PostSchema['id']) {
     const userId = token.sub ?? '';
     return {
       moment: await this.postService.getById(userId, id),
@@ -103,7 +103,7 @@ export class PostController {
   @Post(':id/like')
   @HttpCode(HttpStatus.CREATED)
   @UseGuards(AccessTokenGuard)
-  async likeMoment(@AccessToken() token: JwtPayload, @Param('id') id: PostSchema['id']) {
+  async likePost(@AccessToken() token: JwtPayload, @Param('id') id: PostSchema['id']) {
     const userId = token.sub ?? '';
     return {
       like: await this.postService.like(userId, id),
@@ -113,7 +113,7 @@ export class PostController {
   @Delete(':id/unlike')
   @HttpCode(HttpStatus.NO_CONTENT)
   @UseGuards(AccessTokenGuard)
-  async unlikeMoment(@AccessToken() token: JwtPayload, @Param('id') id: PostSchema['id']) {
+  async unlikePost(@AccessToken() token: JwtPayload, @Param('id') id: PostSchema['id']) {
     const userId = token.sub ?? '';
     await this.postService.unlike(userId, id);
   }
@@ -121,7 +121,7 @@ export class PostController {
   @Post(':id/bookmark')
   @HttpCode(HttpStatus.CREATED)
   @UseGuards(AccessTokenGuard)
-  async bookmarkMoment(@AccessToken() token: JwtPayload, @Param('id') id: PostSchema['id']) {
+  async bookmarkPost(@AccessToken() token: JwtPayload, @Param('id') id: PostSchema['id']) {
     const userId = token.sub ?? '';
     return {
       bookmark: await this.postService.bookmark(userId, id),
@@ -131,7 +131,7 @@ export class PostController {
   @Delete(':id/unbookmark')
   @HttpCode(HttpStatus.NO_CONTENT)
   @UseGuards(AccessTokenGuard)
-  async unbookmarkMoment(@AccessToken() token: JwtPayload, @Param('id') id: PostSchema['id']) {
+  async unbookmarkPost(@AccessToken() token: JwtPayload, @Param('id') id: PostSchema['id']) {
     const userId = token.sub ?? '';
     await this.postService.unbookmark(userId, id);
   }
@@ -139,7 +139,7 @@ export class PostController {
   @Post(':id/repost')
   @HttpCode(HttpStatus.CREATED)
   @UseGuards(AccessTokenGuard)
-  async repostMoment(
+  async repostPost(
     @AccessToken() token: JwtPayload,
     @Param('id') id: PostSchema['id'],
     @Body() repostDto: RepostDto
@@ -147,7 +147,7 @@ export class PostController {
     const userId = token.sub ?? '';
     const subject = {
       user: userId,
-      moment: id,
+      post: id,
     };
     return {
       repost: await this.postService.repost(subject, repostDto),

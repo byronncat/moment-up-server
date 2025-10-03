@@ -40,7 +40,7 @@ declare module 'api' {
     files: Array<{
       id: Attachment['id'];
       type: 'image' | 'video';
-      aspectRatio: '1:1' | '4:5' | '1.91:1';
+      aspectRatio: 'square' | 'portrait' | 'landscape';
     }> | null;
     likes: number;
     comments: number;
