@@ -15,9 +15,11 @@ type PostMetadata = {
 
 import {
   BadRequestException,
+  ForbiddenException,
   Inject,
   Injectable,
   InternalServerErrorException,
+  NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SupabaseService } from '../database/supabase.service';
@@ -41,6 +43,8 @@ export const Message = {
     Failed: 'Failed to get posts.',
   },
 };
+
+const METADATA_TEXT_LIMIT = 70;
 
 @Injectable()
 export class PostService {
@@ -332,20 +336,121 @@ export class PostService {
     }
   }
 
-  public async getById(_userId: User['id'] | null, _id: Post['id']) {
-    // const moment = this.moments.find((moment) => moment.id === id);
-    // if (!moment) throw new NotFoundException('Moment not found');
+  public async getById(postId: Post['id'], userId?: User['id']) {
+    try {
+      const posts = await this.supabaseService.select<
+        Post & {
+          id: string;
+        }
+      >('posts', {
+        select: 'id:id::text,user_id,text,attachments,privacy,last_modified',
+        where: { id: postId },
+        limit: 1,
+      });
 
-    const newMoment = {
-      post: {
-        // ...moment.post,
-        isLiked: false,
-        isBookmarked: false,
-        isReposted: false,
-      },
-    };
+      if (posts.length === 0) throw new NotFoundException('Post not found');
+      const post = posts[0];
 
-    return newMoment;
+      const userSummaries = await this.userService.getUserSummaries([post.user_id], userId);
+      if (!userSummaries || userSummaries.length === 0)
+        throw new BadRequestException('User not found');
+
+      const userSummary = userSummaries[0];
+
+      const privacyLevel =
+        userId === undefined
+          ? ContentPrivacy.PUBLIC
+          : userId === post.user_id
+            ? ContentPrivacy.PRIVATE
+            : userSummary.isFollowing
+              ? ContentPrivacy.FOLLOWERS
+              : ContentPrivacy.PUBLIC;
+
+      if (post.privacy > privacyLevel)
+        throw new ForbiddenException('You do not have permission to view this post');
+
+      let postStats: PostMetadata | undefined;
+      if (userId) {
+        const stats = await this.getPostStats([postId.toString()], userId);
+        postStats = stats[0];
+      }
+
+      const files = await this.parseAttachments(post.attachments);
+
+      const result = {
+        id: post.id,
+        user: userSummary,
+        post: {
+          text: post.text,
+          files,
+          likes: postStats?.likes_count ?? 0,
+          comments: postStats?.comments_count ?? 0,
+          reposts: postStats?.reposts_count ?? 0,
+          isLiked: postStats?.is_liked ?? false,
+          isBookmarked: postStats?.is_bookmarked ?? false,
+          lastModified: post.last_modified,
+        },
+      } satisfies FeedDto;
+
+      return result;
+    } catch (error) {
+      this.logger.error(error.message, {
+        location: 'getById',
+        context: 'PostService',
+      });
+
+      if (
+        error instanceof BadRequestException ||
+        error instanceof ForbiddenException ||
+        error instanceof NotFoundException
+      )
+        throw error;
+
+      throw new InternalServerErrorException('Failed to get post');
+    }
+  }
+
+  public async getMetadata(postId: Post['id']) {
+    try {
+      const posts = await this.supabaseService.select<
+        Post & {
+          id: string;
+        }
+      >('posts', {
+        select: 'id:id::text,user_id,text,privacy',
+        where: { id: postId },
+        limit: 1,
+      });
+
+      if (posts.length === 0) throw new NotFoundException('Post not found');
+      const post = posts[0];
+
+      const userSummaries = await this.userService.getUserSummaries([post.user_id]);
+      if (!userSummaries || userSummaries.length === 0)
+        throw new BadRequestException('User not found');
+
+      const userSummary = userSummaries[0];
+
+      const isPublic = post.privacy === ContentPrivacy.PUBLIC;
+      return {
+        username: userSummary.username,
+        displayName: userSummary.displayName,
+        text:
+          isPublic && post.text
+            ? post.text.slice(0, METADATA_TEXT_LIMIT) +
+              (post.text.length > METADATA_TEXT_LIMIT ? '...' : '')
+            : 'This content is from a private account.',
+        lastModified: post.last_modified,
+      };
+    } catch (error) {
+      this.logger.error(error.message, {
+        location: 'getMetadata',
+        context: 'PostService',
+      });
+
+      if (error instanceof BadRequestException || error instanceof NotFoundException) throw error;
+      throw new InternalServerErrorException('Failed to get post metadata');
+    }
   }
 
   private async getPostStats(postIds: string[], userId: User['id']) {

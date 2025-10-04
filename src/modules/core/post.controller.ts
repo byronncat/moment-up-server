@@ -80,10 +80,18 @@ export class PostController {
 
   @Get(':id')
   @HttpCode(HttpStatus.OK)
-  async getPost(@AccessToken() token: JwtPayload, @Param('id') id: PostSchema['id']) {
-    const userId = token.sub ?? '';
+  async getPost(@Param('id') postId: PostSchema['id'], @AccessToken() token?: JwtPayload) {
+    const userId = token?.sub;
     return {
-      moment: await this.postService.getById(userId, id),
+      post: await this.postService.getById(postId, userId),
+    };
+  }
+
+  @Get(':id/metadata')
+  @HttpCode(HttpStatus.OK)
+  async getPostMetadata(@Param('id') postId: PostSchema['id']) {
+    return {
+      metadata: await this.postService.getMetadata(postId),
     };
   }
 
