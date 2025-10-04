@@ -97,6 +97,26 @@ export enum SocialAuthError {
   AUTHENTICATION_FAILED = 'AuthenticationFailed',
 }
 
+export enum NotificationType {
+  ALL = 'all',
+  SECURITY = 'security',
+  SOCIAL = 'social',
+  POST = 'post',
+  REQUEST = 'request',
+  MENTION = 'mention',
+  FOLLOW = 'follow',
+}
+
+export enum SortBy {
+  NEWEST = 'newest',
+  MOST_LIKED = 'most_liked',
+}
+
+export enum ExploreType {
+  MEDIA = 'media',
+  POST = 'post',
+}
+
 // +++ TODO: Ongoing +++
 export enum SearchItemType {
   USER,
@@ -141,19 +161,4 @@ export enum StoryBackground {
 
   RADIENT_GRADIENT,
   ORANGE_SUN_TORNADO,
-}
-
-export enum NotificationType {
-  ALL = 'all',
-  SECURITY = 'security',
-  SOCIAL = 'social',
-  POST = 'post',
-  REQUEST = 'request',
-  MENTION = 'mention',
-  FOLLOW = 'follow',
-}
-
-export enum ExploreType {
-  MEDIA = 'media',
-  POST = 'post',
 }

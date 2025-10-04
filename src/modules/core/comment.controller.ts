@@ -15,7 +15,7 @@ import {
 import { CommentService } from './comment.service';
 import { AccessToken } from 'src/common/decorators';
 import { AccessTokenGuard } from 'src/common/guards';
-import { CommentDto } from './dto/comment';
+import { CreateCommentDto, PostCommentsDto } from './dto';
 
 @Controller({
   path: 'comments',
@@ -24,25 +24,31 @@ import { CommentDto } from './dto/comment';
 export class CommentController {
   constructor(private readonly commentService: CommentService) {}
 
-  // @Get('moment/:momentId')
-  // @HttpCode(HttpStatus.OK)
-  // @UseGuards(AccessTokenGuard)
-  // async getComments(
-  //   @Param('momentId') momentId: string,
-  //   @Query() paginationDto: PaginationDto,
-  //   @AccessToken() token: JwtPayload
-  // ) {
-  //   const userId = token?.sub || '';
-  //   return await this.commentService.get(momentId, userId, paginationDto);
-  // }
+  @Get('post/:postId')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AccessTokenGuard)
+  async getComments(
+    @Param('postId') postId: string,
+    @Query() commentsDto: PostCommentsDto,
+    @AccessToken() token: JwtPayload
+  ) {
+    const userId = token.sub ?? '';
+    return this.commentService.getByPostId(
+      {
+        postId,
+        currentUser: userId,
+      },
+      commentsDto
+    );
+  }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @UseGuards(AccessTokenGuard)
-  async addComment(@Body() commentDto: CommentDto, @AccessToken() token: JwtPayload) {
-    const userId = token?.sub || '';
+  async createComment(@Body() createDto: CreateCommentDto, @AccessToken() token: JwtPayload) {
+    const userId = token.sub ?? '';
     return {
-      comment: await this.commentService.add(commentDto, userId),
+      comment: await this.commentService.create(createDto, userId),
     };
   }
 
@@ -50,17 +56,17 @@ export class CommentController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @UseGuards(AccessTokenGuard)
   async deleteComment(@Param('id') id: string, @AccessToken() token: JwtPayload) {
-    const userId = token?.sub || '';
-    // await this.commentService.delete(id, userId);
+    const userId = token.sub ?? '';
+    await this.commentService.delete(id, userId);
   }
 
   @Post(':id/like')
   @HttpCode(HttpStatus.OK)
   @UseGuards(AccessTokenGuard)
   async likeComment(@Param('id') id: string, @AccessToken() token: JwtPayload) {
-    const userId = token?.sub || '';
+    const userId = token.sub ?? '';
     return {
-      // comment: await this.commentService.like(id, userId),
+      comment: await this.commentService.like(id, userId),
     };
   }
 
@@ -68,7 +74,7 @@ export class CommentController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @UseGuards(AccessTokenGuard)
   async unlikeComment(@Param('id') id: string, @AccessToken() token: JwtPayload) {
-    const userId = token?.sub || '';
-    // await this.commentService.unlike(id, userId);
+    const userId = token.sub ?? '';
+    await this.commentService.unlike(id, userId);
   }
 }

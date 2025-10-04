@@ -100,13 +100,13 @@ declare module 'api' {
     stories: StoryData[];
   }
 
-  interface CommentPayload {
-    id: Comment['id'];
+  interface CommentDto {
+    id: string;
     user: UserSummaryDto;
-    content: Comment['text'];
+    text: Comment['text'];
     likes: number;
     isLiked: boolean;
-    updatedAt: Comment['updated_at'];
+    lastModified: Comment['last_modified'];
   }
 
   interface SecurityNotificationPayload {

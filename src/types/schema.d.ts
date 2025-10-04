@@ -79,8 +79,14 @@ declare module 'schema' {
     readonly user_id: User['id'];
     readonly post_id: Post['id'];
     text: string;
-    updated_at: timestamptz;
+    last_modified: timestamptz;
     readonly created_at: timestamptz;
+  }
+
+  interface CommentStat {
+    readonly comment_id: Comment['id'];
+    readonly likes_count: number;
+    readonly last_modified: timestamptz;
   }
 
   interface Story {

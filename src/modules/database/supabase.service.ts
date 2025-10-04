@@ -12,6 +12,7 @@ type MainTable =
   | 'post_stats'
   | 'stories'
   | 'comments'
+  | 'comment_stats'
   | 'user_reports'
   | 'post_reports'
   | 'trending_reports';
@@ -166,12 +167,16 @@ export class SupabaseService implements OnModuleInit {
     }
   }
 
-  public async insert<T = any>(table: Table, data: Partial<T> | Array<Partial<T>>): Promise<T[]> {
+  public async insert<T = any>(
+    table: Table,
+    data: Partial<T> | Array<Partial<T>>,
+    select?: string
+  ): Promise<T[]> {
     try {
       const { data: result, error } = await this.supabase
         .from(table)
         .insert(data as any)
-        .select();
+        .select(select ?? '*');
 
       if (error) throw error;
 
@@ -211,7 +216,11 @@ export class SupabaseService implements OnModuleInit {
     }
   }
 
-  public async delete<T = any>(table: string, where: Record<string, any>): Promise<T[]> {
+  public async delete<T = any>(
+    table: string,
+    where: Record<string, any>,
+    select?: string
+  ): Promise<T[]> {
     try {
       let query = this.supabase.from(table).delete();
 
@@ -219,8 +228,7 @@ export class SupabaseService implements OnModuleInit {
         if (value !== undefined) query = query.eq(key, value);
       });
 
-      const { data: result, error } = await query.select();
-
+      const { data: result, error } = await query.select(select ?? '*');
       if (error) throw error;
 
       return result as T[];
