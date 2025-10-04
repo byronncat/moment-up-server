@@ -4,7 +4,7 @@
 */
 
 import type { ResourceApiResponse } from 'cloudinary';
-import type { FeedDto, PaginationDto as PaginationApi } from 'api';
+import type { FeedDto, PaginationDto as PaginationPayload } from 'api';
 import type { Post, PostReport, PostStat, User } from 'schema';
 
 type PostMetadata = {
@@ -91,7 +91,7 @@ export class PostService {
         };
 
       const posts = await this.supabaseService.select<any>('posts', {
-        select: 'id:id::text,user_id,text,attachments,privacy,last_modified',
+        select: 'id::text,user_id,text,attachments,privacy,last_modified',
         whereIn: { user_id: allowedUserIds },
         whereLte: { privacy: ContentPrivacy.FOLLOWERS },
         orderBy: [
@@ -154,7 +154,7 @@ export class PostService {
 
       const validPostItems = postItems.filter((item) => item !== null);
 
-      const pagination: PaginationApi<FeedDto> = {
+      const pagination: PaginationPayload<FeedDto> = {
         page,
         limit,
         hasNextPage,
@@ -228,7 +228,7 @@ export class PostService {
         })
       );
 
-      const pagination: PaginationApi<FeedDto> = {
+      const pagination: PaginationPayload<FeedDto> = {
         page,
         limit,
         hasNextPage,
@@ -269,7 +269,7 @@ export class PostService {
             : ContentPrivacy.PUBLIC;
 
       const posts = await this.supabaseService.select<any>('posts', {
-        select: 'id:id::text,user_id,text,attachments,privacy,last_modified',
+        select: 'id::text,user_id,text,attachments,privacy,last_modified',
         where: { user_id: userId },
         whereLte: { privacy: privacyLevel },
         ...(filter === 'media' && { whereNotNull: ['attachments'] }),
@@ -319,7 +319,7 @@ export class PostService {
         })
       );
 
-      const pagination: PaginationApi<FeedDto> = {
+      const pagination: PaginationPayload<FeedDto> = {
         page,
         limit,
         hasNextPage,
@@ -336,14 +336,14 @@ export class PostService {
     }
   }
 
-  public async getById(postId: Post['id'], userId?: User['id']) {
+  public async getById(postId: string, userId?: User['id']) {
     try {
       const posts = await this.supabaseService.select<
-        Post & {
+        Omit<Post, 'id'> & {
           id: string;
         }
       >('posts', {
-        select: 'id:id::text,user_id,text,attachments,privacy,last_modified',
+        select: 'id::text,user_id,text,attachments,privacy,last_modified',
         where: { id: postId },
         limit: 1,
       });
@@ -410,14 +410,14 @@ export class PostService {
     }
   }
 
-  public async getMetadata(postId: Post['id']) {
+  public async getMetadata(postId: string) {
     try {
       const posts = await this.supabaseService.select<
-        Post & {
+        Omit<Post, 'id'> & {
           id: string;
         }
       >('posts', {
-        select: 'id:id::text,user_id,text,privacy',
+        select: 'id::text,user_id,text,privacy',
         where: { id: postId },
         limit: 1,
       });
@@ -506,7 +506,7 @@ export class PostService {
     }
   }
 
-  public async like(userId: User['id'], postId: Post['id']) {
+  public async like(userId: User['id'], postId: string) {
     try {
       const [likeRecord] = await this.supabaseService.insert('post_likes', {
         user_id: userId,
@@ -524,7 +524,7 @@ export class PostService {
     }
   }
 
-  public async unlike(userId: User['id'], postId: Post['id']) {
+  public async unlike(userId: User['id'], postId: string) {
     try {
       await this.supabaseService.delete('post_likes', {
         user_id: userId,
@@ -542,7 +542,7 @@ export class PostService {
     }
   }
 
-  public async bookmark(userId: User['id'], postId: Post['id']) {
+  public async bookmark(userId: User['id'], postId: string) {
     try {
       const [bookmarkRecord] = await this.supabaseService.insert('post_bookmarks', {
         user_id: userId,
@@ -560,7 +560,7 @@ export class PostService {
     }
   }
 
-  public async unbookmark(userId: User['id'], postId: Post['id']) {
+  public async unbookmark(userId: User['id'], postId: string) {
     try {
       await this.supabaseService.delete('post_bookmarks', {
         user_id: userId,
@@ -581,7 +581,7 @@ export class PostService {
   public async repost(
     subject: {
       user: User['id'];
-      post: Post['id'];
+      post: string;
     },
     data: RepostDto
   ) {
@@ -617,7 +617,7 @@ export class PostService {
     }
   }
 
-  private async updatePostStats(postId: Post['id'], field: keyof PostStat, increment: number) {
+  public async updatePostStats(postId: string, field: keyof PostStat, increment: number) {
     try {
       const { error } = await this.supabaseService.getClient().rpc('increment_post_stat', {
         p_post_id: postId,
