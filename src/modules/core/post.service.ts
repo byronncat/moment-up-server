@@ -25,16 +25,20 @@ import { ConfigService } from '@nestjs/config';
 import { SupabaseService } from '../database/supabase.service';
 import { CloudinaryService } from '../database/cloudinary.service';
 import { UserService } from '../user/user.service';
-import { CreatePostDto, ExploreDto, ReportPostDto, RepostDto, UserPostsDto } from './dto';
+import {
+  CreatePostDto,
+  ExploreDto,
+  PaginationDto,
+  ReportPostDto,
+  RepostDto,
+  UserPostsDto,
+} from './dto';
 import { Auth } from 'src/common/helpers';
 import { ContentPrivacy, INITIAL_PAGE } from 'src/common/constants';
 
 import { Logger } from 'winston';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { TrendingService } from '../suggestion/trending.service';
-
-// +++ TODO: Ongoing +++
-type PaginationDto = any;
 
 export const Message = {
   GetPosts: {
@@ -257,6 +261,9 @@ export class PostService {
     { page, limit, filter }: UserPostsDto
   ) {
     try {
+      if (filter === 'bookmark') return await this.getUserBookmarks(userId, { page, limit });
+      if (filter === 'like') return await this.getUserLikes(userId, { page, limit });
+
       const userSummaries = await this.userService.getUserSummaries([userId], currentUserId);
       if (!userSummaries || userSummaries.length === 0) throw new Error('User summary not found');
       const userSummary = userSummaries[0];
@@ -330,6 +337,200 @@ export class PostService {
     } catch (error) {
       this.logger.error(error.message, {
         location: 'getUserPosts',
+        context: 'PostService',
+      });
+      throw new InternalServerErrorException(Message.GetPosts.Failed);
+    }
+  }
+
+  public async getUserBookmarks(userId: User['id'], { page, limit }: PaginationDto) {
+    try {
+      const bookmarkedPosts = await this.supabaseService.select<any>('post_bookmarks', {
+        select: `
+          post_id,
+          posts!inner(
+            id::text,
+            user_id,
+            text,
+            attachments,
+            privacy,
+            last_modified
+          )
+        `,
+        where: { user_id: userId },
+        orderBy: [
+          {
+            column: 'created_at',
+            ascending: false,
+          },
+        ],
+        limit: limit + 1,
+        offset: (page - INITIAL_PAGE) * limit,
+      });
+
+      const hasNextPage = bookmarkedPosts.length > limit;
+      const actualPosts = hasNextPage ? bookmarkedPosts.slice(0, limit) : bookmarkedPosts;
+
+      if (actualPosts.length === 0)
+        return {
+          page,
+          limit,
+          hasNextPage: false,
+          items: [],
+        };
+
+      const posts = actualPosts.map((bookmark) => bookmark.posts);
+      const uniqueUserIds = [...new Set(posts.map((post) => post.user_id))];
+      const userSummaries = await this.userService.getUserSummaries(uniqueUserIds, userId);
+
+      const userMap = new Map();
+      if (!userSummaries) throw new BadRequestException('Something went wrong');
+      userSummaries.forEach((summary) => {
+        userMap.set(summary.id, summary);
+      });
+
+      const postIds = posts.map((post) => post.id as string);
+      const postStats = await this.getPostStats(postIds, userId);
+
+      const statsMap = new Map<Post['id'], PostMetadata>();
+      postStats.forEach((stat) => {
+        statsMap.set(stat.post_id, stat);
+      });
+
+      const postItems = await Promise.all(
+        posts.map(async (post) => {
+          const userSummary = userMap.get(post.user_id);
+          if (!userSummary) return null;
+
+          const stats = statsMap.get(post.id);
+
+          return {
+            id: post.id,
+            user: userSummary,
+            post: {
+              text: post.text,
+              files: await this.parseAttachments(post.attachments),
+              likes: stats?.likes_count ?? 0,
+              comments: stats?.comments_count ?? 0,
+              reposts: stats?.reposts_count ?? 0,
+              isLiked: stats?.is_liked ?? false,
+              isBookmarked: stats?.is_bookmarked ?? false,
+              lastModified: post.last_modified,
+            },
+          } satisfies FeedDto;
+        })
+      );
+
+      const validPostItems = postItems.filter((item) => item !== null);
+
+      const pagination: PaginationPayload<FeedDto> = {
+        page,
+        limit,
+        hasNextPage,
+        items: validPostItems,
+      };
+
+      return pagination;
+    } catch (error) {
+      this.logger.error(error.message, {
+        location: 'getUserBookmarks',
+        context: 'PostService',
+      });
+      throw new InternalServerErrorException(Message.GetPosts.Failed);
+    }
+  }
+
+  public async getUserLikes(userId: User['id'], { page, limit }: PaginationDto) {
+    try {
+      const likedPosts = await this.supabaseService.select<any>('post_likes', {
+        select: `
+          post_id,
+          posts!inner(
+            id::text,
+            user_id,
+            text,
+            attachments,
+            privacy,
+            last_modified
+          )
+        `,
+        where: { user_id: userId },
+        orderBy: [
+          {
+            column: 'created_at',
+            ascending: false,
+          },
+        ],
+        limit: limit + 1,
+        offset: (page - INITIAL_PAGE) * limit,
+      });
+
+      const hasNextPage = likedPosts.length > limit;
+      const actualPosts = hasNextPage ? likedPosts.slice(0, limit) : likedPosts;
+
+      if (actualPosts.length === 0)
+        return {
+          page,
+          limit,
+          hasNextPage: false,
+          items: [],
+        };
+
+      const posts = actualPosts.map((like) => like.posts);
+      const uniqueUserIds = [...new Set(posts.map((post) => post.user_id))];
+      const userSummaries = await this.userService.getUserSummaries(uniqueUserIds, userId);
+
+      const userMap = new Map();
+      if (!userSummaries) throw new BadRequestException('Something went wrong');
+      userSummaries.forEach((summary) => {
+        userMap.set(summary.id, summary);
+      });
+
+      const postIds = posts.map((post) => post.id as string);
+      const postStats = await this.getPostStats(postIds, userId);
+
+      const statsMap = new Map<Post['id'], PostMetadata>();
+      postStats.forEach((stat) => {
+        statsMap.set(stat.post_id, stat);
+      });
+
+      const postItems = await Promise.all(
+        posts.map(async (post) => {
+          const userSummary = userMap.get(post.user_id);
+          if (!userSummary) return null;
+
+          const stats = statsMap.get(post.id);
+
+          return {
+            id: post.id,
+            user: userSummary,
+            post: {
+              text: post.text,
+              files: await this.parseAttachments(post.attachments),
+              likes: stats?.likes_count ?? 0,
+              comments: stats?.comments_count ?? 0,
+              reposts: stats?.reposts_count ?? 0,
+              isLiked: stats?.is_liked ?? false,
+              isBookmarked: stats?.is_bookmarked ?? false,
+              lastModified: post.last_modified,
+            },
+          } satisfies FeedDto;
+        })
+      );
+
+      const validPostItems = postItems.filter((item) => item !== null);
+
+      const pagination: PaginationPayload<FeedDto> = {
+        page,
+        limit,
+        hasNextPage,
+        items: validPostItems,
+      };
+
+      return pagination;
+    } catch (error) {
+      this.logger.error(error.message, {
+        location: 'getUserLikes',
         context: 'PostService',
       });
       throw new InternalServerErrorException(Message.GetPosts.Failed);

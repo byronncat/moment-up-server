@@ -17,15 +17,14 @@ import { CreateCommentDto, PostCommentsDto } from './dto';
 import { INITIAL_PAGE } from 'src/common/constants';
 
 export const Message = {
-  NotFound: 'Comment not found',
-  PostNotFound: 'Post not found',
-  UserNotFound: 'User not found',
-  Unauthorized: 'You are not authorized to perform this action',
-  Failed: 'Failed to perform comment operation',
-  AddFailed: 'Failed to add comment',
-  DeleteFailed: 'Failed to delete comment',
-  LikeFailed: 'Failed to like comment',
-  UnlikeFailed: 'Failed to unlike comment',
+  NotFound: 'Comment not found.',
+  Failed: 'Comment operation failed.',
+  UserNotFound: 'User not found.',
+
+  AddFailed: 'Unable to add comment.',
+  DeleteFailed: 'Unable to delete comment.',
+  LikeFailed: 'Unable to like comment.',
+  UnlikeFailed: 'Unable to unlike comment.',
 };
 
 @Injectable()
