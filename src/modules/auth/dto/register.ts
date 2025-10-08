@@ -4,6 +4,7 @@ import {
   Matches,
   MaxLength,
   MinLength,
+  NotContains,
   Validate,
   ValidatorConstraint,
   ValidatorConstraintInterface,
@@ -30,9 +31,12 @@ export class RegisterDto {
   @IsNotEmpty({ message: 'Email is required' })
   email: string;
 
-  @Matches(/^[a-zA-Z0-9._-]+$/, {
-    message: 'Only letters, numbers, dots, underscores, and hyphens are allowed',
+  @Matches(/^[a-zA-Z0-9._]+$/, {
+    message: 'Only letters, numbers, underscores, and dots are allowed',
   })
+  @Matches(/^[^.].*$/, { message: 'Username cannot start with a dot' })
+  @Matches(/^.*[^.]$/, { message: 'Username cannot end with a dot' })
+  @NotContains('..', { message: 'Username cannot contain consecutive dots' })
   @MaxLength(MAX_NAME_LENGTH, {
     message: `Username must be less than ${MAX_NAME_LENGTH} characters`,
   })
