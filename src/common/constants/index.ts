@@ -92,6 +92,13 @@ export enum TrendingReportType {
   HARMFUL,
 }
 
+export enum SearchItemType {
+  USER,
+  QUERY,
+  POST,
+  MEDIA,
+}
+
 export enum SocialAuthError {
   ACCOUNT_BLOCKED = 'AccountBlocked',
   AUTHENTICATION_FAILED = 'AuthenticationFailed',
@@ -118,13 +125,6 @@ export enum ExploreType {
 }
 
 // +++ TODO: Ongoing +++
-export enum SearchItemType {
-  USER,
-  QUERY,
-  HASHTAG,
-  POST,
-  MEDIA,
-}
 
 export enum StoryBackground {
   BLUE_GRADIENT,

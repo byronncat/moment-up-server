@@ -34,6 +34,8 @@ declare module 'api' {
     } | null;
   }
 
+  type PopularUserDto = AccountDto & Pick<ProfileDto, 'backgroundImage' | 'bio'>;
+
   // === Core ===
   interface PostDto {
     text: Post['text'];
@@ -132,11 +134,6 @@ declare module 'api' {
   }
 
   type NotificationPayload = SecurityNotificationPayload | CommunityNotificationPayload;
-
-  interface PopularProfileDto
-    extends Omit<ProfileDto, 'followers' | 'following' | 'hasStory' | 'isFollowing'> {
-    backgroundImage?: string;
-  }
 
   interface PaginationDto<T> {
     total?: number;

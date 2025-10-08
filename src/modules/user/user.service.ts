@@ -1,5 +1,5 @@
 import type { Block, Follow, Mute, User, UserReport } from 'schema';
-import type { PaginationDto, ProfileDto, UserSummaryDto } from 'api';
+import type { AccountDto, PaginationDto, ProfileDto, UserSummaryDto } from 'api';
 import type { GoogleUser } from 'passport-library';
 
 type UniqueUserId = User['id'] | User['email'] | User['username'];
@@ -49,6 +49,41 @@ export class UserService {
     private readonly supabaseService: SupabaseService,
     private readonly cloudinaryService: CloudinaryService
   ) {}
+
+  public async search(query: string, page: number, limit: number) {
+    try {
+      const users = await this.supabaseService.select<User>('users', {
+        select: 'id, username, display_name, avatar, user_stats(followers_count)',
+        caseSensitive: false,
+        orWhere: { username: `%${query}%`, display_name: `%${query}%` },
+        limit: limit + 1,
+        offset: (page - INITIAL_PAGE) * limit,
+      });
+
+      const hasNextPage = users.length > limit;
+      if (hasNextPage) users.pop();
+
+      const items = users.map((u) => ({
+        id: u.id,
+        username: u.username,
+        displayName: u.display_name,
+        avatar: u.avatar,
+      }));
+
+      return {
+        page,
+        limit,
+        hasNextPage,
+        items,
+      } as PaginationDto<AccountDto>;
+    } catch (error) {
+      this.logger.error(error.message, {
+        location: 'searchUsers',
+        context: 'UserService',
+      });
+      throw new InternalServerErrorException(ErrorMessage.InternalServerError);
+    }
+  }
 
   public async getById(id: UniqueUserId, options?: Pick<SelectOptions, 'select'>) {
     try {

@@ -1,4 +1,4 @@
-import type { PopularProfileDto, UserSummaryDto } from 'api';
+import type { PopularUserDto, UserSummaryDto } from 'api';
 import type { User } from 'schema';
 
 import { Inject, Injectable } from '@nestjs/common';
@@ -8,6 +8,7 @@ import { Logger } from 'winston';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 
 const DEFAULT_LIMIT = 5;
+const POPULAR_LIMIT = 4;
 
 @Injectable()
 export class PeopleDiscoveryService {
@@ -30,30 +31,25 @@ export class PeopleDiscoveryService {
     }
   }
 
-  public async getPopular(userId: string): Promise<PopularProfileDto[]> {
+  public async getPopular(userId: string): Promise<PopularUserDto[]> {
     try {
       const excludedUserIds = await this.userService.getExcludedUserIds(userId);
-      const trendingUserIds = await this.getTrendingUserIds(userId, DEFAULT_LIMIT, excludedUserIds);
+      const trendingUserIds = await this.getTrendingUserIds(userId, POPULAR_LIMIT, excludedUserIds);
       if (trendingUserIds.length === 0) return [];
 
-      const users = await this.supabaseService.select<User>('users', {
+      const users = await this.supabaseService.select<any>('users', {
         whereIn: { id: trendingUserIds },
-        select: 'id, username, display_name, avatar, bio',
+        select: 'id, username, display_name, avatar, bio, background_image',
       });
 
-      return users.map((user) => ({
+      return users.map((user: any) => ({
         id: user.id,
         username: user.username,
         displayName: user.display_name,
         avatar: user.avatar,
         bio: user.bio,
-        backgroundImage: undefined,
-        isProtected: false,
-        followedBy: null,
-        isMuted: false,
-        isFollower: false,
-        isFollowing: false,
-      }));
+        backgroundImage: user.background_image,
+      })) satisfies PopularUserDto[];
     } catch (error: any) {
       this.logger.error(error.message, {
         context: 'PeopleDiscovery',

@@ -1,61 +1,44 @@
-import { Type } from 'class-transformer';
-import { IsNotEmpty, IsNumber, IsOptional, IsString, Min, Validate } from 'class-validator';
-import { ValidatorConstraint, ValidatorConstraintInterface } from 'class-validator';
+import { IntersectionType } from '@nestjs/mapped-types';
+import {
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  Validate,
+  ValidatorConstraint,
+  ValidatorConstraintInterface,
+} from 'class-validator';
 import { INITIAL_PAGE } from 'src/common/constants';
+import { LimitDto, PageDto } from 'src/common/validators';
 
 @ValidatorConstraint({ name: 'isValidSearchTypes', async: false })
-export class IsValidSearchTypes implements ValidatorConstraintInterface {
+export class IsValidSearchFilters implements ValidatorConstraintInterface {
   validate(value: any) {
     if (typeof value !== 'string') return false;
 
-    const allowedTypes = ['user', 'post', 'hashtag', 'media'];
-    const types = value.split('&').map((type) => type.trim());
+    const allowedFilters = ['user', 'post', 'media'];
+    const filters = value.split('&').map((filter) => filter.trim());
 
-    const uniqueTypes = [...new Set(types)];
+    const uniqueFilters = [...new Set(filters)];
     return (
-      uniqueTypes.every((type) => allowedTypes.includes(type)) &&
-      uniqueTypes.length === types.length
+      uniqueFilters.every((filter) => allowedFilters.includes(filter)) &&
+      uniqueFilters.length === filters.length
     );
   }
 
   defaultMessage() {
-    return 'Type must contain only valid values (user, post, hashtag, media) separated by & with no duplicates';
+    return 'Filter must contain only valid values (user, post, media) separated by & with no duplicates';
   }
 }
 
-@ValidatorConstraint({ name: 'isValidSearchOrder', async: false })
-export class IsValidSearchOrder implements ValidatorConstraintInterface {
-  validate(value: any) {
-    if (typeof value !== 'string') return false;
-    return ['most_popular', 'newest'].includes(value);
-  }
-  defaultMessage() {
-    return 'Order must be either most_popular or newest';
-  }
-}
-
-export class SearchDto {
+export class SearchDto extends IntersectionType(LimitDto, PageDto) {
   @IsString({ message: 'Query must be a string' })
   @IsNotEmpty({ message: 'Query is required' })
   query: string;
 
-  @Validate(IsValidSearchTypes)
+  @Validate(IsValidSearchFilters)
   @IsOptional()
-  type?: string;
+  filter?: string;
 
-  @Validate(IsValidSearchOrder)
-  @IsOptional()
-  order?: string;
-
-  @Type(() => Number)
-  @Min(1, { message: 'Page must be greater than 0' })
-  @IsNumber({ allowNaN: false, allowInfinity: false }, { message: 'Page must be a number' })
-  @IsOptional()
-  page: number = INITIAL_PAGE;
-
-  @Type(() => Number)
-  @Min(1, { message: 'Limit must be greater than 0' })
-  @IsNumber({ allowNaN: false, allowInfinity: false }, { message: 'Limit must be a number' })
-  @IsOptional()
+  page = INITIAL_PAGE;
   limit = 12;
 }

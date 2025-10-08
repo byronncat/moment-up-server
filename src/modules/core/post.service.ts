@@ -537,6 +537,109 @@ export class PostService {
     }
   }
 
+  public async search(
+    query: string,
+    page: number,
+    limit: number,
+    options?: { mediaOnly?: boolean; currentUserId?: User['id'] }
+  ) {
+    try {
+      const posts = await this.supabaseService.select<any>('posts', {
+        select: 'id::text,user_id,text,attachments,privacy,last_modified',
+        whereLte: { privacy: ContentPrivacy.PUBLIC },
+        ...(options?.mediaOnly ? { whereNotNull: ['attachments'] } : {}),
+        caseSensitive: false,
+        orWhere: { text: `%${query}%` },
+        orderBy: [
+          {
+            column: 'last_modified',
+            ascending: false,
+          },
+          {
+            column: 'id',
+            ascending: false,
+          },
+        ],
+        limit: limit + 1,
+        offset: (page - INITIAL_PAGE) * limit,
+      });
+
+      const hasNextPage = posts.length > limit;
+      const actualPosts = hasNextPage ? posts.slice(0, limit) : posts;
+
+      if (actualPosts.length === 0)
+        return {
+          page,
+          limit,
+          hasNextPage: false,
+          items: [],
+        } as PaginationPayload<FeedDto>;
+
+      const uniqueUserIds = [...new Set(actualPosts.map((post) => post.user_id))];
+      const userSummaries = await this.userService.getUserSummaries(
+        uniqueUserIds,
+        options?.currentUserId
+      );
+
+      const userMap = new Map();
+      if (!userSummaries) throw new BadRequestException('Something went wrong');
+      userSummaries.forEach((summary) => {
+        userMap.set(summary.id, summary);
+      });
+
+      let statsMap = new Map<Post['id'], PostMetadata>();
+      if (options?.currentUserId) {
+        const postIds = actualPosts.map((post) => post.id as string);
+        const postStats = await this.getPostStats(postIds, options.currentUserId);
+        statsMap = new Map<Post['id'], PostMetadata>();
+        postStats.forEach((stat) => {
+          statsMap.set(stat.post_id, stat);
+        });
+      }
+
+      const postItems = await Promise.all(
+        actualPosts.map(async (post) => {
+          const userSummary = userMap.get(post.user_id);
+          if (!userSummary) return null;
+
+          const stats = statsMap.get(post.id);
+
+          return {
+            id: post.id,
+            user: userSummary,
+            post: {
+              text: post.text,
+              files: await this.parseAttachments(post.attachments),
+              likes: stats?.likes_count ?? 0,
+              comments: stats?.comments_count ?? 0,
+              reposts: stats?.reposts_count ?? 0,
+              isLiked: stats?.is_liked ?? false,
+              isBookmarked: stats?.is_bookmarked ?? false,
+              lastModified: post.last_modified,
+            },
+          } satisfies FeedDto;
+        })
+      );
+
+      const validPostItems = postItems.filter((item) => item !== null);
+
+      const pagination: PaginationPayload<FeedDto> = {
+        page,
+        limit,
+        hasNextPage,
+        items: validPostItems as FeedDto[],
+      };
+
+      return pagination;
+    } catch (error) {
+      this.logger.error(error.message, {
+        location: 'search',
+        context: 'PostService',
+      });
+      throw new InternalServerErrorException(Message.GetPosts.Failed);
+    }
+  }
+
   public async getById(postId: string, userId?: User['id']) {
     try {
       const posts = await this.supabaseService.select<
