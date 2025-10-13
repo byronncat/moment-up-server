@@ -86,6 +86,22 @@ export class UserController {
     await this.userService.unfollow(currentUserId, targetUserId);
   }
 
+  @Patch(':id/follow-request/accept')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AccessTokenGuard)
+  async acceptFollowRequest(@AccessToken() token: JwtPayload, @Param('id') targetUserId: string) {
+    const currentUserId = token.sub ?? '';
+    return this.userService.acceptFollowRequest(currentUserId, targetUserId);
+  }
+
+  @Delete(':id/follow-request/decline')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AccessTokenGuard)
+  async declineFollowRequest(@AccessToken() token: JwtPayload, @Param('id') targetUserId: string) {
+    const currentUserId = token.sub ?? '';
+    await this.userService.declineFollowRequest(currentUserId, targetUserId);
+  }
+
   @Delete(':id/remove-follower')
   @HttpCode(HttpStatus.NO_CONTENT)
   @UseGuards(AccessTokenGuard)

@@ -1,38 +1,171 @@
-import type { NotificationPayload, PaginationDto } from 'api';
-import { Injectable } from '@nestjs/common';
-import { generateNotifications } from 'src/__mocks__/notifications';
+import type { Notification } from 'schema';
+import type { NotificationDto, PaginationDto, UserSummaryDto } from 'api';
+
+import { Inject, Injectable } from '@nestjs/common';
+import { SupabaseService } from '../database/supabase.service';
+import { UserService } from '../user/user.service';
 import { NotificationsDto } from './dto/notifications';
 import { NotificationType } from 'src/common/constants';
+import { Logger } from 'winston';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 
 @Injectable()
 export class NotificationService {
-  private readonly notifications = generateNotifications();
+  constructor(
+    @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
+    private readonly supabaseService: SupabaseService,
+    private readonly userService: UserService
+  ) {}
 
   public async get(userId: string, { page, limit, type }: NotificationsDto) {
-    const notifications = this.notifications
-      .filter((notification) => {
-        if (type === NotificationType.ALL) return true;
-        if (type === NotificationType.REQUEST)
-          return (
-            notification.type === NotificationType.SOCIAL &&
-            notification.information.type === NotificationType.FOLLOW
-          );
-        if (type === NotificationType.SOCIAL)
-          return (
-            notification.type === NotificationType.SOCIAL &&
-            (notification.information.type === NotificationType.POST ||
-              notification.information.type === NotificationType.MENTION)
-          );
-        return false;
-      })
-      .slice((page - 1) * limit, page * limit);
-    const pagination: PaginationDto<NotificationPayload> = {
-      total: this.notifications.length,
-      page,
-      limit,
-      hasNextPage: page < Math.ceil(this.notifications.length / limit),
-      items: notifications,
-    };
-    return pagination;
+    try {
+      const notifications = await this.supabaseService.select<Notification>('notifications', {
+        select: 'id, type, created_at, read_at, actor_id',
+        where: { user_id: userId, type },
+        orderBy: { column: 'created_at', ascending: false },
+        limit: limit + 1,
+        offset: (page - 1) * limit,
+      });
+
+      const hasNextPage = notifications.length > limit;
+      if (hasNextPage) notifications.pop();
+
+      if (notifications.length === 0)
+        return {
+          page,
+          limit,
+          hasNextPage: false,
+          items: [],
+        } as PaginationDto<NotificationDto>;
+
+      const actorIds = [...new Set(notifications.map((n) => n.actor_id))];
+      const actorSummaries = (await this.userService.getUserSummaries(actorIds, userId)) ?? [];
+      const actorMap = new Map(actorSummaries.map((actor) => [actor.id, actor]));
+
+      const items: NotificationDto[] = notifications.map((notification) => {
+        const actor = actorMap.get(notification.actor_id);
+        if (!actor) {
+          return {
+            type: notification.type,
+            data: {
+              id: notification.actor_id,
+              username: 'Unknown User',
+              displayName: 'Unknown User',
+              avatar: null,
+              bio: null,
+              followers: 0,
+              following: 0,
+              isFollowing: false,
+              hasStory: false,
+              followedBy: null,
+            } satisfies UserSummaryDto,
+            createdAt: notification.created_at,
+            viewed: notification.read_at !== null,
+          } satisfies NotificationDto;
+        }
+
+        return {
+          type: notification.type,
+          data: actor,
+          createdAt: notification.created_at,
+          viewed: notification.read_at !== null,
+        } satisfies NotificationDto;
+      });
+
+      return {
+        page,
+        limit,
+        hasNextPage,
+        items,
+      } as PaginationDto<NotificationDto>;
+    } catch (error) {
+      this.logger.error(error.message, {
+        location: 'get',
+        context: 'NotificationService',
+      });
+
+      return {
+        page,
+        limit,
+        hasNextPage: false,
+        items: [],
+      } as PaginationDto<NotificationDto>;
+    }
+  }
+
+  public async notify(
+    type: NotificationType,
+    data: {
+      userId: string;
+      actorId: string;
+      entityId: string | null;
+    }
+  ) {
+    try {
+      const [notification] = await this.supabaseService.insert<Notification>('notifications', {
+        user_id: data.userId,
+        actor_id: data.actorId,
+        entity_id: data.entityId as any,
+        type,
+      });
+
+      return notification;
+    } catch (error) {
+      this.logger.error(error.message, {
+        location: 'notify',
+        context: 'NotificationService',
+      });
+      return null;
+    }
+  }
+
+  public async markAsRead(notificationId: number) {
+    try {
+      await this.supabaseService.update<Notification>(
+        'notifications',
+        { read_at: new Date() },
+        { id: notificationId }
+      );
+      return true;
+    } catch (error) {
+      this.logger.error(error.message, {
+        location: 'markAsRead',
+        context: 'NotificationService',
+      });
+      return false;
+    }
+  }
+
+  public async markAllAsRead(userId: string) {
+    try {
+      await this.supabaseService.update<Notification>(
+        'notifications',
+        { read_at: new Date() },
+        { user_id: userId, read_at: null }
+      );
+      return true;
+    } catch (error) {
+      this.logger.error(error.message, {
+        location: 'markAllAsRead',
+        context: 'NotificationService',
+      });
+      return false;
+    }
+  }
+
+  public async removeFollowRequest(userId: string, actorId: string) {
+    try {
+      await this.supabaseService.delete('notifications', {
+        user_id: userId,
+        actor_id: actorId,
+        type: NotificationType.FOLLOW_REQUEST,
+      });
+      return true;
+    } catch (error) {
+      this.logger.error(error.message, {
+        location: 'removeFollowRequest',
+        context: 'NotificationService',
+      });
+    }
   }
 }

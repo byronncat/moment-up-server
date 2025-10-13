@@ -12,6 +12,7 @@ create or replace function public.get_user_profile (
   following bigint,
   is_follower boolean,
   is_following boolean,
+  is_follow_request boolean,
   is_muted boolean,
   is_blocked boolean,
   is_protected boolean,
@@ -47,12 +48,16 @@ begin
       -- Relationship checks (only if current_user_id is provided and different from target user)
       case 
         when p_current_user_id is null or p_current_user_id = ud.id then false
-        else exists(select 1 from follows where follower_id = ud.id and following_id = p_current_user_id)
+        else exists(select 1 from follows where follower_id = ud.id and following_id = p_current_user_id and status = 0)
       end as is_follower,
       case 
         when p_current_user_id is null or p_current_user_id = ud.id then false
-        else exists(select 1 from follows where follower_id = p_current_user_id and following_id = ud.id)
+        else exists(select 1 from follows where follower_id = p_current_user_id and following_id = ud.id and status = 0)
       end as is_following,
+      case 
+        when p_current_user_id is null or p_current_user_id = ud.id then false
+        else exists(select 1 from follows where follower_id = p_current_user_id and following_id = ud.id and status = 1)
+      end as is_follow_request,
       case 
         when p_current_user_id is null or p_current_user_id = ud.id then false
         else exists(select 1 from mutes where muter_id = p_current_user_id and muted_id = ud.id)
@@ -86,6 +91,7 @@ begin
     us.following_count,
     us.is_follower,
     us.is_following,
+    us.is_follow_request,
     us.is_muted,
     us.is_blocked,
     us.is_protected,
@@ -134,8 +140,8 @@ begin
       -- Use cached stats from user_stats table
       coalesce(us.followers_count, 0) as follower_count,
       coalesce(us.following_count, 0) as following_count,
-      -- Is current user following this user
-      exists(select 1 from follows where follower_id = p_current_user_id and following_id = ub.id) as is_following,
+      -- Is current user following this user (only accepted follows)
+      exists(select 1 from follows where follower_id = p_current_user_id and following_id = ub.id and status = 0) as is_following,
       -- Use cached story status from user_stats table
       coalesce(us.has_story, false) as has_story
     from user_base ub
@@ -153,8 +159,8 @@ begin
       ) filter (where mu.id is not null), '[]'::jsonb) as mutual_users,
       count(mu.id) as mutual_count
     from user_stats us
-    left join follows f1 on f1.following_id = us.id  -- People who follow this user
-    left join follows f2 on f2.follower_id = p_current_user_id and f2.following_id = f1.follower_id  -- Current user follows them too
+    left join follows f1 on f1.following_id = us.id and f1.status = 0  -- People who follow this user (accepted only)
+    left join follows f2 on f2.follower_id = p_current_user_id and f2.following_id = f1.follower_id and f2.status = 0  -- Current user follows them too (accepted only)
     left join users mu on mu.id = f1.follower_id and f2.follower_id is not null
     where f1.follower_id != p_current_user_id or f1.follower_id is null
     group by us.id

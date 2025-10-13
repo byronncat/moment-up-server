@@ -1,6 +1,14 @@
 declare module 'api' {
   import type { Attachment, Comment, Hashtag, Post, Story, User } from 'schema';
-  import type { StoryBackground } from 'common/constants';
+  import type { StoryBackground, NotificationType } from 'common/constants';
+
+  interface PaginationDto<T> {
+    total?: number;
+    page: number;
+    limit: number;
+    hasNextPage: boolean;
+    items: T[];
+  }
 
   // === User ===
   interface AccountDto {
@@ -17,13 +25,18 @@ declare module 'api' {
     following: number;
     isFollower: boolean;
     isFollowing: boolean;
+    isFollowRequest: boolean;
     isMuted: boolean;
     isProtected: boolean;
     hasStory: boolean;
   }
 
-  interface UserSummaryDto
-    extends Omit<ProfileDto, 'backgroundImage' | 'isMuted' | 'isProtected' | 'isFollower'> {
+  interface UserSummaryDto extends AccountDto {
+    bio: User['bio'];
+    followers: number;
+    following: number;
+    isFollowing: boolean;
+    hasStory: boolean;
     followedBy: {
       remainingCount: number;
       displayItems: Array<{
@@ -58,6 +71,27 @@ declare module 'api' {
     post: PostDto;
   }
 
+  interface CommentDto {
+    id: string;
+    user: UserSummaryDto;
+    text: Comment['text'];
+    likes: number;
+    isLiked: boolean;
+    lastModified: Comment['last_modified'];
+  }
+
+  // === Notification ===
+  type FollowRequestDto = {
+    type: NotificationType.FOLLOW_REQUEST;
+    data: UserSummaryDto;
+  };
+
+  type NotificationDto = FollowRequestDto & {
+    viewed: boolean;
+    createdAt: timestamptz;
+  };
+
+  // === Others ===
   interface HashtagDto {
     name: Hashtag['name'];
     count: number;
@@ -102,15 +136,6 @@ declare module 'api' {
     stories: StoryData[];
   }
 
-  interface CommentDto {
-    id: string;
-    user: UserSummaryDto;
-    text: Comment['text'];
-    likes: number;
-    isLiked: boolean;
-    lastModified: Comment['last_modified'];
-  }
-
   interface SecurityNotificationPayload {
     id: string;
     type: 'security';
@@ -134,12 +159,4 @@ declare module 'api' {
   }
 
   type NotificationPayload = SecurityNotificationPayload | CommunityNotificationPayload;
-
-  interface PaginationDto<T> {
-    total?: number;
-    page: number;
-    limit: number;
-    hasNextPage: boolean;
-    items: T[];
-  }
 }

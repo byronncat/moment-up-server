@@ -2,6 +2,8 @@ declare module 'schema' {
   import type {
     ContentPrivacy,
     ContentReportType,
+    FollowStatus,
+    NotificationType,
     ProfileVisibility,
     StoryBackground,
     TrendingReportType,
@@ -131,10 +133,21 @@ declare module 'schema' {
     readonly created_at: timestamptz;
   }
 
+  interface Notification {
+    readonly id: snowflake;
+    readonly user_id: User['id'];
+    readonly actor_id: User['id'];
+    readonly type: NotificationType;
+    readonly entity_id: Post['id'] | Comment['id'] | Story['id'] | null;
+    readonly created_at: timestamptz;
+    readonly read_at: timestamptz | null;
+  }
+
   // === Relationship ===
   interface Follow {
     readonly follower_id: User['id'];
     readonly following_id: User['id'];
+    readonly status: FollowStatus;
     readonly created_at: timestamptz;
   }
 
@@ -174,14 +187,6 @@ declare module 'schema' {
   }
 
   // +++ Ongoing below +++
-  interface SearchHistory {
-    readonly id: string;
-    readonly userId: User['id'];
-    readonly type: number; // SearchItemType enum
-    readonly query: string;
-    readonly createdAt: Date | string;
-  }
-
   interface View {
     readonly id: string;
     readonly userId: User['id'];

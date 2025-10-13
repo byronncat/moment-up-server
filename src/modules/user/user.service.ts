@@ -6,6 +6,7 @@ type UniqueUserId = User['id'] | User['email'] | User['username'];
 
 import {
   BadRequestException,
+  forwardRef,
   Inject,
   Injectable,
   InternalServerErrorException,
@@ -15,8 +16,15 @@ import { type SelectOptions, SupabaseService } from '../database/supabase.servic
 import { CloudinaryService } from '../database/cloudinary.service';
 import { FollowPaginationDto, ReportUserDto, UpdateProfileDto } from './dto';
 import { Auth, String } from 'src/common/helpers';
-import { AccountExist, INITIAL_PAGE } from 'src/common/constants';
+import {
+  AccountExist,
+  INITIAL_PAGE,
+  FollowStatus,
+  ProfileVisibility,
+  NotificationType,
+} from 'src/common/constants';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import { NotificationService } from '../notification/notification.service';
 
 export const ErrorMessage = {
   Profile: {
@@ -47,7 +55,9 @@ export class UserService {
   constructor(
     @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
     private readonly supabaseService: SupabaseService,
-    private readonly cloudinaryService: CloudinaryService
+    private readonly cloudinaryService: CloudinaryService,
+    @Inject(forwardRef(() => NotificationService))
+    private readonly notificationService: NotificationService
   ) {}
 
   public async search(query: string, page: number, limit: number) {
@@ -233,10 +243,11 @@ export class UserService {
         following: profile.following,
         isFollower: profile.is_follower,
         isFollowing: profile.is_following,
+        isFollowRequest: profile.is_follow_request,
         isMuted: profile.is_muted,
         isProtected: profile.is_protected,
         hasStory: profile.has_story,
-      } as ProfileDto;
+      } satisfies ProfileDto;
     } catch (error) {
       this.logger.error(error.message, {
         location: 'getProfileByUsername',
@@ -316,13 +327,30 @@ export class UserService {
 
   public async follow(currentUserId: User['id'], targetUserId: User['id']) {
     try {
+      const targetUser = await this.getById(targetUserId, {
+        select: 'id, privacy',
+      });
+      if (!targetUser) throw new Error('Target user not found');
+
+      const isPrivate = targetUser.privacy === ProfileVisibility.PRIVATE;
+      const followStatus = isPrivate ? FollowStatus.PENDING : FollowStatus.ACCEPTED;
+
       const [newFollow] = await this.supabaseService.insert<Follow>('follows', {
         follower_id: currentUserId,
         following_id: targetUserId,
+        status: followStatus,
       });
 
-      await this.updateUserStats(targetUserId, 'followers_count', 1);
-      await this.updateUserStats(currentUserId, 'following_count', 1);
+      if (followStatus === FollowStatus.ACCEPTED) {
+        await this.updateUserStats(targetUserId, 'followers_count', 1);
+        await this.updateUserStats(currentUserId, 'following_count', 1);
+      } else if (followStatus === FollowStatus.PENDING) {
+        await this.notificationService.notify(NotificationType.FOLLOW_REQUEST, {
+          userId: targetUserId,
+          actorId: currentUserId,
+          entityId: null,
+        });
+      }
 
       return newFollow;
     } catch (error) {
@@ -336,16 +364,58 @@ export class UserService {
 
   public async unfollow(currentUserId: User['id'], targetUserId: User['id']) {
     try {
-      await this.supabaseService.delete<Follow>('follows', {
+      const [deletedFollow] = await this.supabaseService.delete<Follow>('follows', {
         follower_id: currentUserId,
         following_id: targetUserId,
       });
 
-      await this.updateUserStats(targetUserId, 'followers_count', -1);
-      await this.updateUserStats(currentUserId, 'following_count', -1);
+      if (deletedFollow.status === FollowStatus.ACCEPTED) {
+        await this.updateUserStats(targetUserId, 'followers_count', -1);
+        await this.updateUserStats(currentUserId, 'following_count', -1);
+      }
     } catch (error) {
       this.logger.error(error.message, {
         location: 'unfollow',
+        context: 'UserService',
+      });
+      throw new BadRequestException(ErrorMessage.Follow.Failed(false));
+    }
+  }
+
+  public async acceptFollowRequest(currentUserId: User['id'], targetUserId: User['id']) {
+    try {
+      const [updatedFollow] = await this.supabaseService.update<Follow>(
+        'follows',
+        {
+          status: FollowStatus.ACCEPTED,
+        },
+        {
+          follower_id: targetUserId,
+          following_id: currentUserId,
+        }
+      );
+      this.notificationService.removeFollowRequest(currentUserId, targetUserId);
+      return updatedFollow;
+    } catch (error) {
+      this.logger.error(error.message, {
+        location: 'acceptFollowRequest',
+        context: 'UserService',
+      });
+      throw new BadRequestException(ErrorMessage.Follow.Failed(true));
+    }
+  }
+
+  public async declineFollowRequest(currentUserId: User['id'], targetUserId: User['id']) {
+    try {
+      const [updatedFollow] = await this.supabaseService.delete<Follow>('follows', {
+        follower_id: targetUserId,
+        following_id: currentUserId,
+      });
+      this.notificationService.removeFollowRequest(currentUserId, targetUserId);
+      return updatedFollow;
+    } catch (error) {
+      this.logger.error(error.message, {
+        location: 'declineFollowRequest',
         context: 'UserService',
       });
       throw new BadRequestException(ErrorMessage.Follow.Failed(false));
@@ -360,7 +430,7 @@ export class UserService {
     try {
       const followers = await this.supabaseService.select<Follow>('follows', {
         select: 'follower_id',
-        where: { following_id: userId },
+        where: { following_id: userId, status: FollowStatus.ACCEPTED },
         limit: limit + 1,
         offset: (page - INITIAL_PAGE) * limit,
         orderBy: { column: 'created_at', ascending: false },
@@ -395,7 +465,7 @@ export class UserService {
     try {
       const following = await this.supabaseService.select<Follow>('follows', {
         select: 'following_id',
-        where: { follower_id: userId },
+        where: { follower_id: userId, status: FollowStatus.ACCEPTED },
         limit: limit + 1,
         offset: (page - INITIAL_PAGE) * limit,
         orderBy: { column: 'created_at', ascending: false },

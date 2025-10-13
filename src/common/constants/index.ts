@@ -48,6 +48,11 @@ export enum ProfileVisibility {
   PRIVATE,
 }
 
+export enum FollowStatus {
+  ACCEPTED,
+  PENDING,
+}
+
 export enum ContentPrivacy {
   PUBLIC,
   FOLLOWERS,
@@ -92,26 +97,15 @@ export enum TrendingReportType {
   HARMFUL,
 }
 
+export enum NotificationType {
+  FOLLOW_REQUEST,
+}
+
 export enum SearchItemType {
   USER,
   QUERY,
   POST,
   MEDIA,
-}
-
-export enum SocialAuthError {
-  ACCOUNT_BLOCKED = 'AccountBlocked',
-  AUTHENTICATION_FAILED = 'AuthenticationFailed',
-}
-
-export enum NotificationType {
-  ALL = 'all',
-  SECURITY = 'security',
-  SOCIAL = 'social',
-  POST = 'post',
-  REQUEST = 'request',
-  MENTION = 'mention',
-  FOLLOW = 'follow',
 }
 
 export enum SortBy {
@@ -122,6 +116,11 @@ export enum SortBy {
 export enum ExploreType {
   MEDIA = 'media',
   POST = 'post',
+}
+
+export enum SocialAuthError {
+  ACCOUNT_BLOCKED = 'AccountBlocked',
+  AUTHENTICATION_FAILED = 'AuthenticationFailed',
 }
 
 // +++ TODO: Ongoing +++

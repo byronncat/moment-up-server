@@ -1,3 +1,4 @@
+import type { JwtSignOptions } from '@nestjs/jwt';
 import type { AppSession, AppSessionData } from 'app-session';
 import type { JwtPayload } from 'jwt-library';
 import type { GoogleUser } from 'passport-library';
@@ -429,7 +430,11 @@ export class AuthService {
     }
   }
 
-  private async createJwtToken(userId: string, expiresIn: string, _jti?: string) {
+  private async createJwtToken(
+    userId: string,
+    expiresIn: NonNullable<JwtSignOptions['expiresIn']>,
+    _jti?: string
+  ) {
     const jti = _jti ?? Auth.generateId('nanoid', { length: TOKEN_ID_LENGTH });
     const payload = { sub: userId, jti };
     const token = await this.jwtService.signAsync(payload, {

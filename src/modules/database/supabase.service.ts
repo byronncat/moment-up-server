@@ -7,12 +7,14 @@ import { String } from 'src/common/helpers';
 
 type MainTable =
   | 'users'
+  | 'user_stats'
   | 'hashtags'
   | 'posts'
   | 'post_stats'
   | 'stories'
   | 'comments'
   | 'comment_stats'
+  | 'notifications'
   | 'user_reports'
   | 'post_reports'
   | 'trending_reports';
