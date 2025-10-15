@@ -19,13 +19,11 @@ export class AccessTokenGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<AuthRequest>();
     const token = request.accessToken;
-    const session = request.session as AppSession;
 
     try {
-      if (!token?.sub) throw new UnauthorizedException('Access token is required');
+      if (!token?.sub) throw new UnauthorizedException('Access token is required.');
       return true;
     } catch (error) {
-      this.clearAuthState(session);
       this.logger.error(error.message, {
         context: 'Auth',
         location: 'AccessTokenGuard',
@@ -33,14 +31,7 @@ export class AccessTokenGuard implements CanActivate {
 
       if (error instanceof UnauthorizedException || error instanceof ForbiddenException)
         throw error;
-      throw new UnauthorizedException('Invalid access token');
-    }
-  }
-
-  private clearAuthState(session: AppSession) {
-    if (session.user) {
-      session.user = undefined;
-      session.cookie.maxAge = 3 * 24 * 60 * 60 * 1000; // 3 days default
+      throw new UnauthorizedException('Invalid access token.');
     }
   }
 }
