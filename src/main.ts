@@ -29,8 +29,11 @@ async function bootstrap() {
     transports: createWinstonTransports(false),
   });
 
-  const https = process.env.NODE_ENV === 'development' && process.env.HTTPS === 'true';
-  if (https) {
+  const isDevelopment = process.env.NODE_ENV === 'development';
+  const useLocalHttps = isDevelopment && process.env.HTTPS === 'true';
+  const https = isDevelopment ? useLocalHttps : true;
+  
+  if (useLocalHttps) {
     const httpsOptions = {
       key: fs.readFileSync(path.join(__dirname, '../certificates/localhost+2-key.pem')),
       cert: fs.readFileSync(path.join(__dirname, '../certificates/localhost+2.pem')),
@@ -156,7 +159,7 @@ async function bootstrap() {
 
   await app.listen(port!, () => {
     logger.info(
-      `Server is running on ${https ? 'https' : 'http'}://localhost:${port}${prefix ? `/${prefix}` : ''}`
+      `Server is running on ${useLocalHttps ? 'https' : 'http'}://localhost:${port}${prefix ? `/${prefix}` : ''}`
     );
   });
 }
