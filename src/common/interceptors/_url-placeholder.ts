@@ -99,11 +99,8 @@ export class UrlPlaceholderInterceptor implements NestInterceptor {
       });
     }
 
-    if (hasSecret) {
-      return next.handle().pipe(map((data) => this.replaceUrlsDeep(data, new Set(), true)));
-    }
-    
-    return next.handle();
+    if (hasSecret) return next.handle();
+    return next.handle().pipe(map((data) => this.replaceUrlsDeep(data, new Set(), true)));
   }
 
   private replaceUrlsDeep<T>(value: T, usedFiles: Set<string>, isTopLevel = false): T {
