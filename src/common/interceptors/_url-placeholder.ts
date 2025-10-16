@@ -84,13 +84,26 @@ function getAspectRatioFromImageUrl(imageUrl: string): 'square' | 'portrait' | '
 export class UrlPlaceholderInterceptor implements NestInterceptor {
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     const request = context.switchToHttp().getRequest();
-    const hasSecret = request?.cookies?.['__secret'] === process.env.WHO_I_AM;
+    const cookieValue = request?.cookies?.['__secret'];
+    const expectedValue = process.env.WHO_I_AM;
+    const hasSecret = cookieValue === expectedValue;
 
-    if (hasSecret) {
-      return next.handle();
+    // Debug logging (remove after debugging)
+    if (cookieValue !== undefined) {
+      console.log('[URL Interceptor Debug]', {
+        cookieReceived: cookieValue ? 'YES' : 'NO',
+        cookieValue: cookieValue ? '***' : 'undefined',
+        expectedValue: expectedValue ? '***' : 'undefined',
+        matches: hasSecret,
+        path: request.path,
+      });
     }
 
-    return next.handle().pipe(map((data) => this.replaceUrlsDeep(data, new Set(), true)));
+    if (hasSecret) {
+      return next.handle().pipe(map((data) => this.replaceUrlsDeep(data, new Set(), true)));
+    }
+    
+    return next.handle();
   }
 
   private replaceUrlsDeep<T>(value: T, usedFiles: Set<string>, isTopLevel = false): T {
