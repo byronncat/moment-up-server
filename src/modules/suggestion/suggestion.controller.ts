@@ -31,9 +31,9 @@ export class SuggestionController {
   @HttpCode(HttpStatus.OK)
   @UseGuards(AccessTokenGuard)
   async getUserSuggestions(@AccessToken() token: JwtPayload) {
-    const userId = token.sub ?? '';
+    const userId = token.sub;
     return {
-      users: await this.peopleDiscoveryService.getUser(userId),
+      users: await this.peopleDiscoveryService.getUser(userId!),
     };
   }
 
@@ -41,9 +41,9 @@ export class SuggestionController {
   @HttpCode(HttpStatus.OK)
   @UseGuards(AccessTokenGuard)
   async getPopularProfiles(@AccessToken() token: JwtPayload) {
-    const userId = token.sub ?? '';
+    const userId = token.sub;
     return {
-      users: await this.peopleDiscoveryService.getPopular(userId),
+      users: await this.peopleDiscoveryService.getPopular(userId!),
     };
   }
 
@@ -60,10 +60,10 @@ export class SuggestionController {
     @Body(ValidationPipe) trendingReportDto: TrendingReportDto,
     @AccessToken() token: JwtPayload
   ) {
-    const userId = token.sub ?? '';
-    await this.trendingService.reportTrendingTopic(trendingReportDto, userId);
+    const userId = token.sub;
+    await this.trendingService.reportTrendingTopic(trendingReportDto, userId!);
     return {
-      message: 'Report submitted successfully',
+      message: 'Your report has been submitted successfully.',
     };
   }
 
@@ -72,7 +72,7 @@ export class SuggestionController {
   async refreshUserHashtags() {
     await this.trendingService.refreshUserHashtags();
     return {
-      message: 'User hashtags refreshed successfully',
+      message: 'User hashtags refreshed successfully.',
     };
   }
 }

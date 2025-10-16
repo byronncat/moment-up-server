@@ -3,7 +3,7 @@ import type { Post, User } from 'schema';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { SupabaseService } from '../database/supabase.service';
 import { CloudinaryService } from '../database/cloudinary.service';
-import { getRandomFile, imageUrls, videoUrls } from 'src/__mocks__/file';
+import { getRandomFile, imageUrls } from 'src/__mocks__/file';
 import { faker } from '@faker-js/faker';
 import { ContentPrivacy, ProfileVisibility } from 'src/common/constants';
 import { Auth } from 'src/common/helpers';
@@ -42,7 +42,6 @@ export class DevelopmentService {
 
     const usersToInsert: Array<Omit<User, 'id' | 'created_at' | 'last_modified'>> = [];
 
-    // Generate additional random users
     const remainingCount = count - usersToInsert.length;
     if (remainingCount > 0) {
       for (let i = 0; i < remainingCount; i++) {
@@ -56,6 +55,8 @@ export class DevelopmentService {
           select: 'id',
         });
 
+        const privateRatio = 0.2;
+
         if (existingUser.length === 0) {
           usersToInsert.push({
             username,
@@ -67,12 +68,11 @@ export class DevelopmentService {
               ? getRandomFile(faker.string.uuid(), '1.91:1')
               : null,
             bio: faker.datatype.boolean(0.6) ? faker.lorem.sentence() : null,
-            verified: faker.datatype.boolean(0.8),
+            verified: true,
             blocked: false,
-            privacy: faker.helpers.arrayElement([
-              ProfileVisibility.PUBLIC,
-              ProfileVisibility.PRIVATE,
-            ]),
+            privacy: faker.datatype.boolean(privateRatio)
+              ? ProfileVisibility.PRIVATE
+              : ProfileVisibility.PUBLIC,
             deleted_at: null,
           });
         }
@@ -203,15 +203,7 @@ export class DevelopmentService {
     }
   }
 
-  public async generatePosts(count = 50) {
-    if (count <= 0) {
-      throw new BadRequestException('Count must be greater than 0');
-    }
-
-    if (count > 500) {
-      throw new BadRequestException('Count cannot exceed 500 posts at once');
-    }
-
+  public async generatePosts() {
     try {
       // Get all existing users from the database
       const users = await this.supabaseService.select<User>('users', {
@@ -227,75 +219,134 @@ export class DevelopmentService {
         };
       }
 
-      // Combine all media files
-      const allMedia = [...imageUrls, ...videoUrls].sort(() => Math.random() - 0.5);
+      // Only use image files (no videos)
+      const allImages = [...imageUrls].sort(() => Math.random() - 0.5);
       const postsToInsert: Array<Omit<Post, 'id' | 'created_at' | 'last_modified'>> = [];
 
-      let mediaIndex = 0;
+      let imageIndex = 0;
+      const totalImages = allImages.length;
 
-      for (let i = 0; i < count; i++) {
-        // Pick a random user
-        const randomUser = faker.helpers.arrayElement(users);
+      // Helper function to generate text content
+      const generateTextContent = () => {
+        const hasHashtag = faker.datatype.boolean({ probability: 0.4 });
+        const hasMultipleParagraphs = faker.datatype.boolean({ probability: 0.3 });
 
-        // Decide if post should have media (70% chance)
-        const hasMedia = faker.datatype.boolean({ probability: 0.7 });
-        const hasText = faker.datatype.boolean({ probability: 0.8 });
+        let text = '';
 
-        // Ensure post has at least text or media
-        const shouldIncludeText = hasText || !hasMedia;
+        if (hasMultipleParagraphs) {
+          const paragraphCount = faker.number.int({ min: 2, max: 4 });
+          text = Array.from({ length: paragraphCount }, () => faker.lorem.paragraph()).join('\n\n');
+        } else {
+          text = faker.helpers.arrayElement([
+            faker.lorem.sentence(),
+            faker.lorem.paragraph(),
+            `${faker.hacker.phrase()}! 🔥`,
+            `Just ${faker.hacker.ingverb()} with ${faker.food.dish().toLowerCase()}`,
+            faker.company.buzzPhrase(),
+          ]);
+        }
 
-        let attachments = null;
+        if (hasHashtag) {
+          const hashtags = Array.from(
+            { length: faker.number.int({ min: 1, max: 3 }) },
+            () =>
+              `#${faker.helpers
+                .arrayElement([
+                  faker.food.meat(),
+                  faker.music.genre(),
+                  faker.color.human(),
+                  faker.vehicle.type(),
+                  faker.word.adjective(),
+                  faker.word.noun(),
+                ])
+                .toLowerCase()
+                .replace(/\s+/g, '')}`
+          ).join(' ');
+          text = `${text} ${hashtags}`;
+        }
 
-        if (hasMedia && mediaIndex < allMedia.length) {
-          // Decide how many media files for this post (1-4)
-          const filesPerPost = faker.number.int({ min: 1, max: 4 });
-          const mediaFilesForPost = [];
+        return text;
+      };
 
-          for (let j = 0; j < filesPerPost && mediaIndex < allMedia.length; j++) {
-            const media = allMedia[mediaIndex];
-            mediaFilesForPost.push({
-              id: media.url, // Use the HTTP URL as ID for mock data
-              type: media.url.includes('.mp4') ? ('video' as const) : ('image' as const),
+      // Generate posts for each user, cycling through users until all images are used
+      let userIndex = 0;
+      while (imageIndex < totalImages) {
+        const user = users[userIndex % users.length];
+
+        // Determine post type: 0.4 text only, 0.2 image only, 0.4 text & image
+        const rand = Math.random();
+        let postType: 'text' | 'image' | 'both';
+
+        if (rand < 0.4) {
+          postType = 'text';
+        } else if (rand < 0.6) {
+          postType = 'image';
+        } else {
+          postType = 'both';
+        }
+
+        let text: string | null = null;
+        let attachments: Array<{ id: string; type: 'image' | 'video' }> | null = null;
+
+        // Generate text for text-only and both types
+        if (postType === 'text' || postType === 'both') {
+          text = generateTextContent();
+        }
+
+        // Generate images for image-only and both types
+        if (postType === 'image' || postType === 'both') {
+          const imagesPerPost = faker.number.int({ min: 1, max: 12 });
+          const imageFilesForPost = [];
+
+          for (let j = 0; j < imagesPerPost && imageIndex < totalImages; j++) {
+            const image = allImages[imageIndex];
+            imageFilesForPost.push({
+              id: image.url,
+              type: 'image' as const,
             });
-            mediaIndex++;
+            imageIndex++;
           }
 
-          attachments = mediaFilesForPost;
-
-          // Reset mediaIndex if we've used all media
-          if (mediaIndex >= allMedia.length) {
-            mediaIndex = 0;
+          if (imageFilesForPost.length > 0) {
+            attachments = imageFilesForPost;
           }
         }
 
         const postData: Omit<Post, 'id' | 'created_at' | 'last_modified'> = {
-          user_id: randomUser.id,
-          text: shouldIncludeText
-            ? faker.helpers.arrayElement([
-                faker.lorem.sentence(),
-                faker.lorem.paragraph(),
-                `${faker.hacker.phrase()} #${faker.food.meat().toLowerCase().replace(' ', '')} #${faker.music.genre().toLowerCase().replace(' ', '')}`,
-                `Just ${faker.hacker.ingverb()} with ${faker.food.dish().toLowerCase()} and ${faker.animal.type().toLowerCase()}! 🔥`,
-                `${faker.company.buzzPhrase()} #${faker.color.human().toLowerCase()} #${faker.vehicle.type().toLowerCase().replace(' ', '')}`,
-              ])
-            : null,
+          user_id: user.id,
+          text,
           attachments,
-          privacy: faker.helpers.arrayElement([
-            ContentPrivacy.PUBLIC,
-            ContentPrivacy.FOLLOWERS,
-            ContentPrivacy.PRIVATE,
-          ]),
+          privacy: (() => {
+            const rand = Math.random();
+            if (rand < 0.15) {
+              return ContentPrivacy.PRIVATE;
+            } else if (rand < 0.4) {
+              return ContentPrivacy.FOLLOWERS;
+            } else {
+              return ContentPrivacy.PUBLIC;
+            }
+          })(),
         };
 
         postsToInsert.push(postData);
+        userIndex++;
+      }
+
+      if (postsToInsert.length === 0) {
+        return {
+          message: 'No posts were generated',
+          insertedCount: 0,
+          posts: [],
+        };
       }
 
       // Insert all posts
       const insertedPosts = await this.supabaseService.insert<Post>('posts', postsToInsert);
 
       return {
-        message: `Successfully created ${insertedPosts.length} posts`,
+        message: `Successfully created ${insertedPosts.length} posts using ${imageIndex} images`,
         insertedCount: insertedPosts.length,
+        imagesUsed: imageIndex,
         posts: insertedPosts.map((post) => ({
           id: post.id,
           user_id: post.user_id,

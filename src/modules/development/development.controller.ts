@@ -41,9 +41,8 @@ export class DevelopmentController {
 
   @Post('generate-posts')
   @HttpCode(HttpStatus.CREATED)
-  async generatePosts(@Query('count') count?: string) {
-    const postCount = count ? parseInt(count, 10) : 50;
-    return this.developmentService.generatePosts(postCount);
+  async generatePosts() {
+    return this.developmentService.generatePosts();
   }
 
   @Get('media-info')

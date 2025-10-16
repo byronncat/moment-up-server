@@ -14,7 +14,7 @@ import {
   SuggestionModule,
   UserModule,
 } from './modules';
-import { RequestLogger } from './common/interceptors';
+import { RequestLogger, UrlPlaceholderInterceptor } from './common/interceptors';
 import { HttpExceptionFilter } from './common/filters';
 import { createWinstonTransports, environment } from './configurations';
 import { AccessTokenMiddleware } from './common/middlewares';
@@ -71,6 +71,10 @@ import { RateLimit } from './common/constants';
     {
       provide: APP_INTERCEPTOR,
       useClass: RequestLogger,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: UrlPlaceholderInterceptor,
     },
     {
       provide: APP_FILTER,

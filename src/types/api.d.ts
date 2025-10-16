@@ -1,6 +1,6 @@
 declare module 'api' {
   import type { Attachment, Comment, Hashtag, Post, Story, User } from 'schema';
-  import type { StoryBackground, NotificationType } from 'common/constants';
+  import type { NotificationType, StoryBackground } from 'common/constants';
 
   interface PaginationDto<T> {
     total?: number;
@@ -8,6 +8,13 @@ declare module 'api' {
     limit: number;
     hasNextPage: boolean;
     items: T[];
+  }
+
+  interface ErrorDto {
+    message: string;
+    error: string | string[];
+    statusCode: number;
+    code?: string;
   }
 
   // === User ===
@@ -81,10 +88,10 @@ declare module 'api' {
   }
 
   // === Notification ===
-  type FollowRequestDto = {
+  interface FollowRequestDto {
     type: NotificationType.FOLLOW_REQUEST;
     data: UserSummaryDto;
-  };
+  }
 
   type NotificationDto = FollowRequestDto & {
     viewed: boolean;

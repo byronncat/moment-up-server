@@ -2,7 +2,7 @@
 export const RateLimit = {
   TTL: 60000, // 1 minute
   LIMIT: 100,
-};
+} as const;
 
 export const Cookie = {
   Name: {
@@ -12,7 +12,7 @@ export const Cookie = {
   MaxAge: {
     DEFAULT: 3 * 24 * 60 * 60 * 1000, // 3 days
   },
-};
+} as const;
 
 // === Default value ===
 export const TOKEN_ID_LENGTH = 10;
@@ -34,7 +34,7 @@ export const Url = {
 
   // SVGs can be blocked by some email clients for security reasons (because SVG can contain scripts).
   ICON: 'https://res.cloudinary.com/dq02xgn2g/image/upload/v1753716413/Public/moment-up-icon.png',
-};
+} as const;
 
 // === Enum ===
 export enum AccountExist {
@@ -123,7 +123,9 @@ export enum SocialAuthError {
   AUTHENTICATION_FAILED = 'AuthenticationFailed',
 }
 
-// +++ TODO: Ongoing +++
+export enum ErrorCode {
+  EMAIL_NOT_VERIFIED = 'EMAIL_NOT_VERIFIED',
+}
 
 export enum StoryBackground {
   BLUE_GRADIENT,

@@ -200,3 +200,130 @@ begin
     end;
 end;
 $$;
+
+-- ACID-compliant follow function
+-- Ensures atomicity, consistency, isolation, and durability for follow operations
+create or replace function public.follow_user (
+  p_follower_id uuid,
+  p_following_id uuid
+) returns table (
+  success boolean,
+  follow_status integer,
+  message text,
+  follow_id uuid
+) language plpgsql
+set
+  search_path = public as $$
+declare
+  v_target_privacy integer;
+  v_follow_status integer;
+  v_existing_follow record;
+  v_is_blocked boolean;
+  v_new_follow_id uuid;
+begin
+  -- Validation: Cannot follow yourself
+  if p_follower_id = p_following_id then
+    return query select false, null::integer, 'Cannot follow yourself'::text, null::uuid;
+    return;
+  end if;
+
+  -- Lock the target user row for update to prevent race conditions (Isolation)
+  -- Also verify target user exists
+  select privacy into v_target_privacy
+  from users
+  where id = p_following_id
+  for update;
+
+  if not found then
+    return query select false, null::integer, 'Target user not found'::text, null::uuid;
+    return;
+  end if;
+
+  -- Verify follower exists
+  if not exists(select 1 from users where id = p_follower_id) then
+    return query select false, null::integer, 'Follower user not found'::text, null::uuid;
+    return;
+  end if;
+
+  -- Check for blocks in either direction (Consistency)
+  select 
+    exists(
+      select 1 from blocks 
+      where (blocker_id = p_follower_id and blocked_id = p_following_id)
+         or (blocker_id = p_following_id and blocked_id = p_follower_id)
+    ) into v_is_blocked;
+
+  if v_is_blocked then
+    return query select false, null::integer, 'Cannot follow due to block'::text, null::uuid;
+    return;
+  end if;
+
+  -- Check if follow relationship already exists
+  -- Lock the row if it exists to prevent concurrent modifications
+  select * into v_existing_follow
+  from follows
+  where follower_id = p_follower_id and following_id = p_following_id
+  for update;
+
+  if found then
+    -- Follow already exists
+    return query select 
+      false, 
+      v_existing_follow.status, 
+      case 
+        when v_existing_follow.status = 0 then 'Already following'
+        when v_existing_follow.status = 1 then 'Follow request already pending'
+        else 'Follow relationship already exists'
+      end::text,
+      v_existing_follow.id;
+    return;
+  end if;
+
+  -- Determine follow status based on privacy setting
+  -- 0 = ACCEPTED (public profile), 1 = PENDING (private profile)
+  v_follow_status := case 
+    when v_target_privacy = 1 then 1  -- PENDING for private profiles
+    else 0  -- ACCEPTED for public profiles
+  end;
+
+  -- Insert the follow record (Atomicity starts here)
+  insert into follows (follower_id, following_id, status)
+  values (p_follower_id, p_following_id, v_follow_status)
+  returning id into v_new_follow_id;
+
+  -- Update user stats only if follow is accepted (Atomicity)
+  if v_follow_status = 0 then
+    -- Increment followers count for the target user
+    insert into user_stats (user_id, followers_count)
+    values (p_following_id, 1)
+    on conflict (user_id)
+    do update set 
+      followers_count = user_stats.followers_count + 1,
+      updated_at = now();
+
+    -- Increment following count for the follower
+    insert into user_stats (user_id, following_count)
+    values (p_follower_id, 1)
+    on conflict (user_id)
+    do update set 
+      following_count = user_stats.following_count + 1,
+      updated_at = now();
+  end if;
+
+  -- Return success (Atomicity and Durability - transaction commits)
+  return query select 
+    true, 
+    v_follow_status,
+    case 
+      when v_follow_status = 0 then 'Successfully followed'
+      when v_follow_status = 1 then 'Follow request sent'
+      else 'Follow created'
+    end::text,
+    v_new_follow_id;
+
+exception
+  -- Handle any errors and rollback transaction (Atomicity)
+  when others then
+    return query select false, null::integer, 'Error: ' || sqlerrm, null::uuid;
+end;
+$$;

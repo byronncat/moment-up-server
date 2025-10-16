@@ -5,7 +5,7 @@ import { INITIAL_PAGE } from 'src/common/constants';
 
 export class UserPostsDto extends IntersectionType(PageDto, LimitDto) {
   @IsIn(['media', 'tagged', 'reposts', 'like', 'bookmark'], {
-    message: 'Filter must be either media, tagged, reposts, like, or bookmark',
+    message: 'Filter must be either media, tagged, reposts, like, or bookmark.',
   })
   @IsOptional()
   filter?: 'media' | 'tagged' | 'reposts' | 'like' | 'bookmark';

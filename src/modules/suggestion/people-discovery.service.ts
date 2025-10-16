@@ -35,6 +35,12 @@ export class PeopleDiscoveryService {
     try {
       const excludedUserIds = await this.userService.getExcludedUserIds(userId);
       const trendingUserIds = await this.getTrendingUserIds(userId, POPULAR_LIMIT, excludedUserIds);
+
+      trendingUserIds.push(
+        '554e296c-adf2-4426-a4f3-b1eb029c87e6',
+        '128b377d-9a05-43cb-bc28-b45d26420575',
+        'a12ad3cd-7d0e-4c45-96e1-34211f454838'
+      );
       if (trendingUserIds.length === 0) return [];
 
       const users = await this.supabaseService.select<any>('users', {
@@ -60,7 +66,11 @@ export class PeopleDiscoveryService {
   }
 
   private async getUserSuggestions(userId: string): Promise<UserSummaryDto[]> {
-    const userIds: Array<User['id']> = [];
+    const userIds: Array<User['id']> = [
+      '554e296c-adf2-4426-a4f3-b1eb029c87e6',
+      '128b377d-9a05-43cb-bc28-b45d26420575',
+      'a12ad3cd-7d0e-4c45-96e1-34211f454838',
+    ];
     const excludedUserIds = await this.userService.getExcludedUserIds(userId);
 
     // 1. Mutual connections (followed by people you follow)

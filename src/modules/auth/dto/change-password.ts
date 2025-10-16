@@ -22,25 +22,27 @@ export class MatchValidator implements ValidatorConstraintInterface {
 
   defaultMessage(args: ValidationArguments) {
     const [relatedPropertyName] = args.constraints;
-    return `${args.property} must match ${relatedPropertyName}`;
+    return `${args.property} must match ${relatedPropertyName}.`;
   }
 }
 
 export class ChangePasswordDto {
-  @Matches(/^[A-Za-z0-9]+$/, { message: 'OTP must contain only numbers and alphabetic characters' })
-  @Length(6, 6, { message: 'OTP must be exactly 6 characters' })
-  @IsNotEmpty({ message: 'OTP is required' })
+  @Matches(/^[A-Za-z0-9]+$/, {
+    message: 'OTP must contain only numbers and alphabetic characters.',
+  })
+  @Length(6, 6, { message: 'OTP must be exactly 6 characters.' })
+  @IsNotEmpty({ message: 'OTP is required.' })
   otp: string;
 
   @Validate(PasswordStrengthValidator)
   @MinLength(MIN_PASSWORD_LENGTH, {
-    message: `New password must be at least ${MIN_PASSWORD_LENGTH} characters`,
+    message: `New password must be at least ${MIN_PASSWORD_LENGTH} characters.`,
   })
-  @IsNotEmpty({ message: 'New password is required' })
+  @IsNotEmpty({ message: 'New password is required.' })
   newPassword: string;
 
-  @Validate(MatchValidator, ['newPassword'], { message: 'Confirm password must match password' })
-  @IsString({ message: 'Confirm password must be a string' })
-  @IsNotEmpty({ message: 'Confirm password is required' })
+  @Validate(MatchValidator, ['newPassword'], { message: 'Confirm password must match password.' })
+  @IsString({ message: 'Confirm password must be a string.' })
+  @IsNotEmpty({ message: 'Confirm password is required.' })
   confirmPassword: string;
 }

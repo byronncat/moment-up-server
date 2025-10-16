@@ -75,7 +75,7 @@ export class HbsService {
     }
   }
 
-  public renderSuccessTemplate(
+  public renderVerificationTemplate(
     templateType: TemplateType,
     context: Record<string, string>
   ): { html: string; statusCode: number } {

@@ -1,5 +1,4 @@
 import type { AuthRequest } from 'jwt-library';
-import type { AppSession } from 'app-session';
 
 import {
   CanActivate,

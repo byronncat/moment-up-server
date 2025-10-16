@@ -19,6 +19,13 @@ set
     from blocks
     where blocked_id = user_uuid
 
+    -- select case
+    --     when blocker_id = user_uuid then blocked_id
+    --     else blocker_id
+    --   end as excluded_id
+    -- from blocks
+    -- where blocker_id = user_uuid or blocked_id = user_uuid
+
     union all
 
     select muted_id
@@ -74,6 +81,9 @@ group by
 create index idx_user_hashtag_stats_user on public.user_hashtag_stats (user_id);
 
 create index idx_user_hashtag_stats_hashtag on public.user_hashtag_stats (hashtag_id);
+
+-- Required for concurrent refresh
+create unique index idx_user_hashtag_stats_user_hashtag on public.user_hashtag_stats (user_id, hashtag_id);
 
 create or replace function public.refresh_user_hashtag_stats () returns void language plpgsql security definer as $$
 begin

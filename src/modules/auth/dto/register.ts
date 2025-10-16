@@ -22,34 +22,34 @@ export class PasswordStrengthValidator implements ValidatorConstraintInterface {
   }
 
   defaultMessage(): string {
-    return 'Password must include at least three of the following: uppercase letter (A-Z), lowercase letter (a-z), number (0-9)';
+    return 'Password must include at least three of the following: uppercase letter (A-Z), lowercase letter (a-z), number (0-9).';
   }
 }
 
 export class RegisterDto {
-  @IsEmail({}, { message: 'Invalid email address' })
-  @IsNotEmpty({ message: 'Email is required' })
+  @IsEmail({}, { message: 'Invalid email address.' })
+  @IsNotEmpty({ message: 'Email is required.' })
   email: string;
 
   @Matches(/^[a-zA-Z0-9._]+$/, {
-    message: 'Only letters, numbers, underscores, and dots are allowed',
+    message: 'Only letters, numbers, underscores, and dots are allowed.',
   })
-  @Matches(/^[^.].*$/, { message: 'Username cannot start with a dot' })
-  @Matches(/^.*[^.]$/, { message: 'Username cannot end with a dot' })
-  @NotContains('..', { message: 'Username cannot contain consecutive dots' })
+  @Matches(/^[^.].*$/, { message: 'Username cannot start with a dot.' })
+  @Matches(/^.*[^.]$/, { message: 'Username cannot end with a dot.' })
+  @NotContains('..', { message: 'Username cannot contain consecutive dots.' })
   @MaxLength(MAX_NAME_LENGTH, {
-    message: `Username must be less than ${MAX_NAME_LENGTH} characters`,
+    message: `Username must be less than ${MAX_NAME_LENGTH} characters.`,
   })
   @MinLength(MIN_USERNAME_LENGTH, {
-    message: `Username must be at least ${MIN_USERNAME_LENGTH} characters`,
+    message: `Username must be at least ${MIN_USERNAME_LENGTH} characters.`,
   })
-  @IsNotEmpty({ message: 'Username is required' })
+  @IsNotEmpty({ message: 'Username is required.' })
   username: string;
 
   @Validate(PasswordStrengthValidator)
   @MinLength(MIN_PASSWORD_LENGTH, {
-    message: `Password must be at least ${MIN_PASSWORD_LENGTH} characters`,
+    message: `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`,
   })
-  @IsNotEmpty({ message: 'Password is required' })
+  @IsNotEmpty({ message: 'Password is required.' })
   password: string;
 }

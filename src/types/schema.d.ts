@@ -114,6 +114,7 @@ declare module 'schema' {
   interface UserReport {
     readonly id: serial;
     readonly user_id: User['id'];
+    readonly reporter_id: User['id'];
     readonly type: UserReportType;
     readonly created_at: timestamptz;
   }

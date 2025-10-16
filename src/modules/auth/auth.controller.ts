@@ -53,6 +53,14 @@ export class AuthController {
     private readonly configService: ConfigService
   ) {}
 
+  @Get('csrf')
+  @HttpCode(HttpStatus.OK)
+  getCsrfToken(@Req() request: AuthRequest, @Session() session: AppSession) {
+    session.cookie.maxAge = Cookie.MaxAge.DEFAULT;
+    const csrfToken = request.csrfToken();
+    return { csrfToken };
+  }
+
   @Get('refresh')
   @HttpCode(HttpStatus.OK)
   async refresh(@Session() session: AppSession) {
@@ -95,14 +103,6 @@ export class AuthController {
   @UseGuards(AccessTokenGuard)
   async logout(@Session() session: AppSession) {
     this.authService.logout(session);
-  }
-
-  @Get('csrf')
-  @HttpCode(HttpStatus.OK)
-  getCsrfToken(@Req() request: AuthRequest, @Session() session: AppSession) {
-    session.cookie.maxAge = Cookie.MaxAge.DEFAULT;
-    const csrfToken = request.csrfToken();
-    return { csrfToken };
   }
 
   @Post('send-otp-email')

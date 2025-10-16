@@ -19,7 +19,7 @@ export class NotificationController {
     @AccessToken() token: JwtPayload,
     @Query() notificationsDto: NotificationsDto
   ) {
-    const userId = token?.sub || '';
-    return this.notificationService.get(userId, notificationsDto);
+    const userId = token.sub;
+    return this.notificationService.get(userId!, notificationsDto);
   }
 }

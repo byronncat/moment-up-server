@@ -42,14 +42,6 @@ import { TrendingReportDto } from './dto';
 import { Logger } from 'winston';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 
-const ErrorMessage = {
-  Hashtag: {
-    TopicNotFound: 'Topic not found',
-    ReportFailed: 'Failed to report trending topic',
-  },
-  RefreshUserHashtags: 'Failed to refresh user hashtags',
-};
-
 @Injectable()
 export class TrendingService {
   private readonly defaultTrendingConfig: TrendingConfig = {
@@ -93,7 +85,7 @@ export class TrendingService {
     return trendingHashtags;
   }
 
-  public async getTrendingHashtagScoreMap(limit = 200): Promise<Record<number, number>> {
+  public async getTrendingHashtagScoreMap(limit = 200) {
     const metrics = await this.getTrendingHashtags(limit);
     if (metrics.length === 0) return {};
 
@@ -123,12 +115,10 @@ export class TrendingService {
       nameToId.set(name.toLowerCase(), id);
     }
 
-    const result: Record<number, number> = {} as Record<number, number>;
+    const result: Record<number, number> = {};
     metrics.forEach((m) => {
       const id = nameToId.get(m.hashtag.toLowerCase());
-      if (id !== undefined) {
-        result[id] = m.trendingScore;
-      }
+      if (id !== undefined) result[id] = m.trendingScore;
     });
 
     return result;
@@ -169,19 +159,7 @@ export class TrendingService {
 
   public async reportTrendingTopic({ topic, type }: TrendingReportDto, userId: string) {
     // TEMPORARY
-    if (this.configService.get('MOCK_DATA')) {
-      const trendingReports = await this.supabaseService.insert<TrendingReport>(
-        'trending_reports',
-        {
-          hashtag_id: 15,
-          user_id: userId,
-          type,
-        }
-      );
-      if (trendingReports.length === 0)
-        throw new InternalServerErrorException(ErrorMessage.Hashtag.ReportFailed);
-      return;
-    }
+    if (this.configService.get('MOCK_DATA')) return;
     // TEMPORARY
 
     const topics = await this.supabaseService.select<Hashtag>('hashtags', {
@@ -190,7 +168,7 @@ export class TrendingService {
         name: topic,
       },
     });
-    if (topics.length === 0) throw new NotFoundException(ErrorMessage.Hashtag.TopicNotFound);
+    if (topics.length === 0) throw new NotFoundException('Trending topic not found.');
 
     const trendingReports = await this.supabaseService.insert<TrendingReport>('trending_reports', {
       hashtag_id: topics[0].id,
@@ -198,7 +176,9 @@ export class TrendingService {
       type,
     });
     if (trendingReports.length === 0)
-      throw new InternalServerErrorException('Failed to report trending topic');
+      throw new InternalServerErrorException(
+        'Unable to submit trending topic report. Please try again.'
+      );
   }
 
   private async getTrendingHashtags(limit: number): Promise<HashtagMetrics[]> {
@@ -388,13 +368,15 @@ export class TrendingService {
   public async refreshUserHashtags() {
     try {
       const { error } = await this.supabaseService.getClient().rpc('refresh_user_hashtag_stats');
-      if (error) throw new InternalServerErrorException(error.message);
+      if (error) throw error;
     } catch (error) {
       this.logger.error(error.message, {
         location: 'refreshUserHashtags',
         context: 'TrendingService',
       });
-      throw new InternalServerErrorException(ErrorMessage.RefreshUserHashtags);
+      throw new InternalServerErrorException(
+        'Something went wrong while refreshing user hashtags.'
+      );
     }
   }
 }

@@ -1,7 +1,7 @@
 import type { Notification } from 'schema';
-import type { NotificationDto, PaginationDto, UserSummaryDto } from 'api';
+import type { NotificationDto, PaginationDto } from 'api';
 
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { SupabaseService } from '../database/supabase.service';
 import { UserService } from '../user/user.service';
 import { NotificationsDto } from './dto/notifications';
@@ -42,35 +42,19 @@ export class NotificationService {
       const actorSummaries = (await this.userService.getUserSummaries(actorIds, userId)) ?? [];
       const actorMap = new Map(actorSummaries.map((actor) => [actor.id, actor]));
 
-      const items: NotificationDto[] = notifications.map((notification) => {
-        const actor = actorMap.get(notification.actor_id);
-        if (!actor) {
+      const items: NotificationDto[] = notifications
+        .map((notification) => {
+          const actor = actorMap.get(notification.actor_id);
+          if (!actor) return null;
+
           return {
             type: notification.type,
-            data: {
-              id: notification.actor_id,
-              username: 'Unknown User',
-              displayName: 'Unknown User',
-              avatar: null,
-              bio: null,
-              followers: 0,
-              following: 0,
-              isFollowing: false,
-              hasStory: false,
-              followedBy: null,
-            } satisfies UserSummaryDto,
+            data: actor,
             createdAt: notification.created_at,
             viewed: notification.read_at !== null,
           } satisfies NotificationDto;
-        }
-
-        return {
-          type: notification.type,
-          data: actor,
-          createdAt: notification.created_at,
-          viewed: notification.read_at !== null,
-        } satisfies NotificationDto;
-      });
+        })
+        .filter((item) => item !== null);
 
       return {
         page,
@@ -84,12 +68,7 @@ export class NotificationService {
         context: 'NotificationService',
       });
 
-      return {
-        page,
-        limit,
-        hasNextPage: false,
-        items: [],
-      } as PaginationDto<NotificationDto>;
+      throw new InternalServerErrorException('Something went wrong.');
     }
   }
 

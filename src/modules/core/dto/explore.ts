@@ -7,7 +7,7 @@ export class ExploreDto extends IntersectionType(PageDto, LimitDto) {
   @IsEnum(ExploreType, {
     message: `Type must be one of: ${Object.values(ExploreType).join(', ')}`,
   })
-  @IsNotEmpty({ message: 'Type is required' })
+  @IsNotEmpty({ message: 'Type is required.' })
   type: ExploreType;
 
   page = INITIAL_PAGE;

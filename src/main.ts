@@ -1,5 +1,6 @@
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import type { NextFunction, Request, Response } from 'express';
+import type { ErrorDto } from 'api';
 
 import { NestFactory } from '@nestjs/core';
 import { HttpStatus, ValidationPipe, VersioningType } from '@nestjs/common';
@@ -144,7 +145,11 @@ async function bootstrap() {
         url: request.originalUrl,
         status: HttpStatus.FORBIDDEN,
       });
-      return response.status(HttpStatus.FORBIDDEN).json({ message: 'CSRF validation failed.' });
+      return response.status(HttpStatus.FORBIDDEN).json({
+        message: 'Invalid CSRF token.',
+        error: 'Forbidden',
+        statusCode: HttpStatus.FORBIDDEN,
+      } satisfies ErrorDto);
     }
     next(error);
   });

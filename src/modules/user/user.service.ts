@@ -2,53 +2,29 @@ import type { Block, Follow, Mute, User, UserReport } from 'schema';
 import type { AccountDto, PaginationDto, ProfileDto, UserSummaryDto } from 'api';
 import type { GoogleUser } from 'passport-library';
 
-type UniqueUserId = User['id'] | User['email'] | User['username'];
-
 import {
   BadRequestException,
-  forwardRef,
+  ConflictException,
   Inject,
   Injectable,
   InternalServerErrorException,
   Logger,
+  NotFoundException,
+  forwardRef,
 } from '@nestjs/common';
-import { type SelectOptions, SupabaseService } from '../database/supabase.service';
+import { SupabaseService } from '../database/supabase.service';
 import { CloudinaryService } from '../database/cloudinary.service';
 import { FollowPaginationDto, ReportUserDto, UpdateProfileDto } from './dto';
 import { Auth, String } from 'src/common/helpers';
 import {
   AccountExist,
-  INITIAL_PAGE,
   FollowStatus,
-  ProfileVisibility,
+  INITIAL_PAGE,
   NotificationType,
+  ProfileVisibility,
 } from 'src/common/constants';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { NotificationService } from '../notification/notification.service';
-
-export const ErrorMessage = {
-  Profile: {
-    NotFound: 'User not found',
-    UpdateForbidden: 'You can only update your own profile.',
-  },
-  Follow: {
-    Conflict: (follow: boolean) => `You cannot ${follow ? 'follow' : 'unfollow'} yourself`,
-    Failed: (follow: boolean) => `Failed to ${follow ? 'follow' : 'unfollow'} user`,
-    Get: (follow: boolean) => `Failed to get ${follow ? 'followers' : 'following'}`,
-  },
-  Block: {
-    Conflict: (block: boolean) => `You cannot ${block ? 'block' : 'unblock'} yourself`,
-    Failed: (block: boolean) => `Failed to ${block ? 'block' : 'unblock'} user`,
-  },
-  Mute: {
-    Conflict: (mute: boolean) => `You cannot ${mute ? 'mute' : 'unmute'} yourself`,
-    Failed: (mute: boolean) => `Failed to ${mute ? 'mute' : 'unmute'} user`,
-  },
-  Report: {
-    Failed: 'Failed to report this user. Please try again later.',
-  },
-  InternalServerError: 'Something went wrong. Please try again.',
-};
 
 @Injectable()
 export class UserService {
@@ -91,15 +67,15 @@ export class UserService {
         location: 'searchUsers',
         context: 'UserService',
       });
-      throw new InternalServerErrorException(ErrorMessage.InternalServerError);
+      throw new InternalServerErrorException('Something went wrong.');
     }
   }
 
-  public async getById(id: UniqueUserId, options?: Pick<SelectOptions, 'select'>) {
+  public async getById(id: string, select?: string) {
     try {
       const isUuid = String.isUuid(id);
       const [user] = await this.supabaseService.select<User>('users', {
-        select: options?.select,
+        select,
         caseSensitive: false,
         orWhere: isUuid ? { id } : { username: id, email: id },
       });
@@ -130,7 +106,7 @@ export class UserService {
         location: 'addCredentialUser',
         context: 'UserService',
       });
-      return null;
+      return undefined;
     }
   }
 
@@ -164,7 +140,7 @@ export class UserService {
     }
   }
 
-  public async isAccountExist(email: UniqueUserId, username: UniqueUserId) {
+  public async isAccountExist(email: string, username: string) {
     try {
       const [user] = await this.supabaseService.select<User>('users', {
         select: 'email, username',
@@ -184,7 +160,7 @@ export class UserService {
     }
   }
 
-  public async getUserSummaries(userIds: Array<User['id']>, currentUserId?: User['id']) {
+  public async getUserSummaries(userIds: string[], currentUserId?: string) {
     try {
       if (userIds.length === 0) return [];
 
@@ -194,8 +170,7 @@ export class UserService {
         p_mutual_limit: 3,
       });
       if (error) throw error;
-
-      if (!data) throw new Error('Failed to get user summaries');
+      if (!data) throw new Error('Failed to get user summaries.');
       const userSummaries: UserSummaryDto[] = data.map((user: any) => {
         return {
           id: user.id,
@@ -220,7 +195,7 @@ export class UserService {
     }
   }
 
-  public async getProfileByUsername(username: User['username'], currentUserId?: User['id']) {
+  public async getProfileByUsername(username: string, currentUserId?: string) {
     try {
       const { data, error } = await this.supabaseService.getClient().rpc('get_user_profile', {
         p_username: username,
@@ -229,7 +204,7 @@ export class UserService {
       if (error) throw error;
 
       const profile = data[0];
-      if (!profile) throw new Error('User not found');
+      if (!profile) throw new Error('User not found.');
       if (profile.is_blocked) return undefined;
 
       return {
@@ -257,7 +232,7 @@ export class UserService {
     }
   }
 
-  public async updatePassword(userId: User['id'], hashedPassword: User['password']) {
+  public async updatePassword(userId: string, hashedPassword: string) {
     try {
       await this.supabaseService.update<User>(
         'users',
@@ -275,12 +250,12 @@ export class UserService {
     }
   }
 
-  public async verifyEmail(userId: User['id']) {
+  public async verifyEmail(email: string) {
     try {
       const [user] = await this.supabaseService.update<User>(
         'users',
         { verified: true },
-        { id: userId }
+        { email }
       );
 
       return user;
@@ -293,44 +268,51 @@ export class UserService {
     }
   }
 
-  public async updateProfile(userId: User['id'], updateData: UpdateProfileDto) {
+  public async updateProfile(
+    userId: string,
+    { avatar, backgroundImage, displayName, bio }: UpdateProfileDto
+  ) {
     try {
-      const currentUser = await this.getById(userId, {
-        select: 'id, avatar, background_image',
-      });
+      const currentUser = await this.getById(userId, 'id, avatar, background_image');
       if (!currentUser) return undefined;
 
+      const deletedImages = [];
       const updateFields: Partial<User> = {};
-      if (updateData.avatar !== undefined) {
-        if (currentUser.avatar) await this.deleteOldImage(currentUser.avatar);
-        updateFields.avatar = updateData.avatar;
+      if (avatar !== undefined) {
+        if (currentUser.avatar) deletedImages.push(currentUser.avatar);
+        updateFields.avatar = avatar;
       }
 
-      if (updateData.backgroundImage !== undefined) {
-        if (currentUser.background_image) await this.deleteOldImage(currentUser.background_image);
-        updateFields.background_image = updateData.backgroundImage;
+      if (backgroundImage !== undefined) {
+        if (currentUser.background_image) deletedImages.push(currentUser.background_image);
+        updateFields.background_image = backgroundImage;
       }
 
-      if (updateData.displayName !== undefined) updateFields.display_name = updateData.displayName;
-      if (updateData.bio !== undefined) updateFields.bio = updateData.bio;
+      if (displayName !== undefined) updateFields.display_name = displayName;
+      if (bio !== undefined) updateFields.bio = bio;
 
-      const [user] = await this.supabaseService.update<User>('users', updateFields, { id: userId });
-      return user;
+      const [profile] = await this.supabaseService.update<User>('users', updateFields, {
+        id: userId,
+      });
+
+      if (deletedImages.length > 0) {
+        await Promise.all(deletedImages.map((image) => this.deleteOldImage(image)));
+      }
+
+      return profile;
     } catch (error) {
       this.logger.error(error.message, {
         location: 'updateProfile',
         context: 'UserService',
       });
-      throw new InternalServerErrorException(ErrorMessage.InternalServerError);
+      throw new InternalServerErrorException('Something went wrong.');
     }
   }
 
   public async follow(currentUserId: User['id'], targetUserId: User['id']) {
     try {
-      const targetUser = await this.getById(targetUserId, {
-        select: 'id, privacy',
-      });
-      if (!targetUser) throw new Error('Target user not found');
+      const targetUser = await this.getById(targetUserId, 'id, privacy');
+      if (!targetUser) throw new NotFoundException('Target user not found.');
 
       const isPrivate = targetUser.privacy === ProfileVisibility.PRIVATE;
       const followStatus = isPrivate ? FollowStatus.PENDING : FollowStatus.ACCEPTED;
@@ -344,7 +326,7 @@ export class UserService {
       if (followStatus === FollowStatus.ACCEPTED) {
         await this.updateUserStats(targetUserId, 'followers_count', 1);
         await this.updateUserStats(currentUserId, 'following_count', 1);
-      } else if (followStatus === FollowStatus.PENDING) {
+      } else {
         await this.notificationService.notify(NotificationType.FOLLOW_REQUEST, {
           userId: targetUserId,
           actorId: currentUserId,
@@ -358,33 +340,40 @@ export class UserService {
         location: 'follow',
         context: 'UserService',
       });
-      throw new BadRequestException(ErrorMessage.Follow.Failed(true));
+      if (error instanceof NotFoundException) throw error;
+      if (error.message.includes('duplicate key value violates unique constraint "follows_pkey"'))
+        throw new ConflictException('You are already following this user.');
+      throw new BadRequestException('Unable to follow user.');
     }
   }
 
-  public async unfollow(currentUserId: User['id'], targetUserId: User['id']) {
+  public async unfollow(currentUserId: string, targetUserId: string) {
     try {
-      const [deletedFollow] = await this.supabaseService.delete<Follow>('follows', {
+      const follows = await this.supabaseService.delete<Follow>('follows', {
         follower_id: currentUserId,
         following_id: targetUserId,
       });
+      if (follows.length === 0) throw new ConflictException('You are not following this user.');
 
-      if (deletedFollow.status === FollowStatus.ACCEPTED) {
+      if (follows[0].status === FollowStatus.ACCEPTED) {
         await this.updateUserStats(targetUserId, 'followers_count', -1);
         await this.updateUserStats(currentUserId, 'following_count', -1);
+      } else {
+        await this.notificationService.removeFollowRequest(currentUserId, targetUserId);
       }
     } catch (error) {
       this.logger.error(error.message, {
         location: 'unfollow',
         context: 'UserService',
       });
-      throw new BadRequestException(ErrorMessage.Follow.Failed(false));
+      if (error instanceof ConflictException) throw error;
+      throw new BadRequestException('Unable to unfollow user.');
     }
   }
 
-  public async acceptFollowRequest(currentUserId: User['id'], targetUserId: User['id']) {
+  public async acceptFollowRequest(currentUserId: string, targetUserId: string) {
     try {
-      const [updatedFollow] = await this.supabaseService.update<Follow>(
+      const updatedFollows = await this.supabaseService.update<Follow>(
         'follows',
         {
           status: FollowStatus.ACCEPTED,
@@ -394,38 +383,50 @@ export class UserService {
           following_id: currentUserId,
         }
       );
-      this.notificationService.removeFollowRequest(currentUserId, targetUserId);
-      return updatedFollow;
+
+      if (updatedFollows.length === 0)
+        throw new ConflictException("You are not waiting for this user's follow request.");
+
+      await this.updateUserStats(targetUserId, 'following_count', 1);
+      await this.updateUserStats(currentUserId, 'followers_count', 1);
+
+      await this.notificationService.removeFollowRequest(currentUserId, targetUserId);
+      return updatedFollows[0];
     } catch (error) {
       this.logger.error(error.message, {
         location: 'acceptFollowRequest',
         context: 'UserService',
       });
-      throw new BadRequestException(ErrorMessage.Follow.Failed(true));
+      if (error instanceof ConflictException) throw error;
+      throw new BadRequestException('Unable to accept follow request.');
     }
   }
 
-  public async declineFollowRequest(currentUserId: User['id'], targetUserId: User['id']) {
+  public async declineFollowRequest(currentUserId: string, targetUserId: string) {
     try {
-      const [updatedFollow] = await this.supabaseService.delete<Follow>('follows', {
+      const deletedFollows = await this.supabaseService.delete<Follow>('follows', {
         follower_id: targetUserId,
         following_id: currentUserId,
       });
+
+      if (deletedFollows.length === 0)
+        throw new ConflictException("You are not waiting for this user's follow request.");
+
       this.notificationService.removeFollowRequest(currentUserId, targetUserId);
-      return updatedFollow;
+      return deletedFollows[0];
     } catch (error) {
       this.logger.error(error.message, {
         location: 'declineFollowRequest',
         context: 'UserService',
       });
-      throw new BadRequestException(ErrorMessage.Follow.Failed(false));
+      if (error instanceof ConflictException) throw error;
+      throw new BadRequestException('Unable to decline follow request.');
     }
   }
 
   public async getFollowers(
-    userId: User['id'],
-    { limit, page }: FollowPaginationDto,
-    currentUserId?: User['id']
+    { userId, currentUserId }: { userId: string; currentUserId: string },
+    { limit, page }: FollowPaginationDto
   ): Promise<PaginationDto<UserSummaryDto>> {
     try {
       const followers = await this.supabaseService.select<Follow>('follows', {
@@ -440,8 +441,16 @@ export class UserService {
       if (hasNextPage) followers.pop();
 
       const followerIds = followers.map((f) => f.follower_id);
+      if (followerIds.length === 0)
+        return {
+          page,
+          limit,
+          hasNextPage: false,
+          items: [],
+        };
+
       const userSummaries = await this.getUserSummaries(followerIds, currentUserId);
-      if (!userSummaries) throw new Error('Failed to get followers');
+      if (!userSummaries) throw new Error('Failed to get followers.');
       return {
         page,
         limit,
@@ -453,14 +462,13 @@ export class UserService {
         location: 'getFollowers',
         context: 'UserService',
       });
-      throw new InternalServerErrorException(ErrorMessage.InternalServerError);
+      throw new InternalServerErrorException('Something went wrong.');
     }
   }
 
   public async getFollowing(
-    userId: User['id'],
-    { limit, page }: FollowPaginationDto,
-    currentUserId?: User['id']
+    { userId, currentUserId }: { userId: string; currentUserId: string },
+    { limit, page }: FollowPaginationDto
   ): Promise<PaginationDto<UserSummaryDto>> {
     try {
       const following = await this.supabaseService.select<Follow>('follows', {
@@ -475,8 +483,16 @@ export class UserService {
       if (hasNextPage) following.pop();
 
       const followingIds = following.map((f) => f.following_id);
+      if (followingIds.length === 0)
+        return {
+          page,
+          limit,
+          hasNextPage: false,
+          items: [],
+        };
+
       const userSummaries = await this.getUserSummaries(followingIds, currentUserId);
-      if (!userSummaries) throw new Error('Failed to get following');
+      if (!userSummaries) throw new Error('Failed to get following.');
       return {
         page,
         limit,
@@ -488,19 +504,26 @@ export class UserService {
         location: 'getFollowing',
         context: 'UserService',
       });
-      throw new BadRequestException(ErrorMessage.Follow.Get(true));
+      throw new InternalServerErrorException('Something went wrong.');
     }
   }
 
   public async block(currentUserId: User['id'], targetUserId: User['id']) {
     try {
-      await this.supabaseService
+      const { data: existingFollows, error } = await this.supabaseService
         .getClient()
         .from('follows')
         .delete()
         .or(
           `and(follower_id.eq.${currentUserId},following_id.eq.${targetUserId}),and(follower_id.eq.${targetUserId},following_id.eq.${currentUserId})`
-        );
+        )
+        .select('following_id, follower_id');
+
+      if (error) throw error;
+      if (existingFollows.length > 0) {
+        await this.updateUserStats(existingFollows[0].follower_id, 'following_count', -1);
+        await this.updateUserStats(existingFollows[0].following_id, 'followers_count', -1);
+      }
 
       const [newBlock] = await this.supabaseService.insert<Block>('blocks', {
         blocker_id: currentUserId,
@@ -513,22 +536,30 @@ export class UserService {
         location: 'block',
         context: 'UserService',
       });
-      throw new BadRequestException(ErrorMessage.Block.Failed(true));
+      if (error.message.includes('duplicate key value violates unique constraint "blocks_pkey"'))
+        throw new ConflictException('You are already blocking this user.');
+      if (error.message.includes('foreign key constraint "blocks_blocked_id_fkey"'))
+        throw new NotFoundException('Target user not found.');
+      throw new InternalServerErrorException('Something went wrong.');
     }
   }
 
-  public async unblock(currentUserId: User['id'], targetUserId: User['id']) {
+  public async unblock(currentUserId: string, targetUserId: string) {
     try {
-      await this.supabaseService.delete<Block>('blocks', {
+      const deletedBlocks = await this.supabaseService.delete<Block>('blocks', {
         blocker_id: currentUserId,
         blocked_id: targetUserId,
       });
+
+      if (deletedBlocks.length === 0)
+        throw new ConflictException('You are not blocking this user.');
     } catch (error) {
       this.logger.error(error.message, {
         location: 'unblock',
         context: 'UserService',
       });
-      throw new BadRequestException(ErrorMessage.Block.Failed(false));
+      if (error instanceof ConflictException) throw error;
+      throw new InternalServerErrorException('Something went wrong.');
     }
   }
 
@@ -553,45 +584,46 @@ export class UserService {
         location: 'getBlockedUsers',
         context: 'UserService',
       });
-      throw new BadRequestException(ErrorMessage.Mute.Failed(true));
+      throw new InternalServerErrorException('Something went wrong.');
     }
   }
 
-  public async mute(currentUserId: User['id'], targetUserId: User['id']) {
+  public async mute(currentUserId: string, targetUserId: string) {
     try {
-      if (currentUserId === targetUserId)
-        throw new BadRequestException(ErrorMessage.Mute.Conflict(true));
-
-      const [newMute] = await this.supabaseService.insert<Mute>('mutes', {
+      const newMutes = await this.supabaseService.insert<Mute>('mutes', {
         muter_id: currentUserId,
         muted_id: targetUserId,
       });
 
-      return newMute;
+      if (newMutes.length === 0) throw new ConflictException('You are already muting this user.');
+      return newMutes[0];
     } catch (error) {
       this.logger.error(error.message, {
         location: 'mute',
         context: 'UserService',
       });
-      throw new BadRequestException(ErrorMessage.Mute.Failed(true));
+      if (error instanceof ConflictException) throw error;
+      if (error.message.includes('foreign key constraint "mutes_muted_id_fkey"'))
+        throw new NotFoundException('Target user not found.');
+      throw new InternalServerErrorException('Something went wrong.');
     }
   }
 
   public async unmute(currentUserId: User['id'], targetUserId: User['id']) {
     try {
-      if (currentUserId === targetUserId)
-        throw new BadRequestException(ErrorMessage.Mute.Conflict(false));
-
-      await this.supabaseService.delete<Mute>('mutes', {
+      const deletedMutes = await this.supabaseService.delete<Mute>('mutes', {
         muter_id: currentUserId,
         muted_id: targetUserId,
       });
+
+      if (deletedMutes.length === 0) throw new ConflictException('You are not muting this user.');
     } catch (error) {
       this.logger.error(error.message, {
         location: 'unmute',
         context: 'UserService',
       });
-      throw new BadRequestException(ErrorMessage.Mute.Failed(false));
+      if (error instanceof ConflictException) throw error;
+      throw new InternalServerErrorException('Something went wrong.');
     }
   }
 
@@ -616,14 +648,18 @@ export class UserService {
         location: 'getMutedUsers',
         context: 'UserService',
       });
-      throw new BadRequestException(ErrorMessage.Mute.Failed(false));
+      throw new BadRequestException('Something went wrong.');
     }
   }
 
-  public async reportUser(userId: User['id'], { type }: ReportUserDto) {
+  public async reportUser(
+    { userId, currentUserId }: { userId: string; currentUserId: string },
+    { type }: ReportUserDto
+  ) {
     try {
       const [newReport] = await this.supabaseService.insert<UserReport>('user_reports', {
         user_id: userId,
+        reporter_id: currentUserId,
         type,
       });
 
@@ -633,7 +669,9 @@ export class UserService {
         location: 'reportUser',
         context: 'UserService',
       });
-      throw new InternalServerErrorException(ErrorMessage.Report.Failed);
+      if (error.message.includes('violates foreign key constraint "user_reports_user_id_fkey"'))
+        throw new NotFoundException('Target user not found.');
+      throw new InternalServerErrorException('Something went wrong.');
     }
   }
 

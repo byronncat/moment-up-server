@@ -61,7 +61,7 @@ export class PostService {
     private readonly trendingService: TrendingService
   ) {}
 
-  public async getHomePosts(userId: User['id'], { page, limit }: PaginationDto) {
+  public async getHomePosts(userId: string, { page, limit }: PaginationDto) {
     try {
       const followingUsers = await this.supabaseService.select('follows', {
         select: 'following_id',
@@ -119,7 +119,7 @@ export class PostService {
       const userSummaries = await this.userService.getUserSummaries(uniqueUserIds, userId);
 
       const userMap = new Map();
-      if (!userSummaries) throw new BadRequestException('Something went wrong');
+      if (!userSummaries) throw new Error('User summaries not found.');
       userSummaries.forEach((summary) => {
         userMap.set(summary.id, summary);
       });
@@ -171,11 +171,11 @@ export class PostService {
         location: 'getHomePosts',
         context: 'PostService',
       });
-      throw new InternalServerErrorException(Message.GetPosts.Failed);
+      throw new InternalServerErrorException('Something went wrong.');
     }
   }
 
-  public async getExplorePosts({ page, limit, type }: ExploreDto, userId?: User['id']) {
+  public async getExplorePosts({ page, limit, type }: ExploreDto, userId?: string) {
     try {
       const excludedUserIds = userId
         ? await this.userService.getExcludedUserIds(userId)
@@ -186,7 +186,7 @@ export class PostService {
       const { data: exploreResults, error } = await this.supabaseService
         .getClient()
         .rpc('get_explore_posts', {
-          p_current_user_id: userId,
+          p_current_user_id: userId ?? null, // using undefined can cause issues with the function
           p_excluded_user_ids: Array.from(excludedUserIds),
           p_post_type: type,
           p_limit: limit + 1,
@@ -246,7 +246,7 @@ export class PostService {
         location: 'getExplorePosts',
       });
 
-      throw new InternalServerErrorException(Message.GetPosts.Failed);
+      throw new InternalServerErrorException('Something went wrong.');
     }
   }
 
@@ -255,8 +255,8 @@ export class PostService {
       userId,
       currentUserId,
     }: {
-      userId: User['id'];
-      currentUserId: User['id'];
+      userId: string;
+      currentUserId?: string;
     },
     { page, limit, filter }: UserPostsDto
   ) {
@@ -265,7 +265,8 @@ export class PostService {
       if (filter === 'like') return await this.getUserLikes(userId, { page, limit });
 
       const userSummaries = await this.userService.getUserSummaries([userId], currentUserId);
-      if (!userSummaries || userSummaries.length === 0) throw new Error('User summary not found');
+      if (!userSummaries || userSummaries.length === 0)
+        throw new NotFoundException('User not found.');
       const userSummary = userSummaries[0];
 
       const privacyLevel =
@@ -339,11 +340,13 @@ export class PostService {
         location: 'getUserPosts',
         context: 'PostService',
       });
-      throw new InternalServerErrorException(Message.GetPosts.Failed);
+
+      if (error instanceof NotFoundException) throw error;
+      throw new InternalServerErrorException('Something went wrong.');
     }
   }
 
-  public async getUserBookmarks(userId: User['id'], { page, limit }: PaginationDto) {
+  private async getUserBookmarks(userId: string, { page, limit }: PaginationDto) {
     try {
       const bookmarkedPosts = await this.supabaseService.select<any>('post_bookmarks', {
         select: `
@@ -384,7 +387,7 @@ export class PostService {
       const userSummaries = await this.userService.getUserSummaries(uniqueUserIds, userId);
 
       const userMap = new Map();
-      if (!userSummaries) throw new BadRequestException('Something went wrong');
+      if (!userSummaries) throw new Error('User summaries not found.');
       userSummaries.forEach((summary) => {
         userMap.set(summary.id, summary);
       });
@@ -436,11 +439,11 @@ export class PostService {
         location: 'getUserBookmarks',
         context: 'PostService',
       });
-      throw new InternalServerErrorException(Message.GetPosts.Failed);
+      throw new InternalServerErrorException('Something went wrong.');
     }
   }
 
-  public async getUserLikes(userId: User['id'], { page, limit }: PaginationDto) {
+  private async getUserLikes(userId: string, { page, limit }: PaginationDto) {
     try {
       const likedPosts = await this.supabaseService.select<any>('post_likes', {
         select: `
@@ -481,7 +484,7 @@ export class PostService {
       const userSummaries = await this.userService.getUserSummaries(uniqueUserIds, userId);
 
       const userMap = new Map();
-      if (!userSummaries) throw new BadRequestException('Something went wrong');
+      if (!userSummaries) throw new Error('User summaries not found.');
       userSummaries.forEach((summary) => {
         userMap.set(summary.id, summary);
       });
@@ -533,7 +536,7 @@ export class PostService {
         location: 'getUserLikes',
         context: 'PostService',
       });
-      throw new InternalServerErrorException(Message.GetPosts.Failed);
+      throw new InternalServerErrorException('Something went wrong.');
     }
   }
 
@@ -582,7 +585,7 @@ export class PostService {
       );
 
       const userMap = new Map();
-      if (!userSummaries) throw new BadRequestException('Something went wrong');
+      if (!userSummaries) throw new Error('User summaries not found.');
       userSummaries.forEach((summary) => {
         userMap.set(summary.id, summary);
       });
@@ -636,11 +639,11 @@ export class PostService {
         location: 'search',
         context: 'PostService',
       });
-      throw new InternalServerErrorException(Message.GetPosts.Failed);
+      throw new InternalServerErrorException('Something went wrong.');
     }
   }
 
-  public async getById(postId: string, userId?: User['id']) {
+  public async getById(postId: string, userId?: string) {
     try {
       const posts = await this.supabaseService.select<
         Omit<Post, 'id'> & {
@@ -652,12 +655,12 @@ export class PostService {
         limit: 1,
       });
 
-      if (posts.length === 0) throw new NotFoundException('Post not found');
+      if (posts.length === 0) throw new NotFoundException('Post not found.');
       const post = posts[0];
 
       const userSummaries = await this.userService.getUserSummaries([post.user_id], userId);
       if (!userSummaries || userSummaries.length === 0)
-        throw new BadRequestException('User not found');
+        throw new NotFoundException('User not found.');
 
       const userSummary = userSummaries[0];
 
@@ -671,7 +674,7 @@ export class PostService {
               : ContentPrivacy.PUBLIC;
 
       if (post.privacy > privacyLevel)
-        throw new ForbiddenException('You do not have permission to view this post');
+        throw new ForbiddenException('You do not have permission to view this post.');
 
       let postStats: PostMetadata | undefined;
       if (userId) {
@@ -703,14 +706,8 @@ export class PostService {
         context: 'PostService',
       });
 
-      if (
-        error instanceof BadRequestException ||
-        error instanceof ForbiddenException ||
-        error instanceof NotFoundException
-      )
-        throw error;
-
-      throw new InternalServerErrorException('Failed to get post');
+      if (error instanceof ForbiddenException || error instanceof NotFoundException) throw error;
+      throw new InternalServerErrorException('Something went wrong.');
     }
   }
 
@@ -726,12 +723,12 @@ export class PostService {
         limit: 1,
       });
 
-      if (posts.length === 0) throw new NotFoundException('Post not found');
+      if (posts.length === 0) throw new NotFoundException('Post not found.');
       const post = posts[0];
 
       const userSummaries = await this.userService.getUserSummaries([post.user_id]);
       if (!userSummaries || userSummaries.length === 0)
-        throw new BadRequestException('User not found');
+        throw new NotFoundException('User not found.');
 
       const userSummary = userSummaries[0];
 
@@ -752,18 +749,18 @@ export class PostService {
         context: 'PostService',
       });
 
-      if (error instanceof BadRequestException || error instanceof NotFoundException) throw error;
-      throw new InternalServerErrorException('Failed to get post metadata');
+      if (error instanceof NotFoundException) throw error;
+      throw new InternalServerErrorException('Something went wrong.');
     }
   }
 
-  private async getPostStats(postIds: string[], userId: User['id']) {
+  private async getPostStats(postIds: string[], userId?: string) {
     try {
       if (postIds.length === 0) return [];
 
       const { data, error } = await this.supabaseService.getClient().rpc('get_post_stats_batch', {
         p_post_ids: postIds,
-        p_current_user_id: userId,
+        p_current_user_id: userId ?? null,
       });
 
       if (error) throw error;

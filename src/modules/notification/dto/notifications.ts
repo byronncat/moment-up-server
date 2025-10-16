@@ -5,7 +5,7 @@ import { INITIAL_PAGE, NotificationType } from 'src/common/constants';
 
 export class NotificationsDto extends IntersectionType(PageDto, LimitDto) {
   @IsEnum(['follow_request'], {
-    message: `Type must be one of: ${Object.values(NotificationType).join(', ')}`,
+    message: `Type must be one of: ${Object.values(NotificationType).join(', ')}.`,
   })
   @IsOptional()
   type?: NotificationType;

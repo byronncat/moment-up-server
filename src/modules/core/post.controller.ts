@@ -15,7 +15,7 @@ import {
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
-import { Message, PostService } from './post.service';
+import { PostService } from './post.service';
 import { AccessTokenGuard } from 'src/common/guards';
 import { AccessToken } from 'src/common/decorators';
 import {
@@ -26,7 +26,7 @@ import {
   RepostDto,
   UserPostsDto,
 } from './dto';
-import { INITIAL_PAGE } from 'src/common/constants';
+import { ExploreType, INITIAL_PAGE } from 'src/common/constants';
 
 @Controller({
   path: 'posts',
@@ -38,15 +38,21 @@ export class PostController {
   @Get('home')
   @HttpCode(HttpStatus.OK)
   @UseGuards(AccessTokenGuard)
-  async getHomePosts(@AccessToken() token: JwtPayload, @Query() paginationDto: PaginationDto) {
-    const userId = token.sub ?? '';
-    return this.postService.getHomePosts(userId, paginationDto);
+  async getHomePosts(@Query() paginationDto: PaginationDto, @AccessToken() token: JwtPayload) {
+    const userId = token.sub;
+    return this.postService.getHomePosts(userId!, paginationDto);
   }
 
   @Get('explore')
   @HttpCode(HttpStatus.OK)
   async getExplorePosts(@Query() exploreDto: ExploreDto, @AccessToken() token?: JwtPayload) {
-    const userId = token?.sub ?? undefined;
+    if (!token) {
+      if (exploreDto.page > INITIAL_PAGE)
+        throw new ForbiddenException('You must be logged in to view more posts.');
+      exploreDto.limit = exploreDto.type === ExploreType.MEDIA ? 12 : 7;
+    }
+
+    const userId = token?.sub;
     return this.postService.getExplorePosts(exploreDto, userId);
   }
 
@@ -54,26 +60,22 @@ export class PostController {
   @HttpCode(HttpStatus.OK)
   async getUserPosts(
     @Param('id') userId: string,
-    @Query() { page, limit: _limit, filter }: UserPostsDto,
-    @AccessToken() accessToken?: JwtPayload
+    @Query() userPostsDto: UserPostsDto,
+    @AccessToken() token?: JwtPayload
   ) {
-    let limit = _limit;
-    if (!accessToken) {
-      if (page > INITIAL_PAGE) throw new ForbiddenException(Message.GetPosts.PublicPost);
-      limit = 7;
+    if (!token) {
+      if (userPostsDto.page > INITIAL_PAGE)
+        throw new ForbiddenException('You must be logged in to view more posts.');
+      userPostsDto.limit = 7;
     }
 
-    const currentUserId = accessToken?.sub ?? '';
+    const currentUserId = token?.sub;
     return this.postService.getUserPosts(
       {
         userId,
         currentUserId,
       },
-      {
-        page,
-        limit,
-        filter,
-      }
+      userPostsDto
     );
   }
 

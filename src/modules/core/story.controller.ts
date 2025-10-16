@@ -16,7 +16,7 @@ export class StoryController {
   @HttpCode(HttpStatus.OK)
   @UseGuards(AccessTokenGuard)
   async getStories(@AccessToken() token: JwtPayload) {
-    const userId = token?.sub || '';
+    const userId = token.sub ?? '';
     return {
       stories: await this.storyService.getStories(userId),
     };
@@ -35,7 +35,7 @@ export class StoryController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @UseGuards(AccessTokenGuard)
   async deleteStory(@Param('id') id: any, @AccessToken() token: JwtPayload) {
-    const userId = token?.sub || '';
+    const userId = token.sub ?? '';
     await this.storyService.deleteStory(id, userId);
   }
 }
