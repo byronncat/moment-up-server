@@ -40,7 +40,8 @@ export class SearchService {
     const { query, filter, page, limit } = searchData;
 
     if (!filter || filter === 'user') {
-      const result = await this.userService.search(query, page, limit);
+      const username = query.startsWith("@") ? query.slice(1) : query;
+      const result = await this.userService.search(username, page, limit);
       const items: UserSearchData[] = result.items.map((u: AccountDto) => ({
         type: SearchItemType.USER,
         ...u,

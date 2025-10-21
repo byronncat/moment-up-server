@@ -32,7 +32,7 @@ async function bootstrap() {
   const isDevelopment = process.env.NODE_ENV === 'development';
   const useLocalHttps = isDevelopment && process.env.HTTPS === 'true';
   const https = isDevelopment ? useLocalHttps : true;
-  
+
   if (useLocalHttps) {
     const httpsOptions = {
       key: fs.readFileSync(path.join(__dirname, '../certificates/localhost+2-key.pem')),

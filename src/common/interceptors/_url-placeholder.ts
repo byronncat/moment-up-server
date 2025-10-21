@@ -2,8 +2,7 @@ import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nes
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 
-const file = [
-  // vertical
+const vertialFiles = [
   'https://pbs.twimg.com/media/G2Qcoh3WIAAzwD6?format=jpg&name=large',
   'https://pbs.twimg.com/media/G2o8WN2XAAAr8D2?format=jpg&name=medium',
   'https://pbs.twimg.com/media/G2-kHCtbwAE1l9W?format=jpg&name=large',
@@ -27,22 +26,34 @@ const file = [
   'https://pbs.twimg.com/media/GvbCXMRX0AAFFmF?format=jpg&name=large',
   'https://pbs.twimg.com/media/GwQZcyxakAAJwOq?format=jpg&name=large',
   'https://pbs.twimg.com/media/Gro0xPlW0AAJLBd?format=jpg&name=large',
-  'https://pbs.twimg.com/media/G2BQULcXcAABn6r?format=jpg&name=large',
   'https://pbs.twimg.com/media/G2KD7TpaIAUhYar?format=jpg&name=medium',
-  'https://pbs.twimg.com/media/G3U7M3pXMAA3cDg?format=jpg&name=large',
   'https://pbs.twimg.com/media/G2_Dhi-WEAAx6nc?format=jpg&name=large',
+  'https://pbs.twimg.com/media/G3sQycBXgAA81Cc?format=jpg&name=4096x4096',
+  'https://pbs.twimg.com/media/G3DkcRXbAAAVAC_?format=jpg&name=4096x4096',
+  'https://pbs.twimg.com/media/G3hksbXWkAA2VOG?format=jpg&name=large',
+  'https://pbs.twimg.com/media/G3r9OHgWEAA5Cv0?format=jpg&name=medium',
+  'https://pbs.twimg.com/media/G3pH2iYXgAAwKX4?format=jpg&name=medium',
+  'https://pbs.twimg.com/media/G23BUhQW8AAKxPq?format=jpg&name=medium',
+  'https://pbs.twimg.com/media/G3iVOm8WQAAq1QJ?format=jpg&name=medium',
+  'https://pbs.twimg.com/media/G3js6pdXEAAXZWq?format=jpg&name=medium',
+  'https://pbs.twimg.com/media/G3Sr7r2WkAAOAiq?format=jpg&name=large',
+  'https://pbs.twimg.com/media/G3f0PqAXYAAhffN?format=jpg&name=large',
+  'https://pbs.twimg.com/media/G3YqhSeW0AAJDA5?format=jpg&name=large',
+];
 
-  // square
+const squareFiles = [
   'https://pbs.twimg.com/media/G3EAySMXAAA4BS9?format=jpg&name=900x900',
+  'https://pbs.twimg.com/media/G1mvt21WAAAp9AP?format=jpg&name=large',
+  'https://pbs.twimg.com/media/G3DAyALXoAAVAbG?format=jpg&name=900x900',
+];
 
-  // horizontal
+const horizontalFiles = [
   'https://pbs.twimg.com/media/G2_ZJbCWIAAWq8S?format=jpg&name=large',
   'https://pbs.twimg.com/media/GwHnupxWgAAODIB?format=jpg&name=4096x4096',
   'https://pbs.twimg.com/media/G3OGs0uWAAAhtzi?format=jpg&name=large',
   'https://pbs.twimg.com/media/G3TznHkWkAAa3j2?format=jpg&name=medium',
   'https://pbs.twimg.com/media/GaqRH88XwAA3IUf?format=jpg&name=4096x4096',
   'https://pbs.twimg.com/media/G2i-o16WsAAHkol?format=jpg&name=small',
-  'https://pbs.twimg.com/media/G3TO5OpaQAAYbEc?format=jpg&name=large',
   'https://pbs.twimg.com/media/G3TO5OiacAA3IMq?format=jpg&name=large',
   'https://pbs.twimg.com/media/G3TO5OnbkAARjVi?format=jpg&name=large',
   'https://pbs.twimg.com/media/G3TO5OibMAAYNOy?format=jpg&name=large',
@@ -55,7 +66,11 @@ const file = [
   'https://pbs.twimg.com/media/Fmx622sXEA4veyG?format=jpg&name=4096x4096',
   'https://pbs.twimg.com/media/Fmx622pWIAAKJ23?format=jpg&name=4096x4096',
   'https://pbs.twimg.com/media/Fmx622oXEAwuCFT?format=jpg&name=4096x4096',
+  'https://pbs.twimg.com/media/G3AgH5HbwAEzIxc?format=png&name=large',
+  'https://pbs.twimg.com/media/G3nhwlPWgAA2Ag7?format=jpg&name=4096x4096',
 ];
+
+const file = [...vertialFiles, ...squareFiles, ...horizontalFiles];
 
 function getRandomFile(seed: string) {
   return file[
@@ -71,13 +86,12 @@ function getAspectRatioFromImageUrl(imageUrl: string): 'square' | 'portrait' | '
   // - square image: index 28 (line 36)
   // - horizontal images: indices 29-47 (lines 39-57)
 
-  if (imageIndex <= 27) {
-    return 'portrait';
-  } else if (imageIndex === 28) {
-    return 'square';
-  } else {
+  if (imageIndex < vertialFiles.length) return 'portrait';
+  else if (imageIndex < vertialFiles.length + squareFiles.length) return 'square';
+  else if (imageIndex < vertialFiles.length + squareFiles.length + horizontalFiles.length)
     return 'landscape';
-  }
+
+  return 'portrait';
 }
 
 @Injectable()
@@ -87,17 +101,6 @@ export class UrlPlaceholderInterceptor implements NestInterceptor {
     const cookieValue = request?.cookies?.['__secret'];
     const expectedValue = process.env.WHO_I_AM;
     const hasSecret = cookieValue === expectedValue;
-
-    // Debug logging (remove after debugging)
-    if (cookieValue !== undefined) {
-      console.log('[URL Interceptor Debug]', {
-        cookieReceived: cookieValue ? 'YES' : 'NO',
-        cookieValue: cookieValue ? '***' : 'undefined',
-        expectedValue: expectedValue ? '***' : 'undefined',
-        matches: hasSecret,
-        path: request.path,
-      });
-    }
 
     if (hasSecret) return next.handle();
     return next.handle().pipe(map((data) => this.replaceUrlsDeep(data, new Set(), true)));

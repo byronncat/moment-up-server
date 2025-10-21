@@ -6,14 +6,22 @@ import { SupabaseService } from '../database/supabase.service';
 import { UserService } from '../user/user.service';
 import { Logger } from 'winston';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import { ConfigService } from '@nestjs/config';
 
 const DEFAULT_LIMIT = 5;
 const POPULAR_LIMIT = 4;
+
+const _mockInitialSuggestions = [
+  'd27b1923-3bf4-479c-a749-94f9cb099382',
+  '77044989-40e7-4608-8e27-de9d8bee28f4',
+  '9e1c7721-c7cb-4dbd-b94d-c53f69625cf4',
+];
 
 @Injectable()
 export class PeopleDiscoveryService {
   constructor(
     @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
+    private readonly configService: ConfigService,
     private readonly supabaseService: SupabaseService,
     private readonly userService: UserService
   ) {}
@@ -35,13 +43,13 @@ export class PeopleDiscoveryService {
     try {
       const excludedUserIds = await this.userService.getExcludedUserIds(userId);
       const trendingUserIds = await this.getTrendingUserIds(userId, POPULAR_LIMIT, excludedUserIds);
-
-      trendingUserIds.push(
-        '554e296c-adf2-4426-a4f3-b1eb029c87e6',
-        '128b377d-9a05-43cb-bc28-b45d26420575',
-        'a12ad3cd-7d0e-4c45-96e1-34211f454838'
-      );
       if (trendingUserIds.length === 0) return [];
+
+      // TEMPORARY
+      if (this.configService.get('MOCK_DATA') && trendingUserIds.length === 0) {
+        trendingUserIds.push(..._mockInitialSuggestions);
+      }
+      // END TEMPORARY
 
       const users = await this.supabaseService.select<any>('users', {
         whereIn: { id: trendingUserIds },
@@ -66,11 +74,7 @@ export class PeopleDiscoveryService {
   }
 
   private async getUserSuggestions(userId: string): Promise<UserSummaryDto[]> {
-    const userIds: Array<User['id']> = [
-      '554e296c-adf2-4426-a4f3-b1eb029c87e6',
-      '128b377d-9a05-43cb-bc28-b45d26420575',
-      'a12ad3cd-7d0e-4c45-96e1-34211f454838',
-    ];
+    const userIds: Array<User['id']> = [];
     const excludedUserIds = await this.userService.getExcludedUserIds(userId);
 
     // 1. Mutual connections (followed by people you follow)
@@ -97,6 +101,12 @@ export class PeopleDiscoveryService {
       const activeUserIds = await this.getRandomActiveUsers(excludedUserIds);
       userIds.push(...activeUserIds);
     }
+
+    // TEMPORARY
+    if (userIds.length < DEFAULT_LIMIT && this.configService.get('MOCK_DATA')) {
+      userIds.push(..._mockInitialSuggestions);
+    }
+    // END TEMPORARY
 
     const suggestions = userIds.sort(() => Math.random() - 0.5).slice(0, DEFAULT_LIMIT);
     return this.parseToUserSummaryDto(suggestions, userId);
