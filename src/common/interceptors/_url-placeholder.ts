@@ -39,6 +39,9 @@ const vertialFiles = [
   'https://pbs.twimg.com/media/G3Sr7r2WkAAOAiq?format=jpg&name=large',
   'https://pbs.twimg.com/media/G3f0PqAXYAAhffN?format=jpg&name=large',
   'https://pbs.twimg.com/media/G3YqhSeW0AAJDA5?format=jpg&name=large',
+  'https://pbs.twimg.com/media/G3EfPw6XsAA6A9z?format=jpg&name=small',
+  'https://pbs.twimg.com/media/G35HP9PXgAAFSHo?format=jpg&name=large',
+  'https://pbs.twimg.com/media/G35HQN2WQAAmeSj?format=jpg&name=large',
 ];
 
 const squareFiles = [

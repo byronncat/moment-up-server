@@ -99,9 +99,7 @@ create or replace function public.get_explore_posts (
   privacy smallint,
   created_at timestamp with time zone,
   last_modified timestamp with time zone,
-  explore_score numeric,
-  user_summary jsonb,
-  post_stats jsonb
+  explore_score numeric
 ) language plpgsql
 set
   search_path = public as $$
@@ -114,21 +112,6 @@ begin
   return query
   with excluded_users as (
     select unnest(p_excluded_user_ids) as excluded_id
-  ),
-  rel_is_following as (
-    select following_id
-    from follows
-    where follower_id = p_current_user_id
-  ),
-  rel_is_follower as (
-    select follower_id
-    from follows
-    where following_id = p_current_user_id
-  ),
-  rel_is_muted as (
-    select muted_id
-    from mutes
-    where muter_id = p_current_user_id
   ),
   post_engagement as (
     select 
@@ -240,41 +223,12 @@ begin
         coalesce(pe.engagement_score, 0.0) / 100.0 * engagement_weight +
         -- Trending component (30%) - use max trending score from hashtags
         coalesce(pt.max_trending_score, 0.0) * trending_weight
-      ) as explore_score,
-      -- User summary data
-      jsonb_build_object(
-        'id', u.id,
-        'username', u.username,
-        'display_name', u.display_name,
-        'avatar', u.avatar,
-        'bio', u.bio,
-        'followers', coalesce(us.followers_count, 0),
-        'following', coalesce(us.following_count, 0),
-        'is_following', (rif.following_id is not null),
-        'is_follower', (rfr.follower_id is not null),
-        'is_muted', (rim.muted_id is not null),
-        'has_story', coalesce(us.has_story, false)
-      ) as user_summary,
-      -- Post stats
-      jsonb_build_object(
-        'likes_count', coalesce(ps.likes_count, 0),
-        'comments_count', coalesce(ps.comments_count, 0),
-        'reposts_count', coalesce(ps.reposts_count, 0),
-        'bookmarks_count', coalesce(ps.bookmarks_count, 0),
-        'is_liked', exists(select 1 from post_likes pl where pl.post_id = p.id and pl.user_id = p_current_user_id),
-        'is_bookmarked', exists(select 1 from post_bookmarks pb where pb.post_id = p.id and pb.user_id = p_current_user_id)
-      ) as post_stats
+      ) as explore_score
     from posts p
-    join users u on p.user_id = u.id
-    left join user_stats us on us.user_id = u.id
-    left join rel_is_following rif on rif.following_id = u.id
-    left join rel_is_follower rfr on rfr.follower_id = u.id
-    left join rel_is_muted rim on rim.muted_id = u.id
     left join post_engagement pe on p.id = pe.post_id
     left join post_trending_scores pt on p.id = pt.post_id
-    left join post_stats ps on p.id = ps.post_id
     where p.user_id not in (select excluded_id from excluded_users)
-      and p.privacy <= case when p.user_id = p_current_user_id then 3 else 1 end -- Respect privacy settings
+      and p.privacy = 0 -- Only public posts
       and (p_post_type = 'post' or (p_post_type = 'media' and p.attachments is not null and array_length(p.attachments, 1) > 0))
   )
   select 
@@ -285,9 +239,7 @@ begin
     ep.privacy,
     ep.created_at,
     ep.last_modified,
-    ep.explore_score,
-    ep.user_summary,
-    ep.post_stats
+    ep.explore_score
   from explore_posts ep
   order by ep.explore_score desc, ep.created_at desc
   limit p_limit

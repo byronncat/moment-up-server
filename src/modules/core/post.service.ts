@@ -199,44 +199,64 @@ export class PostService {
       const hasNextPage = exploreResults && exploreResults.length > limit;
       const actualResults = hasNextPage ? exploreResults.slice(0, limit) : exploreResults;
 
+      if (actualResults.length === 0)
+        return {
+          page,
+          limit,
+          hasNextPage: false,
+          items: [],
+        };
+
+      const uniqueUserIds: string[] = [
+        ...new Set<string>(actualResults.map((result: any) => result.user_id as string)),
+      ];
+      const userSummaries = await this.userService.getUserSummaries(uniqueUserIds, userId);
+
+      const userMap = new Map();
+      if (!userSummaries) throw new Error('User summaries not found.');
+      userSummaries.forEach((summary) => {
+        userMap.set(summary.id, summary);
+      });
+
+      const postIds = actualResults.map((result: any) => result.post_id as string);
+      const postStats = await this.getPostStats(postIds, userId);
+
+      const statsMap = new Map<Post['id'], PostMetadata>();
+      postStats.forEach((stat) => {
+        statsMap.set(stat.post_id, stat);
+      });
+
       const postItems = await Promise.all(
         actualResults.map(async (result: any) => {
-          const userSummary = result.user_summary;
-          const postStats = result.post_stats;
+          const userSummary = userMap.get(result.user_id);
+          if (!userSummary) return null;
+
+          const stats = statsMap.get(result.post_id);
 
           return {
             id: result.post_id.toString(),
-            user: {
-              id: userSummary.id,
-              username: userSummary.username,
-              displayName: userSummary.display_name,
-              avatar: userSummary.avatar,
-              bio: userSummary.bio,
-              followers: userSummary.followers,
-              following: userSummary.following,
-              isFollowing: userSummary.is_following,
-              hasStory: userSummary.has_story,
-              followedBy: userSummary.followed_by,
-            },
+            user: userSummary,
             post: {
               text: result.text,
               files: await this.parseAttachments(result.attachments),
-              likes: postStats.likes_count,
-              comments: postStats.comments_count,
-              reposts: postStats.reposts_count,
-              isLiked: postStats.is_liked,
-              isBookmarked: postStats.is_bookmarked,
+              likes: stats?.likes_count ?? 0,
+              comments: stats?.comments_count ?? 0,
+              reposts: stats?.reposts_count ?? 0,
+              isLiked: stats?.is_liked ?? false,
+              isBookmarked: stats?.is_bookmarked ?? false,
               lastModified: result.last_modified,
             },
           } satisfies FeedDto;
         })
       );
 
+      const validPostItems = postItems.filter((item) => item !== null);
+
       const pagination: PaginationPayload<FeedDto> = {
         page,
         limit,
         hasNextPage,
-        items: postItems,
+        items: validPostItems,
       };
 
       return pagination;
