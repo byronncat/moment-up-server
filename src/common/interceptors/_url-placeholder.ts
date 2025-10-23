@@ -52,7 +52,6 @@ const horizontalFiles = [
   'https://pbs.twimg.com/media/GwHnupxWgAAODIB?format=jpg&name=4096x4096',
   'https://pbs.twimg.com/media/G3OGs0uWAAAhtzi?format=jpg&name=large',
   'https://pbs.twimg.com/media/G3TznHkWkAAa3j2?format=jpg&name=medium',
-  'https://pbs.twimg.com/media/GaqRH88XwAA3IUf?format=jpg&name=4096x4096',
   'https://pbs.twimg.com/media/G2i-o16WsAAHkol?format=jpg&name=small',
   'https://pbs.twimg.com/media/G3TO5OiacAA3IMq?format=jpg&name=large',
   'https://pbs.twimg.com/media/G3TO5OnbkAARjVi?format=jpg&name=large',
