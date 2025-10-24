@@ -38,6 +38,56 @@ begin
 end;
 $$;
 
+create or replace function public.update_post_with_hashtags (
+  p_user_id uuid,
+  p_post_id bigint,
+  p_text text,
+  p_privacy smallint,
+  p_hashtags text[]
+) returns jsonb language plpgsql
+set
+  search_path = public as $$
+declare
+  hashtag_name text;
+  v_hashtag_id bigint;
+  result_post jsonb;
+begin
+  -- Update the post
+  update posts
+  set text = p_text,
+      privacy = p_privacy,
+      last_modified = now()
+  where id = p_post_id and user_id = p_user_id
+  returning to_jsonb(posts.*) into result_post;
+
+  -- Check if post was found and belongs to the user
+  if result_post is null then
+    raise exception 'Post not found or unauthorized';
+  end if;
+
+  -- Delete all existing hashtag relationships for this post
+  delete from post_hashtags where post_id = p_post_id;
+
+  -- Process new hashtags if any exist
+  if array_length(p_hashtags, 1) > 0 then
+    foreach hashtag_name in array p_hashtags loop
+      -- Insert hashtag and fetch id
+      insert into hashtags (name)
+      values (hashtag_name)
+      on conflict (name) do update set name = excluded.name
+      returning id into v_hashtag_id;
+
+      -- Insert the post-hashtag relationship
+      insert into post_hashtags (post_id, hashtag_id)
+      values (p_post_id, v_hashtag_id)
+      on conflict (post_id, hashtag_id) do nothing;
+    end loop;
+  end if;
+
+  return result_post;
+end;
+$$;
+
 create or replace function public.create_post_stats () returns trigger language plpgsql
 set
   search_path = public as $$

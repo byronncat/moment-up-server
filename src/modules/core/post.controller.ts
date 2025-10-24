@@ -1,6 +1,7 @@
 import type { JwtPayload } from 'jwt-library';
 
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -11,8 +12,8 @@ import {
   InternalServerErrorException,
   Param,
   Post,
+  Put,
   Query,
-  UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
 import { PostService } from './post.service';
@@ -24,6 +25,7 @@ import {
   PaginationDto,
   ReportPostDto,
   RepostDto,
+  UpdatePostDto,
   UserPostsDto,
 } from './dto';
 import { ExploreType, INITIAL_PAGE } from 'src/common/constants';
@@ -100,13 +102,42 @@ export class PostController {
   @HttpCode(HttpStatus.CREATED)
   @UseGuards(AccessTokenGuard)
   async createPost(@AccessToken() token: JwtPayload, @Body() createPostDto: CreatePostDto) {
-    const userId = token.sub ?? '';
-    if (!userId) throw new UnauthorizedException('You must be logged in to create a post.');
-    const post = await this.postService.create(userId, createPostDto);
+    const userId = token.sub;
+    const post = await this.postService.create(userId!, createPostDto);
     if (!post) throw new InternalServerErrorException('Something went wrong.');
     return {
       feed: post,
     };
+  }
+
+  @Put(':id')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AccessTokenGuard)
+  async updatePost(
+    @AccessToken() token: JwtPayload,
+    @Param('id') id: string,
+    @Body() updatePostDto: UpdatePostDto
+  ) {
+    const userId = token.sub;
+    const post = await this.postService.update(
+      {
+        userId: userId!,
+        postId: id,
+      },
+      updatePostDto
+    );
+    if (!post) throw new BadRequestException('Unable to update post.');
+    return {
+      feed: post,
+    };
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(AccessTokenGuard)
+  async deletePost(@AccessToken() token: JwtPayload, @Param('id') id: string) {
+    const userId = token.sub;
+    await this.postService.delete(userId!, id);
   }
 
   @Post(':id/like')

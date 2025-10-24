@@ -31,6 +31,7 @@ import {
   PaginationDto,
   ReportPostDto,
   RepostDto,
+  UpdatePostDto,
   UserPostsDto,
 } from './dto';
 import { Auth } from 'src/common/helpers';
@@ -786,7 +787,7 @@ export class PostService {
     }
   }
 
-  public async create(userId: User['id'], data: CreatePostDto) {
+  public async create(userId: string, data: CreatePostDto) {
     try {
       let hashtags: string[] | null = null;
       if (data.text) {
@@ -818,6 +819,65 @@ export class PostService {
       this.logger.error(error.message, {
         context: 'PostService',
         location: 'create',
+      });
+      return undefined;
+    }
+  }
+
+  public async update(
+    { userId, postId }: { userId: string; postId: string },
+    { text, privacy }: UpdatePostDto
+  ) {
+    try {
+      let hashtags: string[] | null = null;
+      if (text) {
+        const processedHashtags = await this.trendingService.processPostHashtags(text);
+        if (!processedHashtags) return undefined;
+        hashtags = processedHashtags;
+      }
+
+      const { data: result, error } = await this.supabaseService
+        .getClient()
+        .rpc('update_post_with_hashtags', {
+          p_user_id: userId,
+          p_post_id: postId,
+          p_text: text || null,
+          p_privacy: privacy,
+          p_hashtags: hashtags,
+        });
+
+      if (error) throw error;
+      if (!result) return undefined;
+
+      return result;
+    } catch (error) {
+      this.logger.error(error.message, {
+        context: 'PostService',
+        location: 'update',
+      });
+
+      return undefined;
+    }
+  }
+
+  public async delete(userId: string, postId: string) {
+    try {
+      const deletedPosts = await this.supabaseService.delete('posts', {
+        user_id: userId,
+        id: postId,
+      });
+
+      if (deletedPosts.length === 0) throw new NotFoundException('Post not found.');
+      const post = deletedPosts[0];
+
+      if (post.attachments && post.attachments.length > 0)
+        await this.deletePostAttachments(post.attachments);
+
+      await this.userService.updateUserStats(userId, 'posts_count', -1);
+    } catch (error) {
+      this.logger.error(error.message, {
+        location: 'delete',
+        context: 'PostService',
       });
       return undefined;
     }
@@ -1052,6 +1112,50 @@ export class PostService {
         context: 'PostService',
       });
       throw new Error('Failed to parse attachments');
+    }
+  }
+
+  private async deletePostAttachments(attachments: Post['attachments']) {
+    if (!attachments || attachments.length === 0) return;
+
+    try {
+      // TEMPORARY
+      // If MOCK_DATA is true, skip HTTP URLs (they don't need deletion)
+      const isMockData = this.configService.get<boolean>('MOCK_DATA', false);
+      if (isMockData) {
+        const cloudinaryAttachments = attachments.filter((att) => !att.id.startsWith('http'));
+        if (cloudinaryAttachments.length === 0) return;
+
+        await Promise.all(
+          cloudinaryAttachments.map((attachment) => this.deleteAttachment(attachment.id))
+        );
+        return;
+      }
+      // TEMPORARY
+
+      // Delete all attachments from Cloudinary
+      await Promise.all(attachments.map((attachment) => this.deleteAttachment(attachment.id)));
+    } catch (error) {
+      this.logger.error(error.message, {
+        location: 'deletePostAttachments',
+        context: 'PostService',
+      });
+    }
+  }
+
+  private async deleteAttachment(publicId: string): Promise<void> {
+    try {
+      // TEMPORARY
+      const isHttp = publicId.startsWith('http');
+      if (isHttp) return;
+      // TEMPORARY
+
+      await this.cloudinaryService.destroy(publicId);
+    } catch (error) {
+      this.logger.error(error.message, {
+        context: 'PostService',
+        location: 'deleteAttachment',
+      });
     }
   }
 }
