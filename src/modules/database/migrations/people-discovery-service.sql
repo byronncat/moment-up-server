@@ -85,7 +85,9 @@ create index idx_user_hashtag_stats_hashtag on public.user_hashtag_stats (hashta
 -- Required for concurrent refresh
 create unique index idx_user_hashtag_stats_user_hashtag on public.user_hashtag_stats (user_id, hashtag_id);
 
-create or replace function public.refresh_user_hashtag_stats () returns void language plpgsql security definer as $$
+create or replace function public.refresh_user_hashtag_stats () returns void language plpgsql
+set
+  search_path = public as $$
 begin
   refresh materialized view concurrently public.user_hashtag_stats;
 end;
@@ -96,8 +98,7 @@ create or replace function public.get_interest_based_users (
   result_limit integer,
   excluded_ids uuid[]
 ) returns table (similar_user uuid) language sql
-set
-  search_path = public as $$
+
 -- Step 1: Find recent hashtags used by the current user
 with recent_hashtags as (
   select hashtag_id
