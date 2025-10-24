@@ -77,6 +77,11 @@ group by
   p.user_id,
   ph.hashtag_id;
 
+-- Revoke all default privileges from public roles (internal use only)
+revoke all on public.user_hashtag_stats from public;
+revoke all on public.user_hashtag_stats from anon;
+revoke all on public.user_hashtag_stats from authenticated;
+
 -- Add indexes for fast lookups
 create index idx_user_hashtag_stats_user on public.user_hashtag_stats (user_id);
 
