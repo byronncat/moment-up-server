@@ -40,14 +40,6 @@ import { Logger } from 'winston';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { TrendingService } from '../suggestion/trending.service';
 
-export const Message = {
-  GetPosts: {
-    PublicPost: 'Login to access more posts.',
-    InvalidType: 'Invalid type.',
-    Failed: 'Failed to get posts.',
-  },
-};
-
 const METADATA_TEXT_LIMIT = 70;
 
 @Injectable()
@@ -796,18 +788,22 @@ export class PostService {
 
   public async create(userId: User['id'], data: CreatePostDto) {
     try {
-      let hashtags: string[] | undefined = undefined;
+      let hashtags: string[] | null = null;
       if (data.text) {
-        hashtags = await this.trendingService.processPostHashtags(data.text);
-        if (!hashtags) return undefined;
+        const processedHashtags = await this.trendingService.processPostHashtags(data.text);
+        if (!processedHashtags) return undefined;
+        hashtags = processedHashtags;
       }
 
+      const attachments = data.attachments
+        ? data.attachments.map((att) => ({ id: att.id, type: att.type }))
+        : null;
       const { data: result, error } = await this.supabaseService
         .getClient()
         .rpc('create_post_with_hashtags', {
           p_user_id: userId,
-          p_text: data.text,
-          p_attachments: data.attachments,
+          p_text: data.text ?? null,
+          p_attachments: attachments,
           p_privacy: data.privacy,
           p_hashtags: hashtags,
         });

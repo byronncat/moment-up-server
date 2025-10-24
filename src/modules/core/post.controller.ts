@@ -101,11 +101,11 @@ export class PostController {
   @UseGuards(AccessTokenGuard)
   async createPost(@AccessToken() token: JwtPayload, @Body() createPostDto: CreatePostDto) {
     const userId = token.sub ?? '';
-    if (!userId) throw new UnauthorizedException('User not found');
+    if (!userId) throw new UnauthorizedException('You must be logged in to create a post.');
     const post = await this.postService.create(userId, createPostDto);
-    if (!post) throw new InternalServerErrorException('Failed to create post');
+    if (!post) throw new InternalServerErrorException('Something went wrong.');
     return {
-      post,
+      feed: post,
     };
   }
 
