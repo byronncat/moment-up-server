@@ -35,7 +35,7 @@ import {
   UserPostsDto,
 } from './dto';
 import { Auth } from 'src/common/helpers';
-import { ContentPrivacy, INITIAL_PAGE } from 'src/common/constants';
+import { ContentPrivacy, FollowStatus, INITIAL_PAGE } from 'src/common/constants';
 
 import { Logger } from 'winston';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
@@ -58,7 +58,7 @@ export class PostService {
     try {
       const followingUsers = await this.supabaseService.select('follows', {
         select: 'following_id',
-        where: { follower_id: userId },
+        where: { follower_id: userId, status: FollowStatus.ACCEPTED },
       });
       const followingIds = followingUsers.map((f) => f.following_id);
 
