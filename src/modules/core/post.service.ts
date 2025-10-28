@@ -138,6 +138,7 @@ export class PostService {
             post: {
               text: post.text,
               files: await this.parseAttachments(post.attachments),
+              privacy: post.privacy,
               likes: stats?.likes_count ?? 0,
               comments: stats?.comments_count ?? 0,
               reposts: stats?.reposts_count ?? 0,
@@ -232,6 +233,7 @@ export class PostService {
             post: {
               text: result.text,
               files: await this.parseAttachments(result.attachments),
+              privacy: result.privacy,
               likes: stats?.likes_count ?? 0,
               comments: stats?.comments_count ?? 0,
               reposts: stats?.reposts_count ?? 0,
@@ -329,6 +331,7 @@ export class PostService {
             post: {
               text: post.text,
               files: await this.parseAttachments(post.attachments),
+              privacy: post.privacy,
               likes: stats?.likes_count ?? 0,
               comments: stats?.comments_count ?? 0,
               reposts: stats?.reposts_count ?? 0,
@@ -426,6 +429,7 @@ export class PostService {
             post: {
               text: post.text,
               files: await this.parseAttachments(post.attachments),
+              privacy: post.privacy,
               likes: stats?.likes_count ?? 0,
               comments: stats?.comments_count ?? 0,
               reposts: stats?.reposts_count ?? 0,
@@ -523,6 +527,7 @@ export class PostService {
             post: {
               text: post.text,
               files: await this.parseAttachments(post.attachments),
+              privacy: post.privacy,
               likes: stats?.likes_count ?? 0,
               comments: stats?.comments_count ?? 0,
               reposts: stats?.reposts_count ?? 0,
@@ -626,6 +631,7 @@ export class PostService {
             post: {
               text: post.text,
               files: await this.parseAttachments(post.attachments),
+              privacy: post.privacy,
               likes: stats?.likes_count ?? 0,
               comments: stats?.comments_count ?? 0,
               reposts: stats?.reposts_count ?? 0,
@@ -703,6 +709,7 @@ export class PostService {
         post: {
           text: post.text,
           files,
+          privacy: post.privacy,
           likes: postStats?.likes_count ?? 0,
           comments: postStats?.comments_count ?? 0,
           reposts: postStats?.reposts_count ?? 0,

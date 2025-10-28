@@ -64,6 +64,7 @@ declare module 'api' {
       type: 'image' | 'video';
       aspectRatio: 'square' | 'portrait' | 'landscape';
     }> | null;
+    privacy: Post['privacy'];
     likes: number;
     comments: number;
     reposts: number;
