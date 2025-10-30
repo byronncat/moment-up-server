@@ -1,9 +1,20 @@
 import type { JwtPayload } from 'jwt-library';
 
-import { Controller, Delete, Get, HttpCode, HttpStatus, Param, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { StoryService } from './story.service';
 import { AccessTokenGuard } from 'src/common/guards';
 import { AccessToken } from 'src/common/decorators';
+import { CreateStoryDto } from './dto/create-story';
 
 @Controller({
   path: 'stories',
@@ -15,10 +26,10 @@ export class StoryController {
   @Get()
   @HttpCode(HttpStatus.OK)
   @UseGuards(AccessTokenGuard)
-  async getStories(@AccessToken() token: JwtPayload) {
-    const userId = token.sub ?? '';
+  async getStoryNotifications(@AccessToken() token: JwtPayload) {
+    const userId = token.sub;
     return {
-      stories: await this.storyService.getStories(userId),
+      stories: await this.storyService.getNotifications(userId!),
     };
   }
 
@@ -28,6 +39,16 @@ export class StoryController {
   async getStory(@Param('username') username: string) {
     return {
       story: await this.storyService.getStoryByUsername(username),
+    };
+  }
+
+  @Post()
+  @HttpCode(HttpStatus.CREATED)
+  @UseGuards(AccessTokenGuard)
+  async createStory(@Body() body: CreateStoryDto, @AccessToken() token: JwtPayload) {
+    const userId = token.sub;
+    return {
+      story: await this.storyService.create(body, userId!),
     };
   }
 

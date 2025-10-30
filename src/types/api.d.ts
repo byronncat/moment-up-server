@@ -88,6 +88,43 @@ declare module 'api' {
     lastModified: Comment['last_modified'];
   }
 
+  // === Story ===
+  interface StoryNotificationPayload {
+    id: Story['id'];
+    userId: User['id'];
+    username: User['username'];
+    displayName: User['display_name'];
+    avatar: User['avatar'];
+    viewed: boolean;
+    total: number;
+    createdAt: Story['created_at'];
+  }
+
+  interface StoryTextContent {
+    type: 'text';
+    text: string;
+    background: StoryBackground;
+  }
+
+  interface StoryMediaContent {
+    type: 'image' | 'video';
+    id: string;
+  }
+
+  type StoryContent = StoryTextContent | StoryMediaContent;
+
+  interface StoryPayload {
+    id: Story['id'];
+    content: StoryContent;
+    sound?: string;
+    createdAt: Story['createdAt'];
+  }
+
+  interface StoryDto {
+    user: AccountDto;
+    stories: StoryPayload[];
+  }
+
   // === Notification ===
   interface FollowRequestDto {
     type: NotificationType.FOLLOW_REQUEST;
@@ -104,67 +141,4 @@ declare module 'api' {
     name: Hashtag['name'];
     count: number;
   }
-
-  // +++ TODO: Ongoing +++
-  interface StoryNotificationPayload {
-    id: Story['id'];
-    userId: User['id'];
-    username: User['username'];
-    displayName: User['display_name'];
-    avatar: User['avatar'];
-    viewed: boolean;
-    total: number;
-    createdAt: Story['createdAt'];
-  }
-
-  interface StoryTextContent {
-    type: 'text';
-    text: string;
-    background: StoryBackground;
-  }
-
-  interface StoryMediaContent {
-    type: 'image' | 'video';
-    id: string;
-    url: string;
-    aspectRatio: '9:16';
-  }
-
-  type StoryContent = StoryTextContent | StoryMediaContent;
-
-  interface StoryData {
-    id: Story['id'];
-    content: StoryContent;
-    sound?: string;
-    createdAt: Story['createdAt'];
-  }
-
-  interface StoryPayload {
-    user: Omit<AccountDto, 'email'>;
-    stories: StoryData[];
-  }
-
-  interface SecurityNotificationPayload {
-    id: string;
-    type: 'security';
-    userId: string;
-    createdAt: string;
-  }
-
-  interface CommunityNotificationPayload {
-    id: string;
-    type: 'social';
-    user: UserSummaryDto;
-    createdAt: string;
-    information:
-      | {
-          type: 'post' | 'mention';
-          content: string;
-        }
-      | {
-          type: 'follow';
-        };
-  }
-
-  type NotificationPayload = SecurityNotificationPayload | CommunityNotificationPayload;
 }

@@ -1,15 +1,7 @@
 import { Type } from 'class-transformer';
-import { IsArray, IsEnum, IsIn, IsOptional, IsString, ValidateNested } from 'class-validator';
+import { IsArray, IsEnum, IsOptional, IsString, ValidateNested } from 'class-validator';
+import { AttachmentDto } from 'src/common/validators';
 import { ContentPrivacy } from 'src/common/constants';
-
-class AttachmentDto {
-  @IsString({ message: 'Attachment ID must be a string' })
-  id: string;
-
-  @IsString({ message: 'Attachment type must be a string' })
-  @IsIn(['image', 'video'], { message: 'Attachment type must be either "image" or "video"' })
-  type: 'image' | 'video';
-}
 
 export class CreatePostDto {
   @IsString({ message: 'Text must be a string' })

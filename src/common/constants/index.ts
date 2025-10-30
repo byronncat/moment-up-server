@@ -127,6 +127,13 @@ export enum ErrorCode {
   EMAIL_NOT_VERIFIED = 'EMAIL_NOT_VERIFIED',
 }
 
+export enum StoryFontFamily {
+  ROBOTO,
+  YESTERYEAR,
+  SOURCE_CODE_PRO,
+  MERRIWEATHER,
+}
+
 export enum StoryBackground {
   BLUE_GRADIENT,
   PINK_PURPLE_BLUE_GRADIENT,

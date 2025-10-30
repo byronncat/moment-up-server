@@ -94,15 +94,18 @@ declare module 'schema' {
   interface Story {
     readonly id: snowflake;
     readonly user_id: User['id'];
-    text: StoryTextContent | null;
-    media: public_id | null;
-    sound: public_id | null;
+    readonly content: StoryTextContent | StoryMediaContent;
+    readonly sound: public_id | null;
     readonly created_at: timestamptz;
   }
 
   interface StoryTextContent {
     text: string;
     background: StoryBackground;
+  }
+
+  interface StoryMediaContent {
+    id: public_id;
   }
 
   interface Hashtag {

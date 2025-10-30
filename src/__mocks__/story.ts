@@ -1,15 +1,14 @@
-import type { StoryContent, StoryNotificationPayload, StoryPayload } from 'api';
+import type { StoryContent, StoryDto, StoryNotificationPayload } from 'api';
 import { getRandomFile, soundUrl } from './file';
 import { faker } from '@faker-js/faker';
-import { accounts } from './auth';
 import { StoryBackground } from '../common/constants';
 
 const myMockStory: StoryNotificationPayload = {
   id: faker.number.int(),
-  userId: accounts[0].id,
-  username: accounts[0].username,
-  displayName: accounts[0].display_name,
-  avatar: accounts[0].avatar,
+  userId: faker.string.uuid(),
+  username: faker.internet.username(),
+  displayName: faker.person.fullName(),
+  avatar: getRandomFile(faker.string.uuid()),
   viewed: false,
   total: 7,
   createdAt: new Date().toISOString(),
@@ -17,7 +16,7 @@ const myMockStory: StoryNotificationPayload = {
 
 export const mockStoryNotifications: StoryNotificationPayload[] = [
   myMockStory,
-  ...Array.from({ length: 12 }, () => ({
+  ...Array.from({ length: 3 }, () => ({
     id: faker.number.int(),
     userId: faker.string.uuid(),
     username: faker.internet.username(),
@@ -29,7 +28,7 @@ export const mockStoryNotifications: StoryNotificationPayload[] = [
   })),
 ];
 
-export const createMockStories = (): StoryPayload[] => {
+export const createMockStories = (): StoryDto[] => {
   return mockStoryNotifications.map((notification) => {
     // Use index as seed for consistent distribution
     const seedRandom = (seed: number, max: number) => {
@@ -62,16 +61,12 @@ export const createMockStories = (): StoryPayload[] => {
       } else if (contentType === 'image') {
         content = {
           type: 'image',
-          id: faker.string.uuid(),
-          url: getRandomFile(faker.string.uuid(), '4:5'),
-          aspectRatio: '9:16',
+          id: getRandomFile(faker.string.uuid(), '4:5'),
         };
       } else {
         content = {
           type: 'video',
-          id: faker.string.uuid(),
-          url: 'https://res.cloudinary.com/dq02xgn2g/video/upload/v1754136062/_mock_/so-what.mp4',
-          aspectRatio: '9:16',
+          id: 'https://res.cloudinary.com/dq02xgn2g/video/upload/v1754136062/_mock_/so-what.mp4',
         };
       }
 
