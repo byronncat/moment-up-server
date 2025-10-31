@@ -163,6 +163,11 @@ export class UrlPlaceholderInterceptor implements NestInterceptor {
     // Replace any https:// or http:// URL with the placeholder prefixed by '@'
     const urlRegex = /https?:\/\/[^\s"'<>)+]+/g;
     return text.replace(urlRegex, (url) => {
+      // Skip replacing audio/video URLs
+      if (url.endsWith('.mp3') || url.endsWith('.mp4')) {
+        return url;
+      }
+
       let selectedFile: string;
 
       // First try the seeded random approach
