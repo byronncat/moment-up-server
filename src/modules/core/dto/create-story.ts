@@ -25,6 +25,10 @@ export class CreateStoryDto {
   @IsOptional()
   attachment?: AttachmentDto;
 
+  @IsString({ message: 'Sound must be a string.' })
+  @IsOptional()
+  sound?: string;
+
   @IsEnum(ContentPrivacy, {
     message: `Privacy must be a valid enum value.`,
   })

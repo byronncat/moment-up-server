@@ -29,8 +29,11 @@ export class StoryService {
 
   public async create(storyDto: CreateStoryDto, userId: string) {
     try {
-      const hasTextContent = storyDto.text && storyDto.background && storyDto.font;
-      const hasMediaContent = storyDto.attachment;
+      const hasTextContent =
+        storyDto.text !== undefined &&
+        storyDto.background !== undefined &&
+        storyDto.font !== undefined;
+      const hasMediaContent = storyDto.attachment !== undefined;
 
       if (!hasTextContent && !hasMediaContent)
         throw new BadRequestException(
@@ -49,12 +52,14 @@ export class StoryService {
           font: storyDto.font!,
         } as StoryTextContent;
 
+      const sound = storyDto.sound ?? null;
+
       const stories = await this.supabaseService.insert<Story>(
         'stories',
         {
           user_id: userId,
           content,
-          sound: null,
+          sound,
         },
         'id::text,user_id,content,sound,created_at'
       );
@@ -124,11 +129,14 @@ export class StoryService {
       if (users.length === 0) throw new NotFoundException(`User @${username} not found`);
       const user = users[0];
 
-      const stories = await this.supabaseService.select<Story>('stories', {
-        select: 'id::text,content,sound,created_at',
-        where: { user_id: user.id },
-        orderBy: { column: 'created_at', ascending: false },
-      });
+      const stories = await this.supabaseService.select<Omit<Story, 'id'> & { id: string }>(
+        'stories',
+        {
+          select: 'id::text,content,sound,created_at',
+          where: { user_id: user.id },
+          orderBy: { column: 'created_at', ascending: false },
+        }
+      );
 
       if (stories.length === 0) throw new NotFoundException(`Story for @${username} not found`);
 
@@ -179,7 +187,7 @@ export class StoryService {
     }
   }
 
-  public async deleteStory(id: Story['id'], userId: User['id']) {
+  public async deleteStory(id: string, userId: string) {
     const _temp = this.stories.find((story) => story.user.id === userId);
     const story = _temp?.stories.find((s) => s.id === id);
 

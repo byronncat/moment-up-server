@@ -164,7 +164,7 @@ export class UrlPlaceholderInterceptor implements NestInterceptor {
     const urlRegex = /https?:\/\/[^\s"'<>)+]+/g;
     return text.replace(urlRegex, (url) => {
       // Skip replacing audio/video URLs
-      if (url.endsWith('.mp3') || url.endsWith('.mp4')) {
+      if (url.endsWith('.mp3') || url.endsWith('.mp4') || url.endsWith('.wav')) {
         return url;
       }
 

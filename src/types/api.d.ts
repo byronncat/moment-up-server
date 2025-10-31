@@ -90,8 +90,8 @@ declare module 'api' {
 
   // === Story ===
   interface StoryNotificationPayload {
-    id: Story['id'];
-    userId: User['id'];
+    id: string;
+    userId: string;
     username: User['username'];
     displayName: User['display_name'];
     avatar: User['avatar'];
@@ -114,7 +114,7 @@ declare module 'api' {
   type StoryContent = StoryTextContent | StoryMediaContent;
 
   interface StoryPayload {
-    id: Story['id'];
+    id: string;
     content: StoryContent;
     sound?: string;
     createdAt: Story['createdAt'];

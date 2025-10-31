@@ -1,10 +1,10 @@
-import type { StoryContent, StoryDto, StoryNotificationPayload } from 'api';
+import type { StoryContent, StoryDto, StoryNotificationPayload, StoryPayload } from 'api';
 import { getRandomFile, soundUrl } from './file';
 import { faker } from '@faker-js/faker';
 import { StoryBackground } from '../common/constants';
 
 const myMockStory: StoryNotificationPayload = {
-  id: faker.number.int(),
+  id: faker.string.uuid(),
   userId: faker.string.uuid(),
   username: faker.internet.username(),
   displayName: faker.person.fullName(),
@@ -17,7 +17,7 @@ const myMockStory: StoryNotificationPayload = {
 export const mockStoryNotifications: StoryNotificationPayload[] = [
   myMockStory,
   ...Array.from({ length: 3 }, () => ({
-    id: faker.number.int(),
+    id: faker.string.uuid(),
     userId: faker.string.uuid(),
     username: faker.internet.username(),
     displayName: faker.person.fullName(),
@@ -28,7 +28,9 @@ export const mockStoryNotifications: StoryNotificationPayload[] = [
   })),
 ];
 
-export const createMockStories = (): StoryDto[] => {
+export const createMockStories = (): Array<
+  Omit<StoryDto, 'stories'> & { stories: Array<Omit<StoryPayload, 'id'> & { id: string }> }
+> => {
   return mockStoryNotifications.map((notification) => {
     // Use index as seed for consistent distribution
     const seedRandom = (seed: number, max: number) => {
@@ -36,7 +38,7 @@ export const createMockStories = (): StoryDto[] => {
       return Math.floor((x - Math.floor(x)) * max);
     };
 
-    const generateStory = (storyId?: number) => {
+    const generateStory = (storyId?: string) => {
       // Determine content type: 70% image, 10% text, 20% video
       const contentTypeRand = seedRandom(Math.random() * 10000, 100);
       let contentType: 'image' | 'text' | 'video';
@@ -71,7 +73,7 @@ export const createMockStories = (): StoryDto[] => {
       }
 
       return {
-        id: storyId ?? faker.number.int(),
+        id: storyId ?? faker.string.uuid(),
         content,
         createdAt: faker.date.recent().toISOString(),
         ...(shouldHaveSound && {
