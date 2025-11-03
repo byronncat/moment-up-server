@@ -140,7 +140,10 @@ async function bootstrap() {
     size: 128,
     ignoredMethods: ['GET', 'HEAD', 'OPTIONS'],
   });
-  app.use(csrfSynchronisedProtection);
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    if (req.path === '/v1/stories/refresh') return next();
+    csrfSynchronisedProtection(req, res, next);
+  });
   app.use((error: any, request: Request, response: Response, next: NextFunction) => {
     if (error.code === CSRF_ERROR_CODE) {
       logger.http(error.message, {

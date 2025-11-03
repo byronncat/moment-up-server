@@ -1,4 +1,23 @@
 -- Story Service Functions
+-- Function to refresh has_story status for all users
+create or replace function public.refresh_story_stats () returns void language plpgsql
+set
+  search_path = public as $$
+begin
+  update user_stats us
+  set 
+    has_story = (
+      select exists(
+        select 1 from stories s 
+        where s.user_id = us.user_id 
+        and s.created_at > now() - interval '24 hours'
+      )
+    ),
+    last_modified = now()
+  where true; -- Update all rows
+end;
+$$;
+
 -- Function to get user's own stories and following users' stories
 -- User's own story appears first, then sorted by most recent story
 create or replace function public.get_following_with_stories (p_user_id uuid) returns table (

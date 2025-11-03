@@ -234,4 +234,18 @@ export class StoryService {
       throw new InternalServerErrorException('Something went wrong.');
     }
   }
+
+  public async refreshStats() {
+    try {
+      const { data, error } = await this.supabaseService.getClient().rpc('refresh_story_stats');
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      this.logger.error(error.message, {
+        location: 'refreshStats',
+        context: 'StoryService',
+      });
+      throw new InternalServerErrorException('Something went wrong.');
+    }
+  }
 }

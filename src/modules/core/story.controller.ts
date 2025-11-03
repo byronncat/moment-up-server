@@ -74,4 +74,13 @@ export class StoryController {
       report: await this.storyService.report({ storyId: id, userId: userId! }, reportStoryDto),
     };
   }
+
+  @Post('refresh')
+  @HttpCode(HttpStatus.OK)
+  async refreshStoryStats() {
+    await this.storyService.refreshStats();
+    return {
+      message: 'Story stats refreshed successfully.',
+    };
+  }
 }
