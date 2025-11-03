@@ -137,6 +137,14 @@ declare module 'schema' {
     readonly created_at: timestamptz;
   }
 
+  interface StoryReport {
+    readonly id: serial;
+    readonly story_id: Story['id'];
+    readonly user_id: User['id'];
+    readonly type: ContentReportType;
+    readonly created_at: timestamptz;
+  }
+
   interface Notification {
     readonly id: snowflake;
     readonly user_id: User['id'];

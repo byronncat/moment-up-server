@@ -17,6 +17,7 @@ type MainTable =
   | 'notifications'
   | 'user_reports'
   | 'post_reports'
+  | 'story_reports'
   | 'trending_reports';
 type RelationshipTable =
   | 'post_hashtags'

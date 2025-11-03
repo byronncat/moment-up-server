@@ -1,5 +1,5 @@
 import { createMockStories, mockStoryNotifications } from 'src/__mocks__/story';
-import type { Story, StoryMediaContent, StoryTextContent, User } from 'schema';
+import type { Story, StoryMediaContent, StoryReport, StoryTextContent, User } from 'schema';
 import type { StoryContent, StoryDto, StoryNotificationPayload, StoryPayload } from 'api';
 
 import {
@@ -13,6 +13,7 @@ import {
 import { SupabaseService } from '../database/supabase.service';
 import { UserService } from '../user/user.service';
 import { CreateStoryDto } from './dto/create-story';
+import { ReportStoryDto } from './dto/report-story';
 import { Logger } from 'winston';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 
@@ -211,5 +212,26 @@ export class StoryService {
     });
 
     return true;
+  }
+
+  public async report(
+    { storyId, userId }: { storyId: string; userId: string },
+    { type }: ReportStoryDto
+  ) {
+    try {
+      const [newReport] = await this.supabaseService.insert<StoryReport>('story_reports', {
+        story_id: storyId as any,
+        user_id: userId,
+        type,
+      });
+
+      return newReport;
+    } catch (error) {
+      this.logger.error(error.message, {
+        location: 'reportStory',
+        context: 'StoryService',
+      });
+      throw new InternalServerErrorException('Something went wrong.');
+    }
   }
 }

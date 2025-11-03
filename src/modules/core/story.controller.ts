@@ -15,6 +15,7 @@ import { StoryService } from './story.service';
 import { AccessTokenGuard } from 'src/common/guards';
 import { AccessToken } from 'src/common/decorators';
 import { CreateStoryDto } from './dto/create-story';
+import { ReportStoryDto } from './dto/report-story';
 
 @Controller({
   path: 'stories',
@@ -58,5 +59,19 @@ export class StoryController {
   async deleteStory(@Param('id') id: any, @AccessToken() token: JwtPayload) {
     const userId = token.sub ?? '';
     await this.storyService.deleteStory(id, userId);
+  }
+
+  @Post(':id/report')
+  @HttpCode(HttpStatus.CREATED)
+  @UseGuards(AccessTokenGuard)
+  async reportStory(
+    @Param('id') id: string,
+    @Body() reportStoryDto: ReportStoryDto,
+    @AccessToken() token: JwtPayload
+  ) {
+    const userId = token.sub;
+    return {
+      report: await this.storyService.report({ storyId: id, userId: userId! }, reportStoryDto),
+    };
   }
 }

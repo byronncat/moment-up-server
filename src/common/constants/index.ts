@@ -74,7 +74,6 @@ export enum UserReportType {
 
 export enum ContentReportType {
   SPAM,
-  MISLEADING,
   INAPPROPRIATE_CONTENT,
   ABUSIVE,
   HARMFUL,
@@ -82,9 +81,7 @@ export enum ContentReportType {
   CHILD_EXPLOITATION,
   COPYRIGHT_VIOLATION,
   VIOLENCE,
-  HATE_SPEECH,
   FAKE_INFORMATION,
-  DUPLICATE,
   OTHER,
 }
 
