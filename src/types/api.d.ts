@@ -1,6 +1,6 @@
 declare module 'api' {
   import type { Attachment, Comment, Hashtag, Post, Story, User } from 'schema';
-  import type { NotificationType, StoryBackground } from 'common/constants';
+  import type { NotificationType, StoryBackground, StoryFontFamily } from 'common/constants';
 
   interface PaginationDto<T> {
     total?: number;
@@ -103,6 +103,7 @@ declare module 'api' {
   interface StoryTextContent {
     type: 'text';
     text: string;
+    font: StoryFontFamily;
     background: StoryBackground;
   }
 

@@ -6,6 +6,7 @@ declare module 'schema' {
     NotificationType,
     ProfileVisibility,
     StoryBackground,
+    StoryFontFamily,
     TrendingReportType,
     UserReportType,
   } from 'common/constants';
@@ -101,6 +102,7 @@ declare module 'schema' {
 
   interface StoryTextContent {
     text: string;
+    font: StoryFontFamily;
     background: StoryBackground;
   }
 

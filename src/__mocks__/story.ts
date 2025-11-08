@@ -1,7 +1,7 @@
 import type { StoryContent, StoryDto, StoryNotificationPayload, StoryPayload } from 'api';
 import { getRandomFile, soundUrl } from './file';
 import { faker } from '@faker-js/faker';
-import { StoryBackground } from '../common/constants';
+import { StoryBackground, StoryFontFamily } from '../common/constants';
 
 const myMockStory: StoryNotificationPayload = {
   id: faker.string.uuid(),
@@ -58,6 +58,10 @@ export const createMockStories = (): Array<
           background: faker.number.int({
             min: 0,
             max: Object.keys(StoryBackground).length / 2 - 1,
+          }),
+          font: faker.number.int({
+            min: 0,
+            max: Object.keys(StoryFontFamily).length / 2 - 1,
           }),
         };
       } else if (contentType === 'image') {

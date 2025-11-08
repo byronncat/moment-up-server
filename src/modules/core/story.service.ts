@@ -11,7 +11,6 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { SupabaseService } from '../database/supabase.service';
-import { UserService } from '../user/user.service';
 import { CreateStoryDto } from './dto/create-story';
 import { ReportStoryDto } from './dto/report-story';
 import { Logger } from 'winston';
@@ -24,8 +23,7 @@ export class StoryService {
 
   constructor(
     @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
-    private readonly supabaseService: SupabaseService,
-    private readonly userService: UserService
+    private readonly supabaseService: SupabaseService
   ) {}
 
   public async create(storyDto: CreateStoryDto, userId: string) {
@@ -68,7 +66,6 @@ export class StoryService {
       if (stories.length === 0) throw new Error('Failed to create story.');
       const newStory = stories[0];
 
-      await this.userService.updateUserStats(userId, 'has_story', 1);
       return newStory;
     } catch (error) {
       this.logger.error(error.message, {
@@ -149,6 +146,7 @@ export class StoryService {
           apiContent = {
             type: 'text',
             text: content.text,
+            font: content.font,
             background: content.background,
           };
         } else {
