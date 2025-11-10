@@ -36,10 +36,11 @@ export const load = () => ({
   },
   email: {
     host: process.env.EMAIL_HOST,
-    port: process.env.EMAIL_PORT,
-    secure: process.env.EMAIL_SECURE,
+    port: parseInt(process.env.EMAIL_PORT ?? '587'),
+    secure: process.env.EMAIL_SECURE === 'true',
     username: process.env.EMAIL_USERNAME,
     password: process.env.EMAIL_PASSWORD,
+    brevoApiKey: process.env.BREVO_API_KEY,
   },
   google: {
     clientId: process.env.GOOGLE_CLIENT_ID,
@@ -71,6 +72,7 @@ export const schema = Joi.object({
   EMAIL_SECURE: Joi.boolean().required(),
   EMAIL_USERNAME: Joi.string().required(),
   EMAIL_PASSWORD: Joi.string().required(),
+  BREVO_API_KEY: Joi.string().optional(),
   GOOGLE_CLIENT_ID: Joi.string().required(),
   GOOGLE_CLIENT_SECRET: Joi.string().required(),
 });

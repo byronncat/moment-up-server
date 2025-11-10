@@ -18,7 +18,7 @@ import {
 } from '@nestjs/common';
 import { JwtService, type JwtSignOptions } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { MailerService } from '@nestjs-modules/mailer';
+import * as brevo from '@getbrevo/brevo';
 import { UserService } from '../user/user.service';
 import { Auth } from 'src/common/helpers';
 
@@ -47,15 +47,22 @@ export class AuthService {
   private readonly jwtSecret: string = this.configService.get('security.jwtSecret')!;
   private readonly baseUrl: string = this.configService.get('app.baseUrl')!;
   private readonly clientUrl: string = this.configService.get('http.allowedOrigin')!;
+  private readonly brevoApiInstance: brevo.TransactionalEmailsApi;
 
   constructor(
     @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
     private readonly jwtService: JwtService,
     private readonly userService: UserService,
     private readonly configService: ConfigService,
-    private readonly mailService: MailerService,
     private readonly hbsService: HbsService
-  ) {}
+  ) {
+    const brevoApiKey = this.configService.get<string>('email.brevoApiKey');
+    if (brevoApiKey) {
+      const apiInstance = new brevo.TransactionalEmailsApi();
+      apiInstance.setApiKey(brevo.TransactionalEmailsApiApiKeys.apiKey, brevoApiKey);
+      this.brevoApiInstance = apiInstance;
+    }
+  }
 
   public async refresh(session: AppSession) {
     if (session.user) {
@@ -362,28 +369,98 @@ export class AuthService {
     }
   }
 
+  // OLD SMTP EMAIL HANDLER (COMMENTED OUT - Now using Brevo)
+  // private async sendEmail(
+  //   { to, subject, templateName }: { to: string; subject: string; templateName: EmailTemplate },
+  //   context: Record<string, string | number>
+  // ) {
+  //   try {
+  //     await this.mailService.sendMail({
+  //       to,
+  //       subject,
+  //       template: 'email',
+  //       context: {
+  //         title: 'MomentUp',
+  //         brandName: 'MomentUp',
+  //         logoUrl: Url.ICON,
+  //         url: {
+  //           contact: Url.CONTACT,
+  //           github: Url.GITHUB,
+  //           linkedin: Url.LINKEDIN,
+  //           facebook: Url.FACEBOOK,
+  //         },
+  //         templateName,
+  //         ...context,
+  //       },
+  //     });
+  //   } catch (error) {
+  //     this.logger.error(
+  //       `${error.message} | Host: ${this.configService.get('email.host')}, Port: ${this.configService.get('email.port')}, Secure: ${this.configService.get('email.secure')}`,
+  //       {
+  //         location: 'sendEmail',
+  //         context: 'Email',
+  //       }
+  //     );
+  //     throw new InternalServerErrorException('Failed to send email');
+  //   }
+  // }
+
+  /**
+   * Send email using Brevo API
+   */
   private async sendEmail(
     { to, subject, templateName }: { to: string; subject: string; templateName: EmailTemplate },
     context: Record<string, string | number>
   ) {
     try {
-      await this.mailService.sendMail({
+      // await this.mailService.sendMail({
+      //   to,
+      //   subject,
+      //   template: 'email',
+      //   context: {
+      //     title: 'MomentUp',
+      //     brandName: 'MomentUp',
+      //     logoUrl: Url.ICON,
+      //     url: {
+      //       contact: Url.CONTACT,
+      //       github: Url.GITHUB,
+      //       linkedin: Url.LINKEDIN,
+      //       facebook: Url.FACEBOOK,
+      //     },
+      //     templateName,
+      //     ...context,
+      //   },
+      // });
+
+      const htmlContent = this.hbsService.renderBrevoTemplate(templateName, {
+        title: 'MomentUp',
+        brandName: 'MomentUp',
+        logoUrl: Url.ICON,
+        url: {
+          contact: Url.CONTACT,
+          github: Url.GITHUB,
+          linkedin: Url.LINKEDIN,
+          facebook: Url.FACEBOOK,
+        },
+        ...context,
+      });
+
+      const sendSmtpEmail = new brevo.SendSmtpEmail();
+      sendSmtpEmail.subject = subject;
+      sendSmtpEmail.htmlContent = htmlContent;
+      sendSmtpEmail.sender = {
+        name: 'MomentUp',
+        email: this.configService.get<string>('email.username') ?? 'noreply@momentup.com',
+      };
+      sendSmtpEmail.to = [{ email: to }];
+
+      await this.brevoApiInstance.sendTransacEmail(sendSmtpEmail);
+
+      this.logger.info('Email sent successfully via Brevo', {
+        location: 'sendEmail',
+        context: 'Email',
         to,
         subject,
-        template: 'email',
-        context: {
-          title: 'MomentUp',
-          brandName: 'MomentUp',
-          logoUrl: Url.ICON,
-          url: {
-            contact: Url.CONTACT,
-            github: Url.GITHUB,
-            linkedin: Url.LINKEDIN,
-            facebook: Url.FACEBOOK,
-          },
-          templateName,
-          ...context,
-        },
       });
     } catch (error) {
       this.logger.error(error.message, {
