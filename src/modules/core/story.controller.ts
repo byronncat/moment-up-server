@@ -57,8 +57,8 @@ export class StoryController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @UseGuards(AccessTokenGuard)
   async deleteStory(@Param('id') id: any, @AccessToken() token: JwtPayload) {
-    const userId = token.sub ?? '';
-    await this.storyService.deleteStory(id, userId);
+    const userId = token.sub;
+    await this.storyService.deleteStory(id, userId!);
   }
 
   @Post(':id/report')

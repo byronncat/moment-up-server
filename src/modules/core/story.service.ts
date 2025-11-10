@@ -4,13 +4,13 @@ import type { StoryContent, StoryDto, StoryNotificationPayload, StoryPayload } f
 
 import {
   BadRequestException,
-  ForbiddenException,
   Inject,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
 import { SupabaseService } from '../database/supabase.service';
+import { CloudinaryService } from '../database/cloudinary.service';
 import { CreateStoryDto } from './dto/create-story';
 import { ReportStoryDto } from './dto/report-story';
 import { Logger } from 'winston';
@@ -18,12 +18,12 @@ import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 
 @Injectable()
 export class StoryService {
-  private storyNotifications = mockStoryNotifications;
-  private stories = createMockStories();
+  private readonly stories = createMockStories();
 
   constructor(
     @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
-    private readonly supabaseService: SupabaseService
+    private readonly supabaseService: SupabaseService,
+    private readonly cloudinaryService: CloudinaryService
   ) {}
 
   public async create(storyDto: CreateStoryDto, userId: string) {
@@ -187,29 +187,35 @@ export class StoryService {
   }
 
   public async deleteStory(id: string, userId: string) {
-    const _temp = this.stories.find((story) => story.user.id === userId);
-    const story = _temp?.stories.find((s) => s.id === id);
+    const story = this.stories.find((story) => story.stories.find((s) => s.id === id));
+    if (story) return true;
 
-    if (!story) throw new NotFoundException(`Story not found`);
-    if (_temp?.user.id !== userId)
-      throw new ForbiddenException(`You are not allowed to delete this story`);
+    try {
+      const deletedStories = await this.supabaseService.delete('stories', {
+        id,
+        user_id: userId,
+      });
 
-    this.stories = this.stories.map((story) => ({
-      ...story,
-      stories: story.stories.filter((s) => s.id !== id),
-    }));
-    this.storyNotifications = this.storyNotifications.map((notification) => {
-      if (notification.userId === userId) {
-        return {
-          ...notification,
-          id: _temp.stories[1].id,
-          total: notification.total - 1,
-        };
+      if (deletedStories.length === 0) throw new NotFoundException('Story not found.');
+      const deletedStory = deletedStories[0];
+
+      if (deletedStory.content && 'id' in deletedStory.content) {
+        const mediaId = deletedStory.content.id;
+        const isVideo = mediaId.includes('.mp4') ? true : mediaId.includes('video');
+        await this.deleteStoryAttachment(mediaId, isVideo ? 'video' : 'image');
       }
-      return notification;
-    });
 
-    return true;
+      if (deletedStory.sound) await this.deleteStoryAttachment(deletedStory.sound, 'video');
+
+      return true;
+    } catch (error) {
+      this.logger.error(error.message, {
+        context: 'StoryService',
+        location: 'deleteStory',
+      });
+
+      throw new InternalServerErrorException('Something went wrong.');
+    }
   }
 
   public async report(
@@ -244,6 +250,26 @@ export class StoryService {
         context: 'StoryService',
       });
       throw new InternalServerErrorException('Something went wrong.');
+    }
+  }
+
+  private async deleteStoryAttachment(
+    publicId: string,
+    resourceType: 'image' | 'video' | 'raw' = 'image'
+  ) {
+    try {
+      // TEMPORARY
+      // If it's an HTTP URL (mock data), skip deletion
+      const isHttp = publicId.startsWith('http');
+      if (isHttp) return;
+      // TEMPORARY
+
+      await this.cloudinaryService.destroy(publicId, resourceType);
+    } catch (error) {
+      this.logger.error(error.message, {
+        context: 'StoryService',
+        location: 'deleteStoryAttachment',
+      });
     }
   }
 }
