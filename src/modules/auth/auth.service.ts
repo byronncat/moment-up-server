@@ -204,6 +204,19 @@ export class AuthService {
       });
     }
 
+    const existingUser = await this.userService.getById(
+      payload.sub,
+      'id, email, username, verified'
+    );
+    if (!existingUser)
+      return this.hbsService.renderVerificationTemplate('failure', {
+        ...baseContext,
+        errorMessage: "We couldn't verify your email. Please try again or request a new link.",
+      });
+
+    if (existingUser.verified)
+      return this.hbsService.renderVerificationTemplate('success', baseContext);
+
     const user = await this.userService.verifyEmail(payload.sub);
     if (!user) {
       return this.hbsService.renderVerificationTemplate('failure', {
