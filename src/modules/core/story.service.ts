@@ -43,6 +43,7 @@ export class StoryService {
       if (hasMediaContent)
         content = {
           id: storyDto.attachment!.id,
+          type: storyDto.attachment!.type,
         } as StoryMediaContent;
       else
         content = {
@@ -150,11 +151,9 @@ export class StoryService {
             background: content.background,
           };
         } else {
-          const mediaId = content.id;
-          const isVideo = mediaId.includes('.mp4') || mediaId.includes('video');
           apiContent = {
-            type: isVideo ? 'video' : 'image',
-            id: mediaId,
+            type: content.type,
+            id: content.id,
           };
         }
 
@@ -200,9 +199,8 @@ export class StoryService {
       const deletedStory = deletedStories[0];
 
       if (deletedStory.content && 'id' in deletedStory.content) {
-        const mediaId = deletedStory.content.id;
-        const isVideo = mediaId.includes('.mp4') ? true : mediaId.includes('video');
-        await this.deleteStoryAttachment(mediaId, isVideo ? 'video' : 'image');
+        const { id, type } = deletedStory.content;
+        await this.deleteStoryAttachment(id, type);
       }
 
       if (deletedStory.sound) await this.deleteStoryAttachment(deletedStory.sound, 'video');

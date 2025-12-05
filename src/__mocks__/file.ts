@@ -2025,6 +2025,8 @@ export const soundUrl = [
   'https://res.cloudinary.com/dq02xgn2g/video/upload/v1754409771/_mock_/Glichery_-_MIYUKI_dcryhj.mp3',
   'https://res.cloudinary.com/dq02xgn2g/video/upload/v1754421045/_mock_/Blue_Archive_OST_221._U_mak3_m3_smil3_yqz6gj.mp3',
   'https://res.cloudinary.com/dq02xgn2g/video/upload/v1761925642/moment-up/hqrv2kuylquhjrdonkqn.wav',
+  'https://res.cloudinary.com/dq02xgn2g/video/upload/v1764864447/moment-up/dbl7sdohjxu7peevrt11.wav',
+  'https://res.cloudinary.com/dq02xgn2g/video/upload/v1764914476/moment-up/t7uckl6od8ksucrfw1am.wav',
 ];
 
 export function getRandomFile(text: string, aspectRatio?: '4:5' | '9:16' | '1.91:1') {

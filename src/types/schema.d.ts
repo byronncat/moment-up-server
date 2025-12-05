@@ -108,6 +108,7 @@ declare module 'schema' {
 
   interface StoryMediaContent {
     id: public_id;
+    type: 'image' | 'video';
   }
 
   interface Hashtag {
